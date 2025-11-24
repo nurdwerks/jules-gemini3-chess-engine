@@ -6,6 +6,17 @@ class UCI {
     this.output = outputCallback;
     this.currentSearch = null;
 
+    this.options = {
+        Hash: 16,
+        Threads: 1,
+        Ponder: false,
+        MultiPV: 1
+    };
+
+    // Initialize TT
+    const { TranspositionTable } = require('./TranspositionTable');
+    this.tt = new TranspositionTable(this.options.Hash);
+
     // Initialize Book
     const Polyglot = require('./Polyglot');
     this.book = new Polyglot();
@@ -23,6 +34,10 @@ class UCI {
       case 'uci':
         this.output('id name JulesGemini');
         this.output('id author JulesGemini');
+        this.output(`option name Hash type spin default ${this.options.Hash} min 1 max 1024`);
+        this.output(`option name Threads type spin default ${this.options.Threads} min 1 max 64`);
+        this.output(`option name Ponder type check default ${this.options.Ponder}`);
+        this.output(`option name MultiPV type spin default ${this.options.MultiPV} min 1 max 500`);
         this.output('uciok');
         break;
 
@@ -49,6 +64,17 @@ class UCI {
       case 'stop':
         if (this.currentSearch) {
           this.currentSearch.stopFlag = true;
+        }
+        if (this.pendingBestMove) {
+            this.output(this.pendingBestMove);
+            this.pendingBestMove = null;
+        }
+        break;
+
+      case 'ponderhit':
+        if (this.pendingBestMove) {
+            this.output(this.pendingBestMove);
+            this.pendingBestMove = null;
         }
         break;
 
@@ -120,7 +146,10 @@ class UCI {
     // And if we are in normal play mode.
     // If 'ponder' is present, we shouldn't play immediately?
 
-    if (!args.includes('infinite') && !args.includes('ponder')) {
+    const isPonder = args.includes('ponder');
+    this.pendingBestMove = null;
+
+    if (!args.includes('infinite') && !isPonder) {
         const bookMove = this.book.findMove(this.board);
         if (bookMove) {
              const fromAlg = this.indexToAlgebraic(bookMove.from);
@@ -157,7 +186,7 @@ class UCI {
     }
 
     const Search = require('./Search');
-    this.currentSearch = new Search(this.board);
+    this.currentSearch = new Search(this.board, this.tt);
 
     // Pass time limits to search
     // If hardLimit is Infinity, it runs until depth or stop.
@@ -167,13 +196,18 @@ class UCI {
     const bestMove = this.currentSearch.search(depth, timeLimits);
     this.currentSearch = null;
 
+    let bestMoveStr = 'bestmove 0000';
     if (bestMove) {
         const fromAlg = this.indexToAlgebraic(bestMove.from);
         const toAlg = this.indexToAlgebraic(bestMove.to);
         const promo = bestMove.promotion ? bestMove.promotion : '';
-        this.output(`bestmove ${fromAlg}${toAlg}${promo}`);
+        bestMoveStr = `bestmove ${fromAlg}${toAlg}${promo}`;
+    }
+
+    if (isPonder) {
+        this.pendingBestMove = bestMoveStr;
     } else {
-        this.output('bestmove 0000');
+        this.output(bestMoveStr);
     }
   }
 
@@ -206,11 +240,25 @@ class UCI {
     // Extract Value
     let value = null;
     if (valueIdx !== -1 && valueIdx + 1 < args.length) {
-        value = parseInt(args[valueIdx + 1], 10);
+        const valStr = args[valueIdx + 1];
+        if (valStr === 'true') value = true;
+        else if (valStr === 'false') value = false;
+        else {
+            const parsed = parseInt(valStr, 10);
+            value = isNaN(parsed) ? valStr : parsed;
+        }
     }
 
-    const Evaluation = require('./Evaluation');
-    Evaluation.updateParam(name, value);
+    if (this.options.hasOwnProperty(name)) {
+        this.options[name] = value;
+        if (name === 'Hash') {
+            this.tt.resize(value);
+            this.output(`info string Hash resized to ${value} MB`);
+        }
+    } else {
+        const Evaluation = require('./Evaluation');
+        Evaluation.updateParam(name, value);
+    }
   }
 }
 
