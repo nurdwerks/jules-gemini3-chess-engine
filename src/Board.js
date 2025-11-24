@@ -57,7 +57,9 @@ class Board {
     const offsets = {
       'rook': [-16, 16, -1, 1],
       'bishop': [-17, -15, 15, 17],
-      'queen': [-17, -15, 15, 17, -16, 16, -1, 1]
+      'queen': [-17, -15, 15, 17, -16, 16, -1, 1],
+      'knight': [-33, -31, -18, -14, 14, 18, 31, 33],
+      'king': [-17, -16, -15, -1, 1, 15, 16, 17]
     };
 
     for (let i = 0; i < 128; i++) {
@@ -66,6 +68,7 @@ class Board {
       const piece = this.squares[i];
       if (!piece || piece.color !== color) continue;
 
+      // Sliding pieces
       if (['rook', 'bishop', 'queen'].includes(piece.type)) {
         const directions = offsets[piece.type];
         for (const dir of directions) {
@@ -87,7 +90,54 @@ class Board {
           }
         }
       }
-      // TODO: Implement Pawn, Knight, King
+      // Stepping pieces (Knight, King)
+      else if (['knight', 'king'].includes(piece.type)) {
+        const directions = offsets[piece.type];
+        for (const dir of directions) {
+          const target = i + dir;
+          if (this.isValidSquare(target)) {
+            const targetPiece = this.squares[target];
+            if (!targetPiece) {
+              // Quiet move
+              moves.push({ from: i, to: target, flags: 'n', piece: piece });
+            } else if (targetPiece.color === opponent) {
+              // Capture
+              moves.push({ from: i, to: target, flags: 'c', piece: piece, captured: targetPiece });
+            }
+          }
+        }
+      }
+      // Pawn
+      else if (piece.type === 'pawn') {
+        const isWhite = piece.color === 'white';
+        const forward = isWhite ? -16 : 16;
+        const startRank = isWhite ? 6 : 1;
+        const currentRow = i >> 4;
+
+        // Single push
+        const targetSingle = i + forward;
+        if (this.isValidSquare(targetSingle) && !this.squares[targetSingle]) {
+          moves.push({ from: i, to: targetSingle, flags: 'n', piece: piece });
+
+          // Double push
+          const targetDouble = i + (forward * 2);
+          if (currentRow === startRank && this.isValidSquare(targetDouble) && !this.squares[targetDouble]) {
+            moves.push({ from: i, to: targetDouble, flags: 'n', piece: piece });
+          }
+        }
+
+        // Captures
+        const captureOffsets = isWhite ? [-17, -15] : [15, 17];
+        for (const capOffset of captureOffsets) {
+          const targetCap = i + capOffset;
+          if (this.isValidSquare(targetCap)) {
+            const targetPiece = this.squares[targetCap];
+            if (targetPiece && targetPiece.color === opponent) {
+               moves.push({ from: i, to: targetCap, flags: 'c', piece: piece, captured: targetPiece });
+            }
+          }
+        }
+      }
     }
     return moves;
   }
@@ -96,47 +146,17 @@ class Board {
     const startIndex = this.toIndex(start.row, start.col);
     const endIndex = this.toIndex(end.row, end.col);
 
-    // Maintain pawn logic for now as it's not fully in generateMoves yet
-    // Or we could implement pawn in generateMoves now?
-    // The previous implementation was hardcoded.
-    // Let's preserve the existing pawn logic for now to avoid regression on tests/movement.test.js
-    // while we add sliding logic via generateMoves.
-
     if (!this.isValidSquare(startIndex) || !this.isValidSquare(endIndex)) return false;
     const piece = this.squares[startIndex];
     if (!piece) return false;
 
-    // Use generateMoves for sliding pieces
-    if (['rook', 'bishop', 'queen'].includes(piece.type)) {
-      // We need to temporarily set activeColor to piece color if we want to use generateMoves
-      // strictly, but isValidMove might be called for analysis.
-      // Assuming isValidMove is for the side to move or we just force it.
-      // But generateMoves relies on activeColor.
-      const savedActive = this.activeColor;
-      this.activeColor = piece.color === 'white' ? 'w' : 'b';
-      const moves = this.generateMoves();
-      this.activeColor = savedActive;
+    // Use generateMoves for all pieces now
+    const savedActive = this.activeColor;
+    this.activeColor = piece.color === 'white' ? 'w' : 'b';
+    const moves = this.generateMoves();
+    this.activeColor = savedActive;
 
-      return moves.some(m => m.from === startIndex && m.to === endIndex);
-    }
-
-    const rowDiff = end.row - start.row;
-    const colDiff = end.col - start.col;
-
-    if (piece.type === 'pawn') {
-      if (piece.color === 'white') {
-        // Basic move (White moves UP, so rowDiff is -1)
-        if (colDiff === 0 && rowDiff === -1) return true;
-        // Initial double move
-        if (start.row === 6 && colDiff === 0 && rowDiff === -2) return true;
-      } else {
-        // Black pawn (Black moves DOWN, so rowDiff is 1)
-        if (colDiff === 0 && rowDiff === 1) return true;
-        if (start.row === 1 && colDiff === 0 && rowDiff === 2) return true;
-      }
-    }
-
-    return false;
+    return moves.some(m => m.from === startIndex && m.to === endIndex);
   }
 
   loadFen(fen) {
