@@ -220,7 +220,7 @@ This document outlines a staged, long-term roadmap to develop a robust chess eng
 *   **Description:** Pawn patterns.
 *   **Acceptance Criteria:**
     *   [x] Detect isolated, doubled, backward pawns.
-    *   [ ] Bonus for passed pawns.
+    *   [x] Bonus for passed pawns.
 
 ---
 
@@ -231,16 +231,16 @@ This document outlines a staged, long-term roadmap to develop a robust chess eng
 *   **Size:** Medium
 *   **Description:** Dynamic time allocation.
 *   **Acceptance Criteria:**
-    *   [ ] Logic for `optimum` vs `max` time.
-    *   [ ] Panic handling if score drops significantly.
+    *   [x] Logic for `optimum` vs `max` time.
+    *   [x] Panic handling if score drops significantly. (Partially, soft limit implemented)
 
 ### Story 5.2: Polyglot Opening Book
 *   **Size:** Medium
 *   **Description:** .bin book reader.
 *   **Acceptance Criteria:**
-    *   [ ] Read Polyglot format.
-    *   [ ] Match Zobrist key to book entries.
-    *   [ ] Select weighted random move.
+    *   [x] Read Polyglot format.
+    *   [x] Match Zobrist key to book entries.
+    *   [x] Select weighted random move.
 
 ### Story 5.3a: Tuning Infrastructure
 *   **Size:** Large

@@ -236,6 +236,86 @@ class Evaluation {
             }
         }
 
+        // Passed Pawn (Bonus)
+        // A pawn is passed if there are no enemy pawns on the same file or adjacent files
+        // that are "ahead" of the pawn.
+        const enemyColor = color === 'white' ? 'black' : 'white';
+        let isPassed = true;
+        const checkFiles = [col - 1, col, col + 1];
+
+        // Define "ahead" rows
+        // White: rows 0 to row-1
+        // Black: rows row+1 to 7
+        const startRow = color === 'white' ? 0 : row + 1;
+        const endRow = color === 'white' ? row - 1 : 7;
+
+        // Optimized: Break early if loop range is invalid (though loop condition handles it)
+        // Note: For White at row 0 (promotion), loop doesn't run, implicitly passed (but pawns promote).
+        // Pawns only exist rows 1-6 normally.
+
+        outerLoop:
+        for (const f of checkFiles) {
+             if (f < 0 || f > 7) continue;
+
+             // Iterate rows ahead
+             // We can just loop from startRow to endRow (inclusive if start <= end)
+             // Careful with direction if start > end, but here startRow/endRow are computed correctly:
+             // White: 0 to row-1. (Ascending ok)
+             // Black: row+1 to 7. (Ascending ok)
+
+             // Ensure loop runs correctly
+             if (startRow <= endRow) {
+                 for (let r = startRow; r <= endRow; r++) {
+                     const idx = (r << 4) | f;
+                     const p = board.squares[idx];
+                     if (p && p.type === 'pawn' && p.color === enemyColor) {
+                         isPassed = false;
+                         break outerLoop;
+                     }
+                 }
+             }
+        }
+
+        if (isPassed) {
+            // Rank-based bonus
+            // White: Rank 2 (row 6) is start. Rank 7 (row 1) is high.
+            // Ranks 0-7.
+            // visual Rank = 8 - row.
+            // White visual Ranks: 2, 3, 4, 5, 6, 7.
+            // Bonuses: [0, 0, 10, 20, 40, 80, 160, 0] (Index by visual rank)
+            const PASSED_BONUS = [0, 0, 10, 20, 40, 80, 160, 0];
+
+            const visualRank = 8 - row - 1; // 0-7 index (Row 7->Rank 1->Idx 0).
+            // Wait. Row 0 is Rank 8. Row 7 is Rank 1.
+            // White moves Row 6 -> Row 1.
+            // Rank index for bonus:
+            // Row 6 (Rank 2) -> Low bonus.
+            // Row 1 (Rank 7) -> High bonus.
+
+            let rankIdx = 0;
+            if (color === 'white') {
+                // Row 6 -> Rank 2. We want index 1 or 2?
+                // Let's say index = Rank - 1.
+                // Row 6 is Rank 2. Idx 1.
+                // Row 1 is Rank 7. Idx 6.
+                rankIdx = 7 - row;
+            } else {
+                // Black moves Row 1 -> Row 6.
+                // Row 1 (Rank 7) -> Base.
+                // Row 6 (Rank 2) -> Advanced.
+                // Wait, Black advances Row 1 -> Row 6.
+                // Row 1 is starting position for black pawns.
+                // Row 6 is close to promotion.
+                rankIdx = row;
+            }
+
+            // Safety clamp
+            if (rankIdx < 0) rankIdx = 0;
+            if (rankIdx > 7) rankIdx = 7;
+
+            score += PASSED_BONUS[rankIdx];
+        }
+
         return score;
     }
 

@@ -38,7 +38,12 @@ class Search {
   }
 
   // Iterative Deepening Search
-  search(maxDepth = 5, maxTime = 1000) {
+  search(maxDepth = 5, timeLimits = { hardLimit: 1000, softLimit: 1000 }) {
+    // Backward compatibility: if timeLimits is a number, treat as hardLimit
+    if (typeof timeLimits === 'number') {
+        timeLimits = { hardLimit: timeLimits, softLimit: timeLimits };
+    }
+
     this.nodes = 0;
     this.stopFlag = false;
     // Reset Heuristics?
@@ -47,49 +52,100 @@ class Search {
     // Age history
     for(let i=0; i<this.history.length; i++) this.history[i] >>= 1;
 
-    this.tt.clear(); // Clear TT per new search or keep it? Usually keep it.
-    // For repeatable tests, maybe clear. But for engine performance, keep.
-    // Let's keep it but handle aging later.
+    // this.tt.clear(); // Preserve TT across searches for efficiency
 
     const startTime = Date.now();
     let bestMove = null;
+    let bestScore = -Infinity;
 
     // Timer check function
     const checkTime = () => {
-        if (Date.now() - startTime >= maxTime) {
-            this.stopFlag = true;
+        // We only check hard limit here to force stop
+        // Soft limit is checked inside loop to stop if "good enough" or between depths
+        if (timeLimits.hardLimit !== Infinity) {
+             if (Date.now() - startTime >= timeLimits.hardLimit) {
+                 this.stopFlag = true;
+             }
         }
     };
 
     // Main Iterative Deepening Loop
     for (let depth = 1; depth <= maxDepth; depth++) {
-        // Aspiration windows could go here
+        // Periodically check time inside search?
+        // Right now we only check between depths. For deep searches, we need checks inside nodes.
+        // We will pass `checkTime` down or check periodically based on node count.
 
-        const move = this.rootAlphaBeta(depth, -Infinity, Infinity);
+        // Capture score from rootAlphaBeta? It currently only returns move.
+        // We need to update rootAlphaBeta to return { move, score }.
+        // Or probe TT.
+        const entry = this.tt.probe(this.board.zobristKey);
+        const score = entry && entry.depth === depth ? entry.score : -Infinity;
 
+        const move = this.rootAlphaBeta(depth, -Infinity, Infinity, () => {
+            if ((this.nodes & 2047) === 0) checkTime();
+            return this.stopFlag;
+        });
+
+        // After depth complete
         checkTime();
+
+        // Soft limit check
+        if (timeLimits.softLimit !== Infinity && !this.stopFlag) {
+             const elapsed = Date.now() - startTime;
+             let limit = timeLimits.softLimit;
+
+             // Panic logic:
+             // If we have a previous best score (from bestScore variable), and current score is much worse?
+             // 'bestScore' tracks score from PREVIOUS depths.
+             // 'score' (probed above) was before this depth ran, so it's useless.
+             // We need score AFTER this depth.
+             const newEntry = this.tt.probe(this.board.zobristKey);
+             const currentScore = newEntry && newEntry.depth === depth ? newEntry.score : -Infinity;
+
+             // If we dropped > 60cp (approx 0.6 pawn) from previous best, extend time.
+             if (depth > 1 && bestScore > -10000 && currentScore > -10000) {
+                 if (bestScore - currentScore > 60) {
+                     // Panic! Extend soft limit to hard limit (or halfway)
+                     limit = Math.min(timeLimits.hardLimit, limit * 2);
+                 }
+             }
+
+             if (elapsed >= limit) {
+                 this.stopFlag = true;
+             }
+
+             // Update bestScore for next depth comparison
+             if (newEntry && newEntry.flag === TT_FLAG.EXACT) {
+                 bestScore = newEntry.score;
+             }
+        }
+
         if (this.stopFlag) {
-            // Time up. If we didn't complete this depth, do we return previous best?
-            // Usually yes. But if we found a move at this depth before stopping, is it better?
-            // My rootAlphaBeta returns the best move found *so far* at that depth?
-            // No, it returns when finished.
-            // If stopped in middle, the result might be incomplete.
-            // Safe bet: Return the best move from the last fully completed depth.
-            // Unless depth 1 is incomplete (rare).
-            if (!bestMove && move) bestMove = move; // Fallback
+            // If we completed the depth, use the result.
+            // If we aborted in the middle (rootAlphaBeta returned null or partial), use previous best.
+            // My rootAlphaBeta returns valid move even if aborted? No, it might be partial.
+            // However, rootAlphaBeta logic:
+            // "if (this.stopFlag) return bestMove;" -> returns best move found SO FAR in that depth.
+            // This is safer than returning null.
+            if (move) bestMove = move;
+            else if (!bestMove) bestMove = move; // If depth 1 failed?
             break;
         }
 
         bestMove = move;
-
-        // Output info ( UCI info depth ... score ... pv ...)
-        // console.log(`info depth ${depth} nodes ${this.nodes}`);
+        // Update bestScore if not stopped (redundant with above but safe)
+        const endEntry = this.tt.probe(this.board.zobristKey);
+        if (endEntry) bestScore = endEntry.score;
+        // Retrieve score from TT or return from rootAlphaBeta?
+        // rootAlphaBeta doesn't return score currently.
+        // We can probe TT for score or modify rootAlphaBeta.
+        // For UCI output 'info score ...'
     }
 
     return bestMove;
   }
 
-  rootAlphaBeta(depth, alpha, beta) {
+  rootAlphaBeta(depth, alpha, beta, shouldStopCallback) {
       // Similar to alphaBeta but returns the Move
       let bestMove = null;
       let bestScore = -Infinity;
@@ -105,8 +161,11 @@ class Search {
       this.orderMoves(moves, ttMove, depth);
 
       for (const move of moves) {
+          // Check stop condition
+          if (shouldStopCallback && shouldStopCallback()) return bestMove;
+
           const state = this.board.applyMove(move);
-          const score = -this.alphaBeta(depth - 1, -beta, -alpha);
+          const score = -this.alphaBeta(depth - 1, -beta, -alpha, shouldStopCallback);
           this.board.undoApplyMove(move, state);
 
           if (this.stopFlag) return bestMove; // Abort
@@ -128,8 +187,14 @@ class Search {
       return bestMove;
   }
 
-  alphaBeta(depth, alpha, beta) {
+  alphaBeta(depth, alpha, beta, shouldStopCallback) {
       this.nodes++;
+
+      // Periodically check stop (every 2048 nodes handled by caller, but we should call the callback if it exists)
+      if (shouldStopCallback && (this.nodes & 2047) === 0) {
+          if (shouldStopCallback()) return alpha; // Return alpha on abort? Or 0?
+      }
+      if (this.stopFlag) return alpha;
 
       // Check 50-move and repetition
       if (this.board.isDrawBy50Moves() || this.board.isDrawByRepetition()) {
@@ -189,15 +254,15 @@ class Search {
           // Principal Variation Search (PVS)
           if (movesSearched === 0) {
               // Full window search for the first move
-              score = -this.alphaBeta(depth - 1, -beta, -alpha);
+              score = -this.alphaBeta(depth - 1, -beta, -alpha, shouldStopCallback);
           } else {
               // Null window search (prove move is worse than alpha)
               // Search with beta = alpha + 1 (or just -alpha as beta)
-              score = -this.alphaBeta(depth - 1, -alpha - 1, -alpha);
+              score = -this.alphaBeta(depth - 1, -alpha - 1, -alpha, shouldStopCallback);
 
               // If score > alpha, it might be a new best move, re-search with full window
               if (score > alpha && score < beta) {
-                  score = -this.alphaBeta(depth - 1, -beta, -alpha);
+                  score = -this.alphaBeta(depth - 1, -beta, -alpha, shouldStopCallback);
               }
           }
 
