@@ -11,6 +11,8 @@ class Board {
     this.fullMoveNumber = 1;
     this.zobristKey = 0n;
     this.history = []; // Array of hashes for repetition detection
+    this.castling = { w: { k: false, q: false }, b: { k: false, q: false } }; // Backward compatibility structure
+    this.castlingRooks = { white: [], black: [] }; // Stores 0x88 indices of castling rooks
     this.setupBoard();
   }
 
@@ -539,8 +541,8 @@ class Board {
     this.activeColor = activeColor;
 
     // 3. Castling Rights
-    // Basic validation could be improved, but this suffices for now
     this.castlingRights = castling;
+    this.parseCastlingRights(castling);
 
     // 4. En Passant Target
     this.enPassantTarget = enPassant;
@@ -554,6 +556,131 @@ class Board {
     // Calculate initial hash
     this.calculateZobristKey();
     this.history = []; // Clear history on load
+    this.validatePosition();
+  }
+
+  validatePosition() {
+      // Check Bishops (if present on starting ranks?)
+      // Iterate pieces to find bishops
+      const bishops = { w: [], b: [] };
+      for(let i=0; i<128; i++) {
+          if (!this.isValidSquare(i)) continue;
+          const p = this.squares[i];
+          if (p && p.type === 'bishop') {
+              const prefix = p.color === 'white' ? 'w' : 'b';
+              bishops[prefix].push(i);
+          }
+      }
+
+      // Check White
+      // Only checking if we have exactly 2 bishops? Or any number?
+      // 960 constraint applies to the pair of bishops.
+      // If promoted bishops exist, we might have 3.
+      // Let's assume if there are 2 bishops, they must be opposite colors?
+      // No, in standard chess you can promote to have 2 light-squared bishops.
+      // The 960 constraint is for the *starting position*.
+      // `loadFen` loads *any* position.
+      // Validating "Bishops opposite colors" on `loadFen` for *any* FEN is incorrect for mid-game positions with promotions.
+      // HOWEVER, the user story says "Validates FEN validity (Bishops opposite colors, King between Rooks)".
+      // This implies checks for *start positions*.
+      // I will check only if FullMove == 1? Or just assume we want strict 960 checks.
+      // Let's assume strict checks for the *initial* array of pieces on backrank?
+      // I'll implement a check: If we have bishops on the backrank (rows 0/7), ensure they are opposite colors?
+      // That's a safe heuristic for 960 start pos.
+
+      // Check White Backrank (Row 7)
+      this.checkBishopsOnRank(7);
+      // Check Black Backrank (Row 0)
+      this.checkBishopsOnRank(0);
+
+      // King between Rooks check?
+      // Only if castling rights exist.
+      this.checkKingRookPlacement();
+  }
+
+  checkBishopsOnRank(row) {
+      const bishops = [];
+      for(let c=0; c<8; c++) {
+          const idx = (row << 4) | c;
+          const p = this.squares[idx];
+          if (p && p.type === 'bishop') {
+              bishops.push(idx);
+          }
+      }
+      // If exactly 2 bishops on backrank, check colors
+      if (bishops.length === 2) {
+          const color1 = (this.toRowCol(bishops[0]).col + this.toRowCol(bishops[0]).row) % 2;
+          const color2 = (this.toRowCol(bishops[1]).col + this.toRowCol(bishops[1]).row) % 2;
+          if (color1 === color2) {
+              throw new Error('Invalid FEN string: Bishops must be on opposite colors.');
+          }
+      }
+  }
+
+  checkKingRookPlacement() {
+      // Check White
+      this.checkCastlingBounds('white', 7);
+      this.checkCastlingBounds('black', 0);
+  }
+
+  checkCastlingBounds(color, row) {
+      const rights = this.castlingRooks[color];
+      if (!rights || rights.length === 0) return;
+
+      // Find King
+      let kingCol = -1;
+      for(let c=0; c<8; c++) {
+          const idx = (row << 4) | c;
+          const p = this.squares[idx];
+          if (p && p.type === 'king' && p.color === color) {
+              kingCol = c;
+              break;
+          }
+      }
+      if (kingCol === -1) return; // No king?
+
+      // Verify Rooks are on files relative to King if needed?
+      // Actually 960 rules say King must be between the two rooks used for castling.
+      // But `castlingRooks` just lists available rooks.
+      // We can have multiple rooks.
+      // If we have K and Q rights, usually implies one on left, one on right.
+      // But X-FEN allows specific rooks.
+      // If we have a right for a rook on file X:
+      // If X < KingCol, it acts as Queenside?
+      // If X > KingCol, it acts as Kingside?
+      // If we have a right for a rook, the king MUST be "between" it and the other side?
+      // No, "King between Rooks" means in the starting position array: R ... K ... R.
+      // If we have rights for 2 rooks, they must enclose the king.
+      // If we have right for only 1 rook, it can be anywhere?
+      // Standard 960 generation produces R K R.
+      // If we load a FEN: R R K. And rights for both R?
+      // Castling "Queenside" (left) is valid.
+      // Castling "Kingside" (right) is impossible if no rook is on right.
+      // So we just validate that if a "Kingside" right exists (conceptually), there is a rook to the right.
+      // But `castlingRooks` stores indices.
+      // Let's just skip strict "King between Rooks" validation for `loadFen` unless explicitly asked to check start pos structure.
+      // The acceptance criteria says "Validates FEN validity (Bishops opposite colors, King between Rooks)".
+      // So I must implement it.
+
+      // If we have rights for rooks:
+      // Ensure at least one rook is to the left of King (if we have left-side rights?)
+      // Or simply: If we have >1 rooks with rights, ensure King is not outside them?
+      // Actually, standard 960 ensures 1 rook left, 1 rook right.
+      // If I have rights for a rook at col X.
+      // Valid if it's a rook.
+      // Is "King between Rooks" a hard rule for *validity* of a FEN?
+      // Yes, for a start position.
+      // If I have castling rights for 2 rooks on the same side of the king, it's invalid 960 start pos.
+
+      const rookCols = rights.map(idx => idx & 7).sort((a, b) => a - b);
+      if (rookCols.length === 2) {
+          if (!(rookCols[0] < kingCol && rookCols[1] > kingCol)) {
+               // Determine if this is actually invalid.
+               // In 960, you strictly have one rook left, one right.
+               // So if both are left or both right, throw.
+               throw new Error('Invalid FEN string: King must be between Rooks.');
+          }
+      }
   }
 
   calculateZobristKey() {
@@ -576,7 +703,7 @@ class Board {
       }
 
       // Castling
-      key ^= Zobrist.castling[Zobrist.getCastlingIndex(this.castlingRights)];
+      key ^= this.getCastlingHash(this.castlingRights);
 
       // En Passant
       const epIndex = Zobrist.getEpIndex(this.enPassantTarget);
@@ -585,6 +712,85 @@ class Board {
       }
 
       this.zobristKey = key;
+  }
+
+  parseCastlingRights(rights) {
+      this.castling = { w: { k: false, q: false }, b: { k: false, q: false } };
+      this.castlingRooks = { white: [], black: [] };
+
+      if (rights === '-') return;
+
+      for (const char of rights) {
+          if (char === 'K') {
+              this.castling.w.k = true;
+              // Find right-most rook
+              // Standard: h1 (119). 960: Right of king.
+              // We'll defer rook finding or assume h1 if standard.
+              // For X-FEN compat, we might need to scan board if K is used but rooks moved?
+              // Standard K implies h1.
+              this.addCastlingRook('white', 7); // File 7 (h)
+          } else if (char === 'Q') {
+              this.castling.w.q = true;
+              this.addCastlingRook('white', 0); // File 0 (a)
+          } else if (char === 'k') {
+              this.castling.b.k = true;
+              this.addCastlingRook('black', 7);
+          } else if (char === 'q') {
+              this.castling.b.q = true;
+              this.addCastlingRook('black', 0);
+          } else {
+              // X-FEN file letter (A-H or a-h)
+              const code = char.charCodeAt(0);
+              if (code >= 65 && code <= 72) { // A-H (White)
+                  this.addCastlingRook('white', code - 65);
+              } else if (code >= 97 && code <= 104) { // a-h (Black)
+                  this.addCastlingRook('black', code - 97);
+              }
+          }
+      }
+  }
+
+  addCastlingRook(color, file) {
+      // Convert file to index
+      const rank = color === 'white' ? 7 : 0; // Rank 1 (row 7) or Rank 8 (row 0)
+      const index = (rank << 4) | file;
+      this.castlingRooks[color].push(index);
+
+      // Update legacy flags for tests (approximate)
+      const kingRow = color === 'white' ? 7 : 0;
+      // Find king
+      let kingCol = 4; // Default e
+      for(let c=0; c<8; c++) {
+          const p = this.squares[(kingRow << 4) | c];
+          if (p && p.type === 'king' && p.color === color) {
+              kingCol = c;
+              break;
+          }
+      }
+
+      const prefix = color === 'white' ? 'w' : 'b';
+      if (file > kingCol) this.castling[prefix].k = true;
+      if (file < kingCol) this.castling[prefix].q = true;
+  }
+
+  getCastlingHash(rights) {
+      if (rights === '-') return 0n;
+      let hash = 0n;
+      for (const char of rights) {
+          if (char === 'K') hash ^= Zobrist.castling[0][7]; // White H
+          else if (char === 'Q') hash ^= Zobrist.castling[0][0]; // White A
+          else if (char === 'k') hash ^= Zobrist.castling[1][7]; // Black h
+          else if (char === 'q') hash ^= Zobrist.castling[1][0]; // Black a
+          else {
+              const code = char.charCodeAt(0);
+              if (code >= 65 && code <= 72) { // A-H
+                  hash ^= Zobrist.castling[0][code - 65];
+              } else if (code >= 97 && code <= 104) { // a-h
+                  hash ^= Zobrist.castling[1][code - 97];
+              }
+          }
+      }
+      return hash;
   }
 
   // Apply a move and update the full game state (color, rights, clocks)
@@ -672,7 +878,7 @@ class Board {
 
     // 6. Update Castling Rights
     // Remove old rights from hash
-    this.zobristKey ^= Zobrist.castling[Zobrist.getCastlingIndex(this.castlingRights)];
+    this.zobristKey ^= this.getCastlingHash(this.castlingRights);
 
     // 7. Update En Passant
     // Remove old EP from hash
@@ -692,7 +898,7 @@ class Board {
     // 3. Update Castling Rights
     this.updateCastlingRights(move, madeCapturedPiece);
     // Add new rights to hash
-    this.zobristKey ^= Zobrist.castling[Zobrist.getCastlingIndex(this.castlingRights)];
+    this.zobristKey ^= this.getCastlingHash(this.castlingRights);
 
     // 4. Update En Passant Target
     this.updateEnPassant(move);
@@ -715,6 +921,41 @@ class Board {
     this.history.push(this.zobristKey);
 
     return state;
+  }
+
+  makeNullMove() {
+      const state = {
+          activeColor: this.activeColor,
+          castlingRights: this.castlingRights,
+          enPassantTarget: this.enPassantTarget,
+          halfMoveClock: this.halfMoveClock,
+          fullMoveNumber: this.fullMoveNumber,
+          zobristKey: this.zobristKey,
+          capturedPiece: null
+      };
+
+      // Zobrist: Update Side, En Passant (cleared)
+      this.zobristKey ^= Zobrist.sideToMove;
+
+      const oldEpIndex = Zobrist.getEpIndex(this.enPassantTarget);
+      if (oldEpIndex !== -1) {
+          this.zobristKey ^= Zobrist.enPassant[oldEpIndex];
+      }
+
+      this.enPassantTarget = '-';
+      this.activeColor = this.activeColor === 'w' ? 'b' : 'w';
+      this.halfMoveClock++; // No capture/pawn move
+
+      return state;
+  }
+
+  undoNullMove(state) {
+      this.activeColor = state.activeColor;
+      this.castlingRights = state.castlingRights;
+      this.enPassantTarget = state.enPassantTarget;
+      this.halfMoveClock = state.halfMoveClock;
+      this.fullMoveNumber = state.fullMoveNumber;
+      this.zobristKey = state.zobristKey;
   }
 
   // Restore the full game state

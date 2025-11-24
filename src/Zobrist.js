@@ -4,7 +4,7 @@
 const Zobrist = {
   pieces: [], // [color][pieceType][square]
   sideToMove: 0n,
-  castling: [], // [16]
+  castling: [], // [2][8] (Color 0/1, File 0-7)
   enPassant: [], // [8] (File A-H)
 
   // Initialize keys with random BigInts
@@ -29,7 +29,10 @@ const Zobrist = {
 
     this.sideToMove = randomBigInt();
 
-    this.castling = new Array(16).fill(0n).map(() => randomBigInt());
+    // Castling: 2 colors, 8 files
+    this.castling = new Array(2).fill(null).map(() =>
+        new Array(8).fill(0n).map(() => randomBigInt())
+    );
 
     this.enPassant = new Array(8).fill(0n).map(() => randomBigInt());
   },
@@ -51,15 +54,12 @@ const Zobrist = {
     return { c, t };
   },
 
-  // Castling index helper
-  // Returns integer 0-15 based on 'KQkq' string
+  // Castling hash helper
+  // We don't use a single index anymore, we iterate files.
+  // This is a placeholder if legacy code calls it, but we should remove/update usage.
+  // Returning 0 to avoid crash if called, but logic moves to Board.
   getCastlingIndex(rights) {
-    let index = 0;
-    if (rights.includes('K')) index |= 1;
-    if (rights.includes('Q')) index |= 2;
-    if (rights.includes('k')) index |= 4;
-    if (rights.includes('q')) index |= 8;
-    return index;
+    return 0;
   },
 
   // En Passant file helper

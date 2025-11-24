@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Tree Viewer</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        .node { cursor: pointer; }
+        .node circle { fill: #fff; stroke: steelblue; stroke-width: 3px; }
+        .node text { font: 12px sans-serif; }
+        .link { fill: none; stroke: #ccc; stroke-width: 2px; }
+        #upload { margin-bottom: 20px; }
+    </style>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <h1>Search Tree Viewer</h1>
+    <div id="upload">
+        <input type="file" id="fileInput" accept=".json">
+    </div>
+    <div id="tree-container"></div>
+
+    <script>
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = JSON.parse(e.target.result);
+                renderTree(data);
+            };
+            reader.readAsText(file);
+        });
+
+        function renderTree(data) {
+            let i = 0;
+            d3.select("#tree-container").selectAll("*").remove();
+
+            // Transform flat nodes list or nested?
+            // The engine outputs { nodes: [root1, root2...] } where roots have children.
+            // We need to create a single root for D3 hierarchy.
+            const rootData = { name: "Root", children: data.nodes };
+
+            const width = 1200;
+            const height = 800;
+
+            const svg = d3.select("#tree-container").append("svg")
+                .attr("width", width)
+                .attr("height", height)
+                .append("g")
+                .attr("transform", "translate(50,0)");
+
+            const treeLayout = d3.tree().size([height, width - 200]);
+            const root = d3.hierarchy(rootData, d => d.children);
+
+            // Collapse all after depth 2 initially
+            // root.children.forEach(collapse);
+
+            update(root);
+
+            function update(source) {
+                const treeData = treeLayout(root);
+                const nodes = treeData.descendants();
+                const links = treeData.links();
+
+                nodes.forEach(d => { d.y = d.depth * 100; });
+
+                // Nodes
+                const node = svg.selectAll("g.node")
+                    .data(nodes, d => d.id || (d.id = ++i));
+
+                const nodeEnter = node.enter().append("g")
+                    .attr("class", "node")
+                    .attr("transform", d => `translate(${source.y0 || 0},${source.x0 || 0})`)
+                    .on("click", click);
+
+                nodeEnter.append("circle")
+                    .attr("r", 10)
+                    .style("fill", d => d._children ? "lightsteelblue" : "#fff");
+
+                nodeEnter.append("text")
+                    .attr("dy", ".35em")
+                    .attr("x", d => d.children || d._children ? -13 : 13)
+                    .attr("text-anchor", d => d.children || d._children ? "end" : "start")
+                    .text(d => d.data.move || d.data.name);
+
+                nodeEnter.append("text")
+                     .attr("dy", "1.5em")
+                     .attr("x", 0)
+                     .style("font-size", "10px")
+                     .text(d => d.data.score !== null && d.data.score !== undefined ? d.data.score : "");
+
+                const nodeUpdate = node.merge(nodeEnter).transition().duration(200)
+                    .attr("transform", d => `translate(${d.y},${d.x})`);
+
+                nodeUpdate.select("circle")
+                    .attr("r", 10)
+                    .style("fill", d => d._children ? "lightsteelblue" : "#fff");
+
+                const nodeExit = node.exit().transition().duration(200)
+                    .attr("transform", d => `translate(${source.y},${source.x})`)
+                    .remove();
+
+                nodeExit.select("circle").attr("r", 1e-6);
+                nodeExit.select("text").style("fill-opacity", 1e-6);
+
+                // Links
+                const link = svg.selectAll("path.link")
+                    .data(links, d => d.target.id);
+
+                const linkEnter = link.enter().insert("path", "g")
+                    .attr("class", "link")
+                    .attr("d", d => {
+                        const o = {x: source.x0 || 0, y: source.y0 || 0};
+                        return diagonal(o, o);
+                    });
+
+                const linkUpdate = link.merge(linkEnter).transition().duration(200)
+                    .attr("d", d => diagonal(d.source, d.target));
+
+                const linkExit = link.exit().transition().duration(200)
+                    .attr("d", d => {
+                        const o = {x: source.x, y: source.y};
+                        return diagonal(o, o);
+                    })
+                    .remove();
+
+                nodes.forEach(d => {
+                    d.x0 = d.x;
+                    d.y0 = d.y;
+                });
+
+                function click(event, d) {
+                    if (d.children) {
+                        d._children = d.children;
+                        d.children = null;
+                    } else {
+                        d.children = d._children;
+                        d._children = null;
+                    }
+                    update(d);
+                }
+            }
+
+            function diagonal(s, d) {
+                return `M ${s.y} ${s.x}
+                        C ${(s.y + d.y) / 2} ${s.x},
+                          ${(s.y + d.y) / 2} ${d.x},
+                          ${d.y} ${d.x}`;
+            }
+        }
+    </script>
+</body>
+</html>
