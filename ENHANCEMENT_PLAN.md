@@ -25,10 +25,10 @@ This document outlines a staged, long-term roadmap to develop a robust chess eng
 *   **Size:** Medium
 *   **Description:** Implement support for Forsyth-Edwards Notation (FEN) to load and save positions.
 *   **Acceptance Criteria:**
-    *   [ ] `loadFen(fenString)` correctly initializes board, color, castling, en passant, and clocks.
-    *   [ ] `generateFen()` returns a valid FEN string.
-    *   [ ] Invalid FEN strings cause specific errors.
-    *   [ ] Unit tests cover edge cases (e.g., no castling, en passant).
+    *   [x] `loadFen(fenString)` correctly initializes board, color, castling, en passant, and clocks.
+    *   [x] `generateFen()` returns a valid FEN string.
+    *   [x] Invalid FEN strings cause specific errors.
+    *   [x] Unit tests cover edge cases (e.g., no castling, en passant).
 
 ### Story 1.3a: Move Logic - Sliding Pieces
 *   **Size:** Medium

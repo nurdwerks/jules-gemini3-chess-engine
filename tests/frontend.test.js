@@ -15,7 +15,7 @@ afterAll(async () => {
 
 test('board is rendered as 8x8 grid', async () => {
   const page = await browser.newPage();
-  await page.goto('http://localhost:8081');
+  await page.goto('http://localhost:8080');
 
   // Wait for the board to be present
   await page.waitForSelector('#chessboard');
