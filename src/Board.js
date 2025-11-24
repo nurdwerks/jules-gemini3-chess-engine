@@ -16,6 +16,16 @@ class Board {
     return (row << 4) | col;
   }
 
+  // Helper: Convert algebraic notation to index (e.g., "e4" -> 100)
+  // a8=0, h8=7, a1=112, h1=119
+  // row 0 is rank 8, row 7 is rank 1
+  algebraicToIndex(alg) {
+    const col = alg.charCodeAt(0) - 'a'.charCodeAt(0);
+    const rank = parseInt(alg[1], 10);
+    const row = 8 - rank;
+    return this.toIndex(row, col);
+  }
+
   // Helper: Convert 0x88 index to row/col
   toRowCol(index) {
     return {
@@ -106,6 +116,45 @@ class Board {
             }
           }
         }
+
+        // Castling
+        // The king must be on the starting square to castle.
+        // White King: e1 (index 116). Black King: e8 (index 4).
+        if (piece.type === 'king') {
+          if (this.activeColor === 'w' && i === 116) {
+             // White Kingside (K) - Target g1 (118)
+             // Check rights
+             if (this.castlingRights.includes('K')) {
+               // Check empty squares f1 (117), g1 (118)
+               if (!this.squares[117] && !this.squares[118]) {
+                  moves.push({ from: i, to: 118, flags: 'k', piece: piece });
+               }
+             }
+             // White Queenside (Q) - Target c1 (114)
+             // Check rights
+             if (this.castlingRights.includes('Q')) {
+               // Check empty squares b1 (113), c1 (114), d1 (115)
+               if (!this.squares[113] && !this.squares[114] && !this.squares[115]) {
+                 moves.push({ from: i, to: 114, flags: 'q', piece: piece });
+               }
+             }
+          } else if (this.activeColor === 'b' && i === 4) {
+             // Black Kingside (k) - Target g8 (6)
+             if (this.castlingRights.includes('k')) {
+               // Check empty squares f8 (5), g8 (6)
+               if (!this.squares[5] && !this.squares[6]) {
+                  moves.push({ from: i, to: 6, flags: 'k', piece: piece });
+               }
+             }
+             // Black Queenside (q) - Target c8 (2)
+             if (this.castlingRights.includes('q')) {
+               // Check empty squares b8 (1), c8 (2), d8 (3)
+               if (!this.squares[1] && !this.squares[2] && !this.squares[3]) {
+                 moves.push({ from: i, to: 2, flags: 'q', piece: piece });
+               }
+             }
+          }
+        }
       }
       // Pawn
       else if (piece.type === 'pawn') {
@@ -114,15 +163,25 @@ class Board {
         const startRank = isWhite ? 6 : 1;
         const currentRow = i >> 4;
 
+        const promotionRank = isWhite ? 0 : 7;
+
         // Single push
         const targetSingle = i + forward;
         if (this.isValidSquare(targetSingle) && !this.squares[targetSingle]) {
-          moves.push({ from: i, to: targetSingle, flags: 'n', piece: piece });
+          const targetRow = targetSingle >> 4;
+          if (targetRow === promotionRank) {
+             // Promotion
+             ['q', 'r', 'b', 'n'].forEach(promo => {
+               moves.push({ from: i, to: targetSingle, flags: 'p', piece: piece, promotion: promo });
+             });
+          } else {
+             moves.push({ from: i, to: targetSingle, flags: 'n', piece: piece });
 
-          // Double push
-          const targetDouble = i + (forward * 2);
-          if (currentRow === startRank && this.isValidSquare(targetDouble) && !this.squares[targetDouble]) {
-            moves.push({ from: i, to: targetDouble, flags: 'n', piece: piece });
+             // Double push
+             const targetDouble = i + (forward * 2);
+             if (currentRow === startRank && this.isValidSquare(targetDouble) && !this.squares[targetDouble]) {
+               moves.push({ from: i, to: targetDouble, flags: 'n', piece: piece });
+             }
           }
         }
 
@@ -133,7 +192,21 @@ class Board {
           if (this.isValidSquare(targetCap)) {
             const targetPiece = this.squares[targetCap];
             if (targetPiece && targetPiece.color === opponent) {
-               moves.push({ from: i, to: targetCap, flags: 'c', piece: piece, captured: targetPiece });
+               const targetRow = targetCap >> 4;
+               if (targetRow === promotionRank) {
+                   ['q', 'r', 'b', 'n'].forEach(promo => {
+                     moves.push({ from: i, to: targetCap, flags: 'cp', piece: piece, captured: targetPiece, promotion: promo });
+                   });
+               } else {
+                   moves.push({ from: i, to: targetCap, flags: 'c', piece: piece, captured: targetPiece });
+               }
+            } else if (!targetPiece && this.enPassantTarget !== '-') {
+               // En Passant
+               // Calculate index of en passant target
+               const epIndex = this.algebraicToIndex(this.enPassantTarget);
+               if (targetCap === epIndex) {
+                   moves.push({ from: i, to: targetCap, flags: 'e', piece: piece });
+               }
             }
           }
         }

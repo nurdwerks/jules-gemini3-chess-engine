@@ -50,9 +50,9 @@ This document outlines a staged, long-term roadmap to develop a robust chess eng
 *   **Size:** Medium
 *   **Description:** Implement complex move rules: Castling, En Passant, and Promotion.
 *   **Acceptance Criteria:**
-    *   [ ] Castling checks for empty squares and rights.
-    *   [ ] En Passant captures correct pawn.
-    *   [ ] Pawn promotion generates 4 moves (Q, R, B, N).
+    *   [x] Castling checks for empty squares and rights.
+    *   [x] En Passant captures correct pawn.
+    *   [x] Pawn promotion generates 4 moves (Q, R, B, N).
 
 ### Story 1.4: Attack Detection & Legal Move Filtering
 *   **Size:** Medium
