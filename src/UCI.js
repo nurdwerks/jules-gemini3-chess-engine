@@ -4,6 +4,7 @@ class UCI {
   constructor(outputCallback = console.log) {
     this.board = new Board();
     this.output = outputCallback;
+    this.currentSearch = null;
   }
 
   processCommand(command) {
@@ -33,6 +34,12 @@ class UCI {
 
       case 'go':
         this.handleGo(parts.slice(1));
+        break;
+
+      case 'stop':
+        if (this.currentSearch) {
+          this.currentSearch.stopFlag = true;
+        }
         break;
 
       case 'quit':
@@ -109,8 +116,9 @@ class UCI {
     // Also support 'movetime' or 'wtime' in future
 
     const Search = require('./Search');
-    const search = new Search(this.board);
-    const bestMove = search.search(depth);
+    this.currentSearch = new Search(this.board);
+    const bestMove = this.currentSearch.search(depth);
+    this.currentSearch = null;
 
     if (bestMove) {
         const fromAlg = this.indexToAlgebraic(bestMove.from);

@@ -8,12 +8,45 @@ class Search {
     this.tt = new TranspositionTable(64); // 64MB
     this.timer = null;
     this.stopFlag = false;
+
+    // Move Ordering Heuristics
+    this.killerMoves = new Array(64).fill(null).map(() => []); // [depth][0..1]
+    this.history = new Array(2).fill(null).map(() =>
+        new Array(128).fill(0) // [color][to] - Simplified History (Butterfly)
+    );
+    // Better history: [side][from][to] or [piece][to].
+    // Common is [side][from][to] or [piece][to].
+    // 0x88 board is 128 squares.
+    // Let's use [side][from][to] -> 2 * 128 * 128.
+    // To avoid large arrays, let's use 1D array of size 2 * 128 * 128 = 32k integers.
+    this.history = new Int32Array(2 * 128 * 128);
+  }
+
+  getHistoryScore(side, from, to) {
+      const colorIdx = side === 'w' ? 0 : 1;
+      return this.history[colorIdx * 128 * 128 + from * 128 + to];
+  }
+
+  addHistoryScore(side, from, to, depth) {
+      const colorIdx = side === 'w' ? 0 : 1;
+      const idx = colorIdx * 128 * 128 + from * 128 + to;
+      const bonus = depth * depth;
+      this.history[idx] += bonus;
+      if (this.history[idx] > 1000000) { // Cap/Age
+          for(let i=0; i<this.history.length; i++) this.history[i] >>= 1;
+      }
   }
 
   // Iterative Deepening Search
   search(maxDepth = 5, maxTime = 1000) {
     this.nodes = 0;
     this.stopFlag = false;
+    // Reset Heuristics?
+    // Killers should be reset. History can persist or age.
+    this.killerMoves = new Array(64).fill(null).map(() => []);
+    // Age history
+    for(let i=0; i<this.history.length; i++) this.history[i] >>= 1;
+
     this.tt.clear(); // Clear TT per new search or keep it? Usually keep it.
     // For repeatable tests, maybe clear. But for engine performance, keep.
     // Let's keep it but handle aging later.
@@ -69,7 +102,7 @@ class Search {
       if (moves.length === 0) return null;
 
       // Move Ordering
-      this.orderMoves(moves, ttMove);
+      this.orderMoves(moves, ttMove, depth);
 
       for (const move of moves) {
           const state = this.board.applyMove(move);
@@ -142,22 +175,47 @@ class Search {
 
       // Move ordering
       let ttMove = ttEntry ? ttEntry.move : null;
-      this.orderMoves(moves, ttMove);
+      this.orderMoves(moves, ttMove, depth);
 
       let flag = TT_FLAG.UPPERBOUND; // Default: we fail low (all moves < alpha)
       let bestScore = -Infinity;
       let bestMove = null;
+      let movesSearched = 0;
 
       for (const move of moves) {
           const state = this.board.applyMove(move);
-          const score = -this.alphaBeta(depth - 1, -beta, -alpha);
-          this.board.undoApplyMove(move, state);
+          let score;
 
-          if (this.stopFlag) return alpha; // Return alpha or previous best? Doesn't matter, result ignored.
+          // Principal Variation Search (PVS)
+          if (movesSearched === 0) {
+              // Full window search for the first move
+              score = -this.alphaBeta(depth - 1, -beta, -alpha);
+          } else {
+              // Null window search (prove move is worse than alpha)
+              // Search with beta = alpha + 1 (or just -alpha as beta)
+              score = -this.alphaBeta(depth - 1, -alpha - 1, -alpha);
+
+              // If score > alpha, it might be a new best move, re-search with full window
+              if (score > alpha && score < beta) {
+                  score = -this.alphaBeta(depth - 1, -beta, -alpha);
+              }
+          }
+
+          this.board.undoApplyMove(move, state);
+          movesSearched++;
+
+          if (this.stopFlag) return alpha;
 
           if (score >= beta) {
               // Fail high (Lowerbound)
               this.tt.save(this.board.zobristKey, score, depth, TT_FLAG.LOWERBOUND, move);
+
+              // Update Killers and History for quiet moves
+              if (!move.flags.includes('c')) {
+                  this.storeKiller(depth, move);
+                  this.addHistoryScore(this.board.activeColor, move.from, move.to, depth);
+              }
+
               return beta;
           }
           if (score > bestScore) {
@@ -174,7 +232,21 @@ class Search {
       return alpha;
   }
 
-  orderMoves(moves, ttMove) {
+  storeKiller(depth, move) {
+      if (depth >= 64) return;
+      // Store up to 2 killer moves
+      const killers = this.killerMoves[depth];
+      // Check if already present
+      if (killers.some(k => k.from === move.from && k.to === move.to)) return;
+
+      // Shift
+      if (killers.length >= 2) {
+          killers.pop();
+      }
+      killers.unshift(move);
+  }
+
+  orderMoves(moves, ttMove, depth = 0) {
       moves.sort((a, b) => {
         // 1. TT Move (Best Move)
         if (ttMove) {
@@ -184,9 +256,31 @@ class Search {
             if (isB) return 1;
         }
 
-        // 2. Captures
-        const scoreA = (a.flags.includes('c')) ? 10 : 0;
-        const scoreB = (b.flags.includes('c')) ? 10 : 0;
+        const scoreMove = (m) => {
+             // Captures: MVV-LVA
+             if (m.flags.includes('c')) {
+                 const victim = m.captured ? this.getPieceValue(m.captured) : 0;
+                 const attacker = this.getPieceValue(m.piece);
+                 return 1000000 + victim * 10 - attacker;
+             }
+
+             // Quiet Moves
+             // Killers
+             if (depth < 64) {
+                 const killers = this.killerMoves[depth];
+                 if (killers && killers.some(k => k.from === m.from && k.to === m.to)) {
+                     return 900000; // High score for killer
+                 }
+             }
+
+             // History
+             const historyScore = this.getHistoryScore(this.board.activeColor, m.from, m.to);
+             return historyScore;
+        };
+
+        const scoreA = scoreMove(a);
+        const scoreB = scoreMove(b);
+
         return scoreB - scoreA;
       });
   }
