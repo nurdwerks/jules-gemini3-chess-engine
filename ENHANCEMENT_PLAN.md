@@ -16,10 +16,10 @@ This document outlines a staged, long-term roadmap to develop a robust chess eng
 *   **Size:** Medium
 *   **Description:** Replace the current simple 2D array with a specialized board representation (e.g., 0x88 or Mailbox) to optimize validity checks and index calculations.
 *   **Acceptance Criteria:**
-    *   [ ] Board is represented as a 1-dimensional array.
-    *   [ ] Helper function `isValidSquare(index)` efficiently determines if a square is on the board.
-    *   [ ] Existing piece classes and setup logic are refactored.
-    *   [ ] Unit tests verify all 64 squares are correctly mapped.
+    *   [x] Board is represented as a 1-dimensional array.
+    *   [x] Helper function `isValidSquare(index)` efficiently determines if a square is on the board.
+    *   [x] Existing piece classes and setup logic are refactored.
+    *   [x] Unit tests verify all 64 squares are correctly mapped.
 
 ### Story 1.2: Implement FEN Parsing and Generation
 *   **Size:** Medium
