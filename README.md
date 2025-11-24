@@ -14,18 +14,18 @@ The following enhancements outline the roadmap for elevating the engine from a b
 1.  **Option Reporting (S)**
     *   *Description:* Send `option name ...` commands for Hash, Threads, Ponder, MultiPV.
     *   *Acceptance Criteria:*
-        *   [ ] Responds to `uci` with correct `option name <Name> type <Type>` lines.
-        *   [ ] Reports default values correctly.
+        *   [x] Responds to `uci` with correct `option name <Name> type <Type>` lines.
+        *   [x] Reports default values correctly.
 2.  **Handle Hash Option (S)**
     *   *Description:* Resize the Transposition Table when the `Hash` option is set.
     *   *Acceptance Criteria:*
-        *   [ ] `setoption name Hash value 128` allocates 128MB.
-        *   [ ] Previous TT data is cleared or resized safely.
+        *   [x] `setoption name Hash value 128` allocates 128MB.
+        *   [x] Previous TT data is cleared or resized safely.
 3.  **Handle Ponder Logic (S)**
     *   *Description:* Implement the state transition for "Pondering" (searching but not moving).
     *   *Acceptance Criteria:*
-        *   [ ] `go ponder` starts search but does not print `bestmove` immediately on completion.
-        *   [ ] `ponderhit` command transitions to normal search mode.
+        *   [x] `go ponder` starts search but does not print `bestmove` immediately on completion.
+        *   [x] `ponderhit` command transitions to normal search mode.
 
 ### Epic 2: Strength Limitation
 **Size:** Small (2-3 days)
@@ -34,8 +34,8 @@ The following enhancements outline the roadmap for elevating the engine from a b
 1.  **Implement UCI_LimitStrength (S)**
     *   *Description:* Add the standard UCI option `UCI_LimitStrength` (bool) and `UCI_Elo` (int).
     *   *Acceptance Criteria:*
-        *   [ ] Options appear in `uci` output.
-        *   [ ] Setting `UCI_Elo` updates internal configuration.
+        *   [x] Options appear in `uci` output.
+        *   [x] Setting `UCI_Elo` updates internal configuration.
 2.  **Elo to Node Mapping (S)**
     *   *Description:* Create a formula to convert a target Elo (e.g., 1500) to a maximum node count per move.
     *   *Acceptance Criteria:*
