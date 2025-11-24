@@ -185,6 +185,14 @@ class Evaluation {
         }
     }
 
+    static getParams() {
+        return { ...PIECE_VALUES, ...PARAMS };
+    }
+
+    static getParams() {
+        return { ...PIECE_VALUES, ...PARAMS };
+    }
+
     static evaluatePawnStructure(board, index, color) {
         let score = 0;
         const col = index & 7;

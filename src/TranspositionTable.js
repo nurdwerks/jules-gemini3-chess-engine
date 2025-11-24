@@ -6,37 +6,43 @@ const TT_FLAG = {
 };
 
 class TranspositionTable {
-    constructor(sizeInMB = 64) {
-        // Entry size:
-        // key (64 bits / 8 bytes)
-        // move (16 bits / 2 bytes) -> from, to, promo
-        // score (16 bits / 2 bytes)
-        // depth (8 bits / 1 byte)
-        // flags (8 bits / 1 byte)
-        // Total ~16 bytes per entry loosely (JS objects are bigger)
+    constructor(sizeInMB = 64, sharedBuffer = null) {
+        const entrySize = 16;
+        const count = Math.floor((sizeInMB * 1024 * 1024) / entrySize);
 
-        // In JS, using typed arrays is efficient.
-        // We can use BigUint64Array for keys.
-        // And Uint32Array for data.
+        this.size = count;
 
-        // 1 entry = 1 BigUint64 + 1 Uint32 (packed data)
-        // Data pack:
-        // Bits 0-15: Move (12 bits sufficient usually? 6+6. Promotion? need more bits)
-        // Let's say Move is 16 bits.
-        // Bits 16-23: Depth
-        // Bits 24-25: Flag
-        // Bits 26-31: Unused?
-        // Wait, where is Score?
-        // We need another Uint32 or Int32 for score.
+        if (sharedBuffer) {
+            // Use shared buffer
+            // Layout: Keys (8*count), Data (4*count), Scores (4*count)
+            const totalBytes = count * 16;
+            if (sharedBuffer.byteLength < totalBytes) {
+                throw new Error('SharedBuffer too small');
+            }
+            this.keys = new BigUint64Array(sharedBuffer, 0, count);
+            this.data = new Uint32Array(sharedBuffer, count * 8, count);
+            this.scores = new Int32Array(sharedBuffer, count * 12, count);
+            this.shared = true;
+        } else {
+            this.keys = new BigUint64Array(count);
+            this.data = new Uint32Array(count);
+            this.scores = new Int32Array(count);
+            this.shared = false;
+        }
+    }
 
-        // So 1 Entry = 8 bytes key + 4 bytes data + 4 bytes score = 16 bytes.
-
+    resize(sizeInMB) {
+        if (this.shared) {
+            // Cannot resize shared buffer easily without re-init from UCI
+            // For now, ignore or throw.
+            return;
+        }
         const entrySize = 16;
         const count = Math.floor((sizeInMB * 1024 * 1024) / entrySize);
 
         this.size = count;
         this.keys = new BigUint64Array(count);
-        this.data = new Uint32Array(count); // Move | Depth | Flag
+        this.data = new Uint32Array(count);
         this.scores = new Int32Array(count);
     }
 
