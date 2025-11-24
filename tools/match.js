@@ -30,6 +30,14 @@ class EngineProcess {
         this.process.stderr.on('data', (data) => {
              // console.error(`[${this.name} ERR] ${data}`);
         });
+
+        this.process.on('error', (err) => {
+             console.error(`[${this.name} PROCESS ERROR]`, err);
+        });
+
+        this.process.on('exit', (code, signal) => {
+             // console.log(`[${this.name} EXIT] Code: ${code}, Signal: ${signal}`);
+        });
     }
 
     emitData(data) {

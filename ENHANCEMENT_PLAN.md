@@ -36,7 +36,7 @@ This document outlines a staged, long-term roadmap to develop a robust chess eng
 *   **Acceptance Criteria:**
     *   [x] Generate moves in all valid directions until blocked or edge.
     *   [x] Correctly identify captures vs. quiet moves.
-    *   [ ] Verify pins (optional at this stage, but good to consider).
+    *   [x] Verify pins (optional at this stage, but good to consider).
 
 ### Story 1.3b: Move Logic - Stepping Pieces (Knight, King, Pawn)
 *   **Size:** Small
@@ -246,22 +246,22 @@ This document outlines a staged, long-term roadmap to develop a robust chess eng
 *   **Size:** Large
 *   **Description:** Harness for self-play tuning.
 *   **Acceptance Criteria:**
-    *   [ ] Script to run Engine vs Engine games rapidly.
-    *   [ ] Collect game results (W/L/D).
+    *   [x] Script to run Engine vs Engine games rapidly.
+    *   [x] Collect game results (W/L/D).
 
 ### Story 5.3b: SPSA Algorithm
 *   **Size:** Medium
 *   **Description:** Implement the tuner logic.
 *   **Acceptance Criteria:**
-    *   [ ] Update parameters based on match results.
-    *   [ ] Converge towards optimal values.
+    *   [x] Update parameters based on match results.
+    *   [x] Converge towards optimal values.
 
 ### Story 5.4a: SPRT Testing Script
 *   **Size:** Medium
 *   **Description:** Local script for statistical testing.
 *   **Acceptance Criteria:**
-    *   [ ] Run matches until H0/H1 hypothesis confirmed.
-    *   [ ] Output Elo gain/loss confidence interval.
+    *   [x] Run matches until H0/H1 hypothesis confirmed.
+    *   [x] Output Elo gain/loss confidence interval.
 
 ### Story 5.4b: CI Pipeline Integration
 *   **Size:** Medium

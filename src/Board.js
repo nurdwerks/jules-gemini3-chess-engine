@@ -162,6 +162,23 @@ class Board {
   }
 
   // Check if a square is attacked by 'attackingSide' ('white' or 'black')
+  isInCheck() {
+      const kingColor = this.activeColor === 'w' ? 'white' : 'black';
+      const opponentColor = this.activeColor === 'w' ? 'black' : 'white';
+      let kingIndex = -1;
+      for (let i = 0; i < 128; i++) {
+          if (this.isValidSquare(i)) {
+              const piece = this.squares[i];
+              if (piece && piece.type === 'king' && piece.color === kingColor) {
+                  kingIndex = i;
+                  break;
+              }
+          }
+      }
+      if (kingIndex === -1) return false; // Should not happen
+      return this.isSquareAttacked(kingIndex, opponentColor);
+  }
+
   isSquareAttacked(squareIndex, attackingSide) {
     if (!this.isValidSquare(squareIndex)) return false;
 

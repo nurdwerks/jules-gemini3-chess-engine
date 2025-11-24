@@ -38,6 +38,10 @@ class UCI {
         this.handlePosition(parts.slice(1));
         break;
 
+      case 'setoption':
+        this.handleSetOption(parts.slice(1));
+        break;
+
       case 'go':
         this.handleGo(parts.slice(1));
         break;
@@ -178,6 +182,35 @@ class UCI {
     const file = String.fromCharCode('a'.charCodeAt(0) + col);
     const rank = 8 - row;
     return `${file}${rank}`;
+  }
+
+  handleSetOption(args) {
+    // Syntax: setoption name <name> [value <value>]
+    // Example: setoption name PawnValue value 100
+    let nameIdx = -1;
+    let valueIdx = -1;
+
+    for (let i = 0; i < args.length; i++) {
+        if (args[i] === 'name') nameIdx = i;
+        if (args[i] === 'value') valueIdx = i;
+    }
+
+    if (nameIdx === -1) return; // Invalid
+
+    // Extract Name
+    // Name can be multiple words between 'name' and 'value' (or end)
+    const nameStart = nameIdx + 1;
+    const nameEnd = valueIdx !== -1 ? valueIdx : args.length;
+    const name = args.slice(nameStart, nameEnd).join(' ');
+
+    // Extract Value
+    let value = null;
+    if (valueIdx !== -1 && valueIdx + 1 < args.length) {
+        value = parseInt(args[valueIdx + 1], 10);
+    }
+
+    const Evaluation = require('./Evaluation');
+    Evaluation.updateParam(name, value);
   }
 }
 
