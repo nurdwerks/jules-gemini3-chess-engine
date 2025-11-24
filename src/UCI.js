@@ -5,6 +5,12 @@ class UCI {
     this.board = new Board();
     this.output = outputCallback;
     this.currentSearch = null;
+
+    // Initialize Book
+    const Polyglot = require('./Polyglot');
+    this.book = new Polyglot();
+    // Try to load 'book.bin' if it exists in current dir
+    this.book.loadBook('book.bin');
   }
 
   processCommand(command) {
@@ -105,19 +111,56 @@ class UCI {
   }
 
   handleGo(args) {
-    // Basic argument parsing for depth/time (omitted for brevity, defaulting to fixed depth)
-    let depth = 3;
+    // Check Opening Book first
+    // Only if 'infinite' is NOT present (book moves are instant)
+    // And if we are in normal play mode.
+    // If 'ponder' is present, we shouldn't play immediately?
+
+    if (!args.includes('infinite') && !args.includes('ponder')) {
+        const bookMove = this.book.findMove(this.board);
+        if (bookMove) {
+             const fromAlg = this.indexToAlgebraic(bookMove.from);
+             const toAlg = this.indexToAlgebraic(bookMove.to);
+             const promo = bookMove.promotion ? bookMove.promotion : '';
+             this.output(`bestmove ${fromAlg}${toAlg}${promo}`);
+             return;
+        }
+    }
+
+    const TimeManager = require('./TimeManager');
+    const tm = new TimeManager();
+    const color = this.board.activeColor;
+
+    // Parse time limits
+    const timeLimits = tm.parseGoCommand(args, color);
+
+    // Parse depth if present
+    let depth = 64; // Max depth if time-based
     if (args.includes('depth')) {
         const idx = args.indexOf('depth');
         if (idx + 1 < args.length) {
             depth = parseInt(args[idx+1], 10);
         }
+        // If depth is specified but no time, we respect depth (handled by Search/TimeManager implicit infinite)
+        if (!args.includes('wtime') && !args.includes('movetime')) {
+             timeLimits.hardLimit = Infinity;
+             timeLimits.softLimit = Infinity;
+        }
+    } else if (!args.includes('wtime') && !args.includes('movetime') && !args.includes('infinite')) {
+        // 'go' with no args -> default small depth or infinite?
+        // UCI standard: infinite unless stopped. But for testing, let's default to depth 5.
+        depth = 5;
     }
-    // Also support 'movetime' or 'wtime' in future
 
     const Search = require('./Search');
     this.currentSearch = new Search(this.board);
-    const bestMove = this.currentSearch.search(depth);
+
+    // Pass time limits to search
+    // If hardLimit is Infinity, it runs until depth or stop.
+    // If hardLimit is number, Search should respect it.
+
+    // The search function signature needs update or we pass object
+    const bestMove = this.currentSearch.search(depth, timeLimits);
     this.currentSearch = null;
 
     if (bestMove) {
