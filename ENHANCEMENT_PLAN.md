@@ -34,8 +34,8 @@ This document outlines a staged, long-term roadmap to develop a robust chess eng
 *   **Size:** Medium
 *   **Description:** Implement move generation for Bishops, Rooks, and Queens.
 *   **Acceptance Criteria:**
-    *   [ ] Generate moves in all valid directions until blocked or edge.
-    *   [ ] Correctly identify captures vs. quiet moves.
+    *   [x] Generate moves in all valid directions until blocked or edge.
+    *   [x] Correctly identify captures vs. quiet moves.
     *   [ ] Verify pins (optional at this stage, but good to consider).
 
 ### Story 1.3b: Move Logic - Stepping Pieces (Knight, King, Pawn)
