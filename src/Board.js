@@ -47,6 +47,106 @@ class Board {
     }
   }
 
+  // Simplified makeMove for validation purposes
+  // Returns captured piece or null, to be used in unmake
+  makeMove(move) {
+      const captured = this.squares[move.to];
+      this.squares[move.to] = move.piece;
+      this.squares[move.from] = null;
+
+      // Handle En Passant capture (remove the captured pawn)
+      if (move.flags === 'e' || move.flags === 'ep') { // 'ep' is not standard flag in my generator, 'e' is used.
+          // Captured pawn is "behind" the target square
+          // If white moves up (decreases index), captured pawn is below target (target + 16)
+          // If black moves down (increases index), captured pawn is above target (target - 16)
+          const isWhite = move.piece.color === 'white';
+          const captureSq = isWhite ? move.to + 16 : move.to - 16;
+          this.squares[captureSq] = null;
+          // Note: we don't return the pawn here for simple unmake, we need to know where it was.
+          // But for "isSquareAttacked" checks, we just need board state.
+          // To unmake properly, we need to restore it.
+      }
+
+      // Handle Castling (move the rook)
+      if (move.flags === 'k' || move.flags === 'q') {
+          // Identify rook positions
+          // White Kingside: King e1->g1. Rook h1->f1.
+          // White Queenside: King e1->c1. Rook a1->d1.
+          // Black Kingside: King e8->g8. Rook h8->f8.
+          // Black Queenside: King e8->c8. Rook a8->d8.
+
+          if (move.piece.color === 'white') {
+              if (move.flags === 'k') { // e1->g1
+                  const rook = this.squares[119]; // h1
+                  this.squares[117] = rook; // f1
+                  this.squares[119] = null;
+              } else { // e1->c1
+                  const rook = this.squares[112]; // a1
+                  this.squares[115] = rook; // d1
+                  this.squares[112] = null;
+              }
+          } else {
+              if (move.flags === 'k') { // e8->g8
+                  const rook = this.squares[7]; // h8
+                  this.squares[5] = rook; // f8
+                  this.squares[7] = null;
+              } else { // e8->c8
+                  const rook = this.squares[0]; // a8
+                  this.squares[3] = rook; // d8
+                  this.squares[0] = null;
+              }
+          }
+      }
+
+      return captured;
+  }
+
+  // Simplified unmakeMove for validation
+  // Requires the move and the captured piece (returned from makeMove)
+  // Also needs to handle special moves restoration.
+  // Actually, for check detection, we might just clone the board or be very careful.
+  // Let's implement a 'safe' unmake.
+  unmakeMove(move, captured) {
+      this.squares[move.from] = move.piece;
+      this.squares[move.to] = captured;
+
+      // Restore En Passant capture
+      if (move.flags === 'e') {
+          this.squares[move.to] = null; // Target was empty
+          const isWhite = move.piece.color === 'white';
+          const captureSq = isWhite ? move.to + 16 : move.to - 16;
+          const capturedPawn = new Piece(isWhite ? 'black' : 'white', 'pawn');
+          this.squares[captureSq] = capturedPawn;
+      }
+
+      // Restore Castling
+      if (move.flags === 'k' || move.flags === 'q') {
+          this.squares[move.to] = null; // King moves back to 'from' handled above
+
+          if (move.piece.color === 'white') {
+              if (move.flags === 'k') { // Undo h1->f1
+                  const rook = this.squares[117];
+                  this.squares[119] = rook;
+                  this.squares[117] = null;
+              } else { // Undo a1->d1
+                  const rook = this.squares[115];
+                  this.squares[112] = rook;
+                  this.squares[115] = null;
+              }
+          } else {
+              if (move.flags === 'k') { // Undo h8->f8
+                  const rook = this.squares[5];
+                  this.squares[7] = rook;
+                  this.squares[5] = null;
+              } else { // Undo a8->d8
+                  const rook = this.squares[3];
+                  this.squares[0] = rook;
+                  this.squares[3] = null;
+              }
+          }
+      }
+  }
+
   setupBoard() {
     const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
     this.loadFen(START_FEN);
@@ -56,6 +156,103 @@ class Board {
     const index = this.toIndex(row, col);
     if (!this.isValidSquare(index)) return null;
     return this.squares[index];
+  }
+
+  // Check if a square is attacked by 'attackingSide' ('white' or 'black')
+  isSquareAttacked(squareIndex, attackingSide) {
+    if (!this.isValidSquare(squareIndex)) return false;
+
+    // Pawns
+    // If attackingSide is white, they attack from (squareIndex + 16 - 1) and (squareIndex + 16 + 1) [reverse of pawn move]
+    // Wait, let's think.
+    // If we want to know if squareIndex is attacked by a White Pawn, we look "down" (higher row index)
+    // White pawns move "up" (decreasing index).
+    // So a white pawn at squareIndex + 15 (attacking left) or +17 (attacking right) would attack squareIndex.
+    // Wait, indices:
+    // White pawn at index i. Attacks i - 17 and i - 15.
+    // So if we are at square s, is it attacked by a white pawn?
+    // We check s + 17 and s + 15.
+    // For Black pawn at index i. Attacks i + 17 and i + 15.
+    // So if we are at square s, is it attacked by a black pawn?
+    // We check s - 17 and s - 15.
+
+    if (attackingSide === 'white') {
+        const pawnAttacks = [15, 17];
+        for (const offset of pawnAttacks) {
+            const source = squareIndex + offset;
+            if (this.isValidSquare(source)) {
+                const piece = this.squares[source];
+                if (piece && piece.type === 'pawn' && piece.color === 'white') return true;
+            }
+        }
+    } else {
+        const pawnAttacks = [-15, -17];
+        for (const offset of pawnAttacks) {
+            const source = squareIndex + offset;
+            if (this.isValidSquare(source)) {
+                const piece = this.squares[source];
+                if (piece && piece.type === 'pawn' && piece.color === 'black') return true;
+            }
+        }
+    }
+
+    // Knights
+    const knightOffsets = [-33, -31, -18, -14, 14, 18, 31, 33];
+    for (const offset of knightOffsets) {
+        const source = squareIndex + offset;
+        if (this.isValidSquare(source)) {
+            const piece = this.squares[source];
+            if (piece && piece.type === 'knight' && piece.color === attackingSide) return true;
+        }
+    }
+
+    // King
+    const kingOffsets = [-17, -16, -15, -1, 1, 15, 16, 17];
+    for (const offset of kingOffsets) {
+        const source = squareIndex + offset;
+        if (this.isValidSquare(source)) {
+            const piece = this.squares[source];
+            if (piece && piece.type === 'king' && piece.color === attackingSide) return true;
+        }
+    }
+
+    // Sliding pieces (Rook, Bishop, Queen)
+    const directions = {
+        'straight': [-16, 16, -1, 1],
+        'diagonal': [-17, -15, 15, 17]
+    };
+
+    // Straight (Rook, Queen)
+    for (const dir of directions.straight) {
+        let source = squareIndex + dir;
+        while (this.isValidSquare(source)) {
+            const piece = this.squares[source];
+            if (piece) {
+                if (piece.color === attackingSide && (piece.type === 'rook' || piece.type === 'queen')) {
+                    return true;
+                }
+                break; // Blocked
+            }
+            source += dir;
+        }
+    }
+
+    // Diagonal (Bishop, Queen)
+    for (const dir of directions.diagonal) {
+        let source = squareIndex + dir;
+        while (this.isValidSquare(source)) {
+            const piece = this.squares[source];
+            if (piece) {
+                if (piece.color === attackingSide && (piece.type === 'bishop' || piece.type === 'queen')) {
+                    return true;
+                }
+                break; // Blocked
+            }
+            source += dir;
+        }
+    }
+
+    return false;
   }
 
   generateMoves() {
@@ -121,39 +318,46 @@ class Board {
         // The king must be on the starting square to castle.
         // White King: e1 (index 116). Black King: e8 (index 4).
         if (piece.type === 'king') {
-          if (this.activeColor === 'w' && i === 116) {
-             // White Kingside (K) - Target g1 (118)
-             // Check rights
-             if (this.castlingRights.includes('K')) {
-               // Check empty squares f1 (117), g1 (118)
-               if (!this.squares[117] && !this.squares[118]) {
-                  moves.push({ from: i, to: 118, flags: 'k', piece: piece });
-               }
-             }
-             // White Queenside (Q) - Target c1 (114)
-             // Check rights
-             if (this.castlingRights.includes('Q')) {
-               // Check empty squares b1 (113), c1 (114), d1 (115)
-               if (!this.squares[113] && !this.squares[114] && !this.squares[115]) {
-                 moves.push({ from: i, to: 114, flags: 'q', piece: piece });
-               }
-             }
-          } else if (this.activeColor === 'b' && i === 4) {
-             // Black Kingside (k) - Target g8 (6)
-             if (this.castlingRights.includes('k')) {
-               // Check empty squares f8 (5), g8 (6)
-               if (!this.squares[5] && !this.squares[6]) {
-                  moves.push({ from: i, to: 6, flags: 'k', piece: piece });
-               }
-             }
-             // Black Queenside (q) - Target c8 (2)
-             if (this.castlingRights.includes('q')) {
-               // Check empty squares b8 (1), c8 (2), d8 (3)
-               if (!this.squares[1] && !this.squares[2] && !this.squares[3]) {
-                 moves.push({ from: i, to: 2, flags: 'q', piece: piece });
-               }
-             }
-          }
+           // Cannot castle if in check
+           if (!this.isSquareAttacked(i, opponent)) {
+              if (this.activeColor === 'w' && i === 116) {
+                 // White Kingside (K) - Target g1 (118)
+                 // Check rights
+                 if (this.castlingRights.includes('K')) {
+                   // Check empty squares f1 (117), g1 (118)
+                   // And check if f1 (117) is attacked (crossing)
+                   if (!this.squares[117] && !this.squares[118] && !this.isSquareAttacked(117, opponent)) {
+                      moves.push({ from: i, to: 118, flags: 'k', piece: piece });
+                   }
+                 }
+                 // White Queenside (Q) - Target c1 (114)
+                 // Check rights
+                 if (this.castlingRights.includes('Q')) {
+                   // Check empty squares b1 (113), c1 (114), d1 (115)
+                   // And check if d1 (115) is attacked (crossing)
+                   if (!this.squares[113] && !this.squares[114] && !this.squares[115] && !this.isSquareAttacked(115, opponent)) {
+                     moves.push({ from: i, to: 114, flags: 'q', piece: piece });
+                   }
+                 }
+              } else if (this.activeColor === 'b' && i === 4) {
+                 // Black Kingside (k) - Target g8 (6)
+                 if (this.castlingRights.includes('k')) {
+                   // Check empty squares f8 (5), g8 (6)
+                   // Check crossing f8 (5)
+                   if (!this.squares[5] && !this.squares[6] && !this.isSquareAttacked(5, opponent)) {
+                      moves.push({ from: i, to: 6, flags: 'k', piece: piece });
+                   }
+                 }
+                 // Black Queenside (q) - Target c8 (2)
+                 if (this.castlingRights.includes('q')) {
+                   // Check empty squares b8 (1), c8 (2), d8 (3)
+                   // Check crossing d8 (3)
+                   if (!this.squares[1] && !this.squares[2] && !this.squares[3] && !this.isSquareAttacked(3, opponent)) {
+                     moves.push({ from: i, to: 2, flags: 'q', piece: piece });
+                   }
+                 }
+              }
+           }
         }
       }
       // Pawn
@@ -212,7 +416,32 @@ class Board {
         }
       }
     }
-    return moves;
+    // Filter illegal moves (those leaving king in check)
+    const legalMoves = [];
+    for (const move of moves) {
+        const captured = this.makeMove(move);
+
+        // Find King
+        let kingIndex = -1;
+        for (let k = 0; k < 128; k++) {
+            if (this.isValidSquare(k)) {
+                const p = this.squares[k];
+                if (p && p.type === 'king' && p.color === color) {
+                    kingIndex = k;
+                    break;
+                }
+            }
+        }
+
+        // If King is not found (should not happen in valid game), or attacked
+        if (kingIndex === -1 || !this.isSquareAttacked(kingIndex, opponent)) {
+            legalMoves.push(move);
+        }
+
+        this.unmakeMove(move, captured);
+    }
+
+    return legalMoves;
   }
 
   isValidMove(start, end) {
