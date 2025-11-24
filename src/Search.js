@@ -1,60 +1,122 @@
 const Evaluation = require('./Evaluation');
+const { TranspositionTable, TT_FLAG } = require('./TranspositionTable');
 
 class Search {
   constructor(board) {
     this.board = board;
     this.nodes = 0;
+    this.tt = new TranspositionTable(64); // 64MB
+    this.timer = null;
+    this.stopFlag = false;
   }
 
-  // Basic Minimax with Alpha-Beta Pruning
-  search(depth) {
+  // Iterative Deepening Search
+  search(maxDepth = 5, maxTime = 1000) {
     this.nodes = 0;
-    let alpha = -Infinity;
-    let beta = Infinity;
+    this.stopFlag = false;
+    this.tt.clear(); // Clear TT per new search or keep it? Usually keep it.
+    // For repeatable tests, maybe clear. But for engine performance, keep.
+    // Let's keep it but handle aging later.
 
-    // We want to return the best move, not just score
+    const startTime = Date.now();
     let bestMove = null;
-    let bestScore = -Infinity;
 
-    const moves = this.board.generateMoves();
-    if (moves.length === 0) return null; // Mate or stalemate
-
-    // Simple move ordering: Captures first (could add MVV-LVA later)
-    moves.sort((a, b) => {
-        const scoreA = (a.flags.includes('c')) ? 10 : 0;
-        const scoreB = (b.flags.includes('c')) ? 10 : 0;
-        return scoreB - scoreA;
-    });
-
-    for (const move of moves) {
-        const state = this.board.applyMove(move);
-        const score = -this.alphaBeta(depth - 1, -beta, -alpha);
-        this.board.undoApplyMove(move, state);
-
-        if (score > bestScore) {
-            bestScore = score;
-            bestMove = move;
+    // Timer check function
+    const checkTime = () => {
+        if (Date.now() - startTime >= maxTime) {
+            this.stopFlag = true;
         }
-        if (score > alpha) {
-            alpha = score; // Note: In root, we don't really use updated alpha for pruning in this loop unless we have window
+    };
+
+    // Main Iterative Deepening Loop
+    for (let depth = 1; depth <= maxDepth; depth++) {
+        // Aspiration windows could go here
+
+        const move = this.rootAlphaBeta(depth, -Infinity, Infinity);
+
+        checkTime();
+        if (this.stopFlag) {
+            // Time up. If we didn't complete this depth, do we return previous best?
+            // Usually yes. But if we found a move at this depth before stopping, is it better?
+            // My rootAlphaBeta returns the best move found *so far* at that depth?
+            // No, it returns when finished.
+            // If stopped in middle, the result might be incomplete.
+            // Safe bet: Return the best move from the last fully completed depth.
+            // Unless depth 1 is incomplete (rare).
+            if (!bestMove && move) bestMove = move; // Fallback
+            break;
         }
+
+        bestMove = move;
+
+        // Output info ( UCI info depth ... score ... pv ...)
+        // console.log(`info depth ${depth} nodes ${this.nodes}`);
     }
 
     return bestMove;
   }
 
+  rootAlphaBeta(depth, alpha, beta) {
+      // Similar to alphaBeta but returns the Move
+      let bestMove = null;
+      let bestScore = -Infinity;
+
+      // TT Probe for ordering
+      const ttEntry = this.tt.probe(this.board.zobristKey);
+      let ttMove = ttEntry ? ttEntry.move : null;
+
+      const moves = this.board.generateMoves();
+      if (moves.length === 0) return null;
+
+      // Move Ordering
+      this.orderMoves(moves, ttMove);
+
+      for (const move of moves) {
+          const state = this.board.applyMove(move);
+          const score = -this.alphaBeta(depth - 1, -beta, -alpha);
+          this.board.undoApplyMove(move, state);
+
+          if (this.stopFlag) return bestMove; // Abort
+
+          if (score > bestScore) {
+              bestScore = score;
+              bestMove = move;
+          }
+          if (score > alpha) {
+              alpha = score;
+          }
+      }
+
+      // Store Root in TT? Yes
+      if (!this.stopFlag && bestMove) {
+          this.tt.save(this.board.zobristKey, bestScore, depth, TT_FLAG.EXACT, bestMove);
+      }
+
+      return bestMove;
+  }
+
   alphaBeta(depth, alpha, beta) {
       this.nodes++;
 
+      // Check 50-move and repetition
+      if (this.board.isDrawBy50Moves() || this.board.isDrawByRepetition()) {
+          return 0;
+      }
+
+      // TT Probe
+      const ttEntry = this.tt.probe(this.board.zobristKey);
+      if (ttEntry && ttEntry.depth >= depth) {
+          if (ttEntry.flag === TT_FLAG.EXACT) return ttEntry.score;
+          if (ttEntry.flag === TT_FLAG.LOWERBOUND && ttEntry.score >= beta) return ttEntry.score; // Beta cutoff
+          if (ttEntry.flag === TT_FLAG.UPPERBOUND && ttEntry.score <= alpha) return ttEntry.score; // Alpha cutoff
+      }
+
+      // Internal Iterative Deepening? No, kept simple.
+
       const moves = this.board.generateMoves();
 
-      // Check for Mate/Stalemate BEFORE checking depth=0?
-      // No, because generating moves is expensive.
-      // But if we are mated at depth 0, we must report it, otherwise quiescence will return a material score (ignoring mate).
-      // If we are checkmated, moves.length is 0.
-
+      // Check for Mate/Stalemate
       if (moves.length === 0) {
-          // Checkmate or Stalemate
           const kingColor = this.board.activeColor === 'w' ? 'white' : 'black';
           let kingIndex = -1;
           for(let i=0; i<128; i++) {
@@ -79,25 +141,54 @@ class Search {
       }
 
       // Move ordering
-      moves.sort((a, b) => {
-        const scoreA = (a.flags.includes('c')) ? 10 : 0;
-        const scoreB = (b.flags.includes('c')) ? 10 : 0;
-        return scoreB - scoreA;
-      });
+      let ttMove = ttEntry ? ttEntry.move : null;
+      this.orderMoves(moves, ttMove);
+
+      let flag = TT_FLAG.UPPERBOUND; // Default: we fail low (all moves < alpha)
+      let bestScore = -Infinity;
+      let bestMove = null;
 
       for (const move of moves) {
           const state = this.board.applyMove(move);
           const score = -this.alphaBeta(depth - 1, -beta, -alpha);
           this.board.undoApplyMove(move, state);
 
+          if (this.stopFlag) return alpha; // Return alpha or previous best? Doesn't matter, result ignored.
+
           if (score >= beta) {
-              return beta; // Fail hard
+              // Fail high (Lowerbound)
+              this.tt.save(this.board.zobristKey, score, depth, TT_FLAG.LOWERBOUND, move);
+              return beta;
           }
-          if (score > alpha) {
-              alpha = score;
+          if (score > bestScore) {
+              bestScore = score;
+              bestMove = move;
+              if (score > alpha) {
+                  alpha = score;
+                  flag = TT_FLAG.EXACT;
+              }
           }
       }
+
+      this.tt.save(this.board.zobristKey, bestScore, depth, flag, bestMove);
       return alpha;
+  }
+
+  orderMoves(moves, ttMove) {
+      moves.sort((a, b) => {
+        // 1. TT Move (Best Move)
+        if (ttMove) {
+            const isA = (a.from === ttMove.from && a.to === ttMove.to);
+            const isB = (b.from === ttMove.from && b.to === ttMove.to);
+            if (isA) return -1;
+            if (isB) return 1;
+        }
+
+        // 2. Captures
+        const scoreA = (a.flags.includes('c')) ? 10 : 0;
+        const scoreB = (b.flags.includes('c')) ? 10 : 0;
+        return scoreB - scoreA;
+      });
   }
 
   quiescence(alpha, beta) {
