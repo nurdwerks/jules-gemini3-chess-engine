@@ -25,8 +25,8 @@ describe('Piece Movement Logic', () => {
   test('pawn cannot move backwards', () => {
     // White pawn trying to move back
     // Let's test a valid position first, say we move a pawn to 5,0 manually then try to move back
-    board.grid[5][0] = new Piece('white', 'pawn');
-    board.grid[6][0] = null;
+    board.placePiece(5, 0, new Piece('white', 'pawn'));
+    board.placePiece(6, 0, null);
 
     const start = { row: 5, col: 0 };
     const end = { row: 6, col: 0 };

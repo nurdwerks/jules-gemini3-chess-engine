@@ -2,36 +2,66 @@ const Piece = require('./Piece');
 
 class Board {
   constructor() {
-    this.grid = Array(8).fill(null).map(() => Array(8).fill(null));
+    this.squares = new Array(128).fill(null);
     this.setupBoard();
+  }
+
+  // Helper: Convert row/col to 0x88 index
+  toIndex(row, col) {
+    return (row << 4) | col;
+  }
+
+  // Helper: Convert 0x88 index to row/col
+  toRowCol(index) {
+    return {
+      row: index >> 4,
+      col: index & 7
+    };
+  }
+
+  // Helper: Check if index is on the board
+  isValidSquare(index) {
+    return (index & 0x88) === 0;
+  }
+
+  // Helper: Place a piece at a specific row/col (mainly for tests/setup)
+  placePiece(row, col, piece) {
+    const index = this.toIndex(row, col);
+    if (this.isValidSquare(index)) {
+      this.squares[index] = piece;
+    }
   }
 
   setupBoard() {
     // Setup Pawns
     for (let i = 0; i < 8; i++) {
-      this.grid[6][i] = new Piece('white', 'pawn');
-      this.grid[1][i] = new Piece('black', 'pawn');
+      this.placePiece(6, i, new Piece('white', 'pawn'));
+      this.placePiece(1, i, new Piece('black', 'pawn'));
     }
 
     // Setup Rooks
-    this.grid[7][0] = new Piece('white', 'rook');
-    this.grid[7][7] = new Piece('white', 'rook');
-    this.grid[0][0] = new Piece('black', 'rook');
-    this.grid[0][7] = new Piece('black', 'rook');
+    this.placePiece(7, 0, new Piece('white', 'rook'));
+    this.placePiece(7, 7, new Piece('white', 'rook'));
+    this.placePiece(0, 0, new Piece('black', 'rook'));
+    this.placePiece(0, 7, new Piece('black', 'rook'));
 
     // Setup Knights, Bishops, Queens, Kings can be added as needed or for completeness
   }
 
   getPiece(row, col) {
-    return this.grid[row][col];
+    const index = this.toIndex(row, col);
+    if (!this.isValidSquare(index)) return null;
+    return this.squares[index];
   }
 
   isValidMove(start, end) {
-    const piece = this.getPiece(start.row, start.col);
-    if (!piece) return false;
+    const startIndex = this.toIndex(start.row, start.col);
+    const endIndex = this.toIndex(end.row, end.col);
 
-    // Check bounds
-    if (end.row < 0 || end.row > 7 || end.col < 0 || end.col > 7) return false;
+    if (!this.isValidSquare(startIndex) || !this.isValidSquare(endIndex)) return false;
+
+    const piece = this.squares[startIndex];
+    if (!piece) return false;
 
     const rowDiff = end.row - start.row;
     const colDiff = end.col - start.col;
