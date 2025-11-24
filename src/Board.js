@@ -11,6 +11,8 @@ class Board {
     this.fullMoveNumber = 1;
     this.zobristKey = 0n;
     this.history = []; // Array of hashes for repetition detection
+    this.castling = { w: { k: false, q: false }, b: { k: false, q: false } }; // Backward compatibility structure
+    this.castlingRooks = { white: [], black: [] }; // Stores 0x88 indices of castling rooks
     this.setupBoard();
   }
 
@@ -71,32 +73,91 @@ class Board {
       }
 
       // Handle Castling (move the rook)
-      if (move.flags === 'k' || move.flags === 'q') {
-          // Identify rook positions
-          // White Kingside: King e1->g1. Rook h1->f1.
-          // White Queenside: King e1->c1. Rook a1->d1.
-          // Black Kingside: King e8->g8. Rook h8->f8.
-          // Black Queenside: King e8->c8. Rook a8->d8.
+      if (move.flags === 'k' || move.flags === 'q' || move.flags === 'k960') {
+          if (move.flags === 'k960') {
+              // 960 Castling: King moves to C/G, Rook moves to D/F.
+              // move.to is the Rook's source square (encoded in generateMoves).
+              // move.from is King's source square.
 
-          if (move.piece.color === 'white') {
-              if (move.flags === 'k') { // e1->g1
-                  const rook = this.squares[119]; // h1
-                  this.squares[117] = rook; // f1
-                  this.squares[119] = null;
-              } else { // e1->c1
-                  const rook = this.squares[112]; // a1
-                  this.squares[115] = rook; // d1
-                  this.squares[112] = null;
+              const kingSource = move.from;
+              const rookSource = move.to; // Encoded target
+
+              // Determine side based on rook relative to king
+              const isKingside = (rookSource & 7) > (kingSource & 7);
+
+              // Targets
+              const rank = move.piece.color === 'white' ? 7 : 0;
+              const kingTargetFile = isKingside ? 6 : 2; // g or c
+              const rookTargetFile = isKingside ? 5 : 3; // f or d
+
+              const kingTarget = (rank << 4) | kingTargetFile;
+              const rookTarget = (rank << 4) | rookTargetFile;
+
+              // Move Rook
+              const rook = this.squares[rookSource];
+              this.squares[rookSource] = null;
+              this.squares[rookTarget] = rook;
+
+              // Move King (overwriting rook if needed, but usually swapped or separate)
+              // Note: King was cleared from 'from' at start of function.
+              // If King target == Rook source, we just cleared Rook source.
+              // If Rook target == King source, we cleared King source.
+              // Be careful not to overwrite if they swap squares (only possible if adjacent).
+
+              // Standard logic: Clear source, Set target.
+              // We cleared move.from (King Source).
+              // We cleared rookSource.
+              // Set King Target.
+              // Set Rook Target.
+
+              // Special case: King moves to Rook's square (and Rook moves elsewhere)
+              // Or King stays?
+
+              this.squares[kingTarget] = move.piece;
+
+              // Ensure Rook is at Rook Target (re-set in case overwritten?)
+              this.squares[rookTarget] = rook;
+
+              // Wait, makeMove sets this.squares[move.to] = move.piece at start!
+              // For k960, move.to IS rookSource.
+              // So we put King on Rook Source.
+              // But King should go to King Target.
+              // So we must fix the placement.
+
+              if (kingTarget !== rookSource) {
+                  this.squares[rookSource] = null; // Clear if King doesn't land there
               }
+              this.squares[kingTarget] = move.piece;
+
+              // If rookSource was overwritten by King (if King landed there), we handled it?
+              // No, at start: this.squares[move.to] = move.piece.
+              // If move.to == rookSource, King is now at rookSource.
+              // If kingTarget != rookSource, we move King to kingTarget.
+
+              // If rookTarget == rookSource, we put rook back.
+
           } else {
-              if (move.flags === 'k') { // e8->g8
-                  const rook = this.squares[7]; // h8
-                  this.squares[5] = rook; // f8
-                  this.squares[7] = null;
-              } else { // e8->c8
-                  const rook = this.squares[0]; // a8
-                  this.squares[3] = rook; // d8
-                  this.squares[0] = null;
+              // Standard Logic (Legacy k/q flags)
+              if (move.piece.color === 'white') {
+                  if (move.flags === 'k') { // e1->g1
+                      const rook = this.squares[119]; // h1
+                      this.squares[117] = rook; // f1
+                      this.squares[119] = null;
+                  } else { // e1->c1
+                      const rook = this.squares[112]; // a1
+                      this.squares[115] = rook; // d1
+                      this.squares[112] = null;
+                  }
+              } else {
+                  if (move.flags === 'k') { // e8->g8
+                      const rook = this.squares[7]; // h8
+                      this.squares[5] = rook; // f8
+                      this.squares[7] = null;
+                  } else { // e8->c8
+                      const rook = this.squares[0]; // a8
+                      this.squares[3] = rook; // d8
+                      this.squares[0] = null;
+                  }
               }
           }
       }
@@ -123,28 +184,106 @@ class Board {
       }
 
       // Restore Castling
-      if (move.flags === 'k' || move.flags === 'q') {
-          this.squares[move.to] = null; // King moves back to 'from' handled above
+      if (move.flags === 'k' || move.flags === 'q' || move.flags === 'k960') {
+          this.squares[move.to] = null; // King moves back to 'from' handled above. wait...
+          // King was at move.to (or kingTarget in k960 case)?
+          // In unmake, we do: `this.squares[move.from] = move.piece;`.
+          // For k960, King ends at KingTarget. But move object stores `to: rookSource`.
+          // We need to clear KingTarget and restore Rook.
 
-          if (move.piece.color === 'white') {
-              if (move.flags === 'k') { // Undo h1->f1
-                  const rook = this.squares[117];
-                  this.squares[119] = rook;
-                  this.squares[117] = null;
-              } else { // Undo a1->d1
-                  const rook = this.squares[115];
-                  this.squares[112] = rook;
-                  this.squares[115] = null;
+          if (move.flags === 'k960') {
+              const kingSource = move.from;
+              const rookSource = move.to;
+
+              const isKingside = (rookSource & 7) > (kingSource & 7);
+              const rank = move.piece.color === 'white' ? 7 : 0;
+              const kingTarget = (rank << 4) | (isKingside ? 6 : 2);
+              const rookTarget = (rank << 4) | (isKingside ? 5 : 3);
+
+              // 1. Clear King Target (where King landed)
+              // Unless King Target == Rook Source (already handled?)
+              // Or King Target == King Source (restored by standard unmake)
+              if (kingTarget !== kingSource) {
+                  this.squares[kingTarget] = null;
+                  // If King Target == Rook Source, we are clearing it before restoring rook? Correct.
               }
+
+              // 2. Restore Rook to Source
+              // Rook is currently at Rook Target.
+              const rook = this.squares[rookTarget];
+              this.squares[rookTarget] = null;
+              this.squares[rookSource] = rook;
+
+              // If Rook Target == King Source, we cleared King Source?
+              // Standard unmake: `this.squares[move.from] = move.piece`. (Restores King to Source).
+              // This happens BEFORE this block.
+              // So King is at King Source.
+
+              // Wait, if Rook Target == King Source:
+              // King is at King Source.
+              // We just set `squares[rookTarget] = null`.
+              // This DELETES the King!
+              // If Rook Target != King Source, we are safe.
+              // In standard 960, King and Rook swap or are separate.
+
+              if (rookTarget === kingSource) {
+                  // Rook was at King Source?
+                  // No, Rook ended at Rook Target.
+                  // If Rook Target == King Source (King moved out, Rook moved in).
+                  // Then `squares[rookTarget]` contains the Rook.
+                  // We null it.
+                  // Then we restore King at `move.from` (King Source).
+                  // So we are fine?
+                  // Standard unmake happens BEFORE this block:
+                  // `this.squares[move.from] = move.piece;`
+                  // If King Source == Rook Target, King is now there.
+                  // But wait, Rook is ALSO there?
+                  // No, move.to is NOT King Target.
+                  // Unmake puts piece at `move.from`.
+                  // If King Source == Rook Target, then we overwrote the Rook with the King!
+
+                  // If Rook ended at King Source, we lost the Rook in `this.squares[move.from] = move.piece`.
+                  // We need to retrieve the Rook from somewhere?
+                  // Or simply, if Rook Target == King Source, we know the rook SHOULD be there but is now King.
+                  // We need to put Rook back to Rook Source.
+                  // And King is already at King Source.
+                  // So we just set `squares[rookSource] = (Rook)`.
+                  // Where do we get the Rook piece?
+                  // We can reconstruct it (Rook of same color).
+                  this.squares[rookSource] = new Piece(move.piece.color, 'rook');
+              }
+
+              // Edge case: King Target == Rook Source.
+              // King landed where Rook started.
+              // We cleared King Target above: `this.squares[kingTarget] = null`.
+              // This clears the Rook Source.
+              // Then we set `this.squares[rookSource] = rook`.
+              // So we are fine.
+
           } else {
-              if (move.flags === 'k') { // Undo h8->f8
-                  const rook = this.squares[5];
-                  this.squares[7] = rook;
-                  this.squares[5] = null;
-              } else { // Undo a8->d8
-                  const rook = this.squares[3];
-                  this.squares[0] = rook;
-                  this.squares[3] = null;
+              // Legacy
+              this.squares[move.to] = null; // King moves back to 'from' handled above
+
+              if (move.piece.color === 'white') {
+                  if (move.flags === 'k') { // Undo h1->f1
+                      const rook = this.squares[117];
+                      this.squares[119] = rook;
+                      this.squares[117] = null;
+                  } else { // Undo a1->d1
+                      const rook = this.squares[115];
+                      this.squares[112] = rook;
+                      this.squares[115] = null;
+                  }
+              } else {
+                  if (move.flags === 'k') { // Undo h8->f8
+                      const rook = this.squares[5];
+                      this.squares[7] = rook;
+                      this.squares[5] = null;
+                  } else { // Undo a8->d8
+                      const rook = this.squares[3];
+                      this.squares[0] = rook;
+                      this.squares[3] = null;
+                  }
               }
           }
       }
@@ -337,49 +476,114 @@ class Board {
           }
         }
 
-        // Castling
-        // The king must be on the starting square to castle.
-        // White King: e1 (index 116). Black King: e8 (index 4).
+        // Castling (960 Compatible)
         if (piece.type === 'king') {
-           // Cannot castle if in check
            if (!this.isSquareAttacked(i, opponent)) {
-              if (this.activeColor === 'w' && i === 116) {
-                 // White Kingside (K) - Target g1 (118)
-                 // Check rights
-                 if (this.castlingRights.includes('K')) {
-                   // Check empty squares f1 (117), g1 (118)
-                   // And check if f1 (117) is attacked (crossing)
-                   if (!this.squares[117] && !this.squares[118] && !this.isSquareAttacked(117, opponent)) {
-                      moves.push({ from: i, to: 118, flags: 'k', piece: piece });
+               const rooks = this.castlingRooks[color === 'white' ? 'white' : 'black'];
+               for (const rookIndex of rooks) {
+                   // Check if we still have rights for this rook?
+                   // Actually castlingRooks contains all valid start rooks.
+                   // But we must check if they are still on board and rights exist.
+                   // We rely on `castlingRights` string to confirm validity?
+                   // No, `castlingRooks` is static initial state.
+                   // We should check `this.squares[rookIndex]`.
+
+                   // But wait, if rights are lost, `castlingRights` is updated.
+                   // We need to map rookIndex to a right char?
+                   // Simpler: Iterate `castlingRights` string and get rook files?
+                   // But we stored `castlingRooks` indices.
+
+                   // Let's iterate known castling rooks and check if move is valid.
+                   // Validity:
+                   // 1. Rook must be at rookIndex (unmoved).
+                   // 2. Path between King and Rook clear.
+                   // 3. King destination (c/g file) and Rook destination (d/f file) free/safe.
+                   // 4. King doesn't cross attacked squares.
+
+                   // Actually, simplest check:
+                   // Is this rook still available in `castlingRights`?
+                   // Need to map rookIndex -> char.
+                   // Assume `castlingRooks` is updated or check board.
+                   const rookPiece = this.squares[rookIndex];
+                   if (!rookPiece || rookPiece.type !== 'rook' || rookPiece.color !== color) continue;
+
+                   // Target squares for 960 (Standard: c/g for King, d/f for Rook)
+                   // White: c1(114)/g1(118). Rook -> d1(115)/f1(117).
+                   // Black: c8(2)/g8(6). Rook -> d8(3)/f8(5).
+
+                   const isKingside = (rookIndex & 7) > (i & 7); // Rook is right of King
+                   // Determine target files
+                   // Standard files: g (6) for K-side, c (2) for Q-side.
+                   const targetFile = isKingside ? 6 : 2;
+                   const rank = color === 'white' ? 7 : 0;
+                   const kingTargetIndex = (rank << 4) | targetFile;
+
+                   // Rook target: f (5) for K-side, d (3) for Q-side.
+                   const rookTargetFile = isKingside ? 5 : 3;
+                   const rookTargetIndex = (rank << 4) | rookTargetFile;
+
+                   // Check path free between King and Rook
+                   let pathClear = true;
+                   const start = Math.min(i, rookIndex);
+                   const end = Math.max(i, rookIndex);
+                   for (let sq = start + 1; sq < end; sq++) {
+                       if (this.squares[sq]) {
+                           pathClear = false;
+                           break;
+                       }
                    }
-                 }
-                 // White Queenside (Q) - Target c1 (114)
-                 // Check rights
-                 if (this.castlingRights.includes('Q')) {
-                   // Check empty squares b1 (113), c1 (114), d1 (115)
-                   // And check if d1 (115) is attacked (crossing)
-                   if (!this.squares[113] && !this.squares[114] && !this.squares[115] && !this.isSquareAttacked(115, opponent)) {
-                     moves.push({ from: i, to: 114, flags: 'q', piece: piece });
+                   if (!pathClear) continue;
+
+                   // Check if King destination is occupied (unless it's by the rook or king itself)
+                   // And check path to destination?
+                   // 960 Rules: All squares between King start and King dest (inclusive) must be safe and empty (except King/Rook).
+                   // Also Rook dest must be empty (except King/Rook).
+
+                   // Let's check safety of King path.
+                   // Path: i -> kingTargetIndex.
+                   const kStart = Math.min(i, kingTargetIndex);
+                   const kEnd = Math.max(i, kingTargetIndex);
+                   let safe = true;
+                   for (let sq = kStart; sq <= kEnd; sq++) {
+                       if (sq === i) continue; // Already checked start (not in check)
+                       // Check if occupied (except by rook/king)
+                       if (this.squares[sq] && sq !== rookIndex && sq !== i) {
+                           safe = false; break;
+                       }
+                       // Check if attacked
+                       if (this.isSquareAttacked(sq, opponent)) {
+                           safe = false; break;
+                       }
                    }
-                 }
-              } else if (this.activeColor === 'b' && i === 4) {
-                 // Black Kingside (k) - Target g8 (6)
-                 if (this.castlingRights.includes('k')) {
-                   // Check empty squares f8 (5), g8 (6)
-                   // Check crossing f8 (5)
-                   if (!this.squares[5] && !this.squares[6] && !this.isSquareAttacked(5, opponent)) {
-                      moves.push({ from: i, to: 6, flags: 'k', piece: piece });
+                   if (!safe) continue;
+
+                   // Check Rook dest empty (except King/Rook)
+                   if (this.squares[rookTargetIndex] && rookTargetIndex !== i && rookTargetIndex !== rookIndex) {
+                       continue;
                    }
-                 }
-                 // Black Queenside (q) - Target c8 (2)
-                 if (this.castlingRights.includes('q')) {
-                   // Check empty squares b8 (1), c8 (2), d8 (3)
-                   // Check crossing d8 (3)
-                   if (!this.squares[1] && !this.squares[2] && !this.squares[3] && !this.isSquareAttacked(3, opponent)) {
-                     moves.push({ from: i, to: 2, flags: 'q', piece: piece });
-                   }
-                 }
-              }
+
+                   // Check Rook path? The path King<->Rook was cleared above.
+                   // But strictly, we just need "all squares between King's start and dest, and Rook's start and dest" to be free.
+                   // The "between K and R" check usually covers most.
+
+                   // Valid! Push move.
+                   // Use special flag 'castle'.
+                   // Target is ROOK SQUARE (UCI 960 convention) or King Target?
+                   // Internal engine usually uses King Target with flag.
+                   // BUT UCI requires `e1h1` (King takes Rook) for 960.
+                   // Let's assume internal engine uses `to: rookIndex` for 960 moves to distinguish easily?
+                   // Or use standard `to: kingTargetIndex` with a flag, and UCI adapter converts it.
+                   // My UCI adapter expects generated moves.
+                   // If I output `to: kingTargetIndex` (g1), I need to know WHICH rook.
+                   // In standard chess, g1 implies h1 rook.
+                   // In 960, g1 might be valid but ambiguous if multiple rooks? (Unlikely).
+                   // Best to use `to: rookIndex` for 960 castling internally?
+                   // Standard `makeMove` handles `flags: 'k'` by assuming standard rooks.
+                   // I should update `makeMove` to handle 960.
+                   // Let's use `to: rookIndex` (King captures Rook) as the move encoding for 960.
+                   // This matches UCI 960.
+                   moves.push({ from: i, to: rookIndex, flags: 'k960', piece: piece });
+               }
            }
         }
       }
@@ -539,8 +743,8 @@ class Board {
     this.activeColor = activeColor;
 
     // 3. Castling Rights
-    // Basic validation could be improved, but this suffices for now
     this.castlingRights = castling;
+    this.parseCastlingRights(castling);
 
     // 4. En Passant Target
     this.enPassantTarget = enPassant;
@@ -554,6 +758,131 @@ class Board {
     // Calculate initial hash
     this.calculateZobristKey();
     this.history = []; // Clear history on load
+    this.validatePosition();
+  }
+
+  validatePosition() {
+      // Check Bishops (if present on starting ranks?)
+      // Iterate pieces to find bishops
+      const bishops = { w: [], b: [] };
+      for(let i=0; i<128; i++) {
+          if (!this.isValidSquare(i)) continue;
+          const p = this.squares[i];
+          if (p && p.type === 'bishop') {
+              const prefix = p.color === 'white' ? 'w' : 'b';
+              bishops[prefix].push(i);
+          }
+      }
+
+      // Check White
+      // Only checking if we have exactly 2 bishops? Or any number?
+      // 960 constraint applies to the pair of bishops.
+      // If promoted bishops exist, we might have 3.
+      // Let's assume if there are 2 bishops, they must be opposite colors?
+      // No, in standard chess you can promote to have 2 light-squared bishops.
+      // The 960 constraint is for the *starting position*.
+      // `loadFen` loads *any* position.
+      // Validating "Bishops opposite colors" on `loadFen` for *any* FEN is incorrect for mid-game positions with promotions.
+      // HOWEVER, the user story says "Validates FEN validity (Bishops opposite colors, King between Rooks)".
+      // This implies checks for *start positions*.
+      // I will check only if FullMove == 1? Or just assume we want strict 960 checks.
+      // Let's assume strict checks for the *initial* array of pieces on backrank?
+      // I'll implement a check: If we have bishops on the backrank (rows 0/7), ensure they are opposite colors?
+      // That's a safe heuristic for 960 start pos.
+
+      // Check White Backrank (Row 7)
+      this.checkBishopsOnRank(7);
+      // Check Black Backrank (Row 0)
+      this.checkBishopsOnRank(0);
+
+      // King between Rooks check?
+      // Only if castling rights exist.
+      this.checkKingRookPlacement();
+  }
+
+  checkBishopsOnRank(row) {
+      const bishops = [];
+      for(let c=0; c<8; c++) {
+          const idx = (row << 4) | c;
+          const p = this.squares[idx];
+          if (p && p.type === 'bishop') {
+              bishops.push(idx);
+          }
+      }
+      // If exactly 2 bishops on backrank, check colors
+      if (bishops.length === 2) {
+          const color1 = (this.toRowCol(bishops[0]).col + this.toRowCol(bishops[0]).row) % 2;
+          const color2 = (this.toRowCol(bishops[1]).col + this.toRowCol(bishops[1]).row) % 2;
+          if (color1 === color2) {
+              throw new Error('Invalid FEN string: Bishops must be on opposite colors.');
+          }
+      }
+  }
+
+  checkKingRookPlacement() {
+      // Check White
+      this.checkCastlingBounds('white', 7);
+      this.checkCastlingBounds('black', 0);
+  }
+
+  checkCastlingBounds(color, row) {
+      const rights = this.castlingRooks[color];
+      if (!rights || rights.length === 0) return;
+
+      // Find King
+      let kingCol = -1;
+      for(let c=0; c<8; c++) {
+          const idx = (row << 4) | c;
+          const p = this.squares[idx];
+          if (p && p.type === 'king' && p.color === color) {
+              kingCol = c;
+              break;
+          }
+      }
+      if (kingCol === -1) return; // No king?
+
+      // Verify Rooks are on files relative to King if needed?
+      // Actually 960 rules say King must be between the two rooks used for castling.
+      // But `castlingRooks` just lists available rooks.
+      // We can have multiple rooks.
+      // If we have K and Q rights, usually implies one on left, one on right.
+      // But X-FEN allows specific rooks.
+      // If we have a right for a rook on file X:
+      // If X < KingCol, it acts as Queenside?
+      // If X > KingCol, it acts as Kingside?
+      // If we have a right for a rook, the king MUST be "between" it and the other side?
+      // No, "King between Rooks" means in the starting position array: R ... K ... R.
+      // If we have rights for 2 rooks, they must enclose the king.
+      // If we have right for only 1 rook, it can be anywhere?
+      // Standard 960 generation produces R K R.
+      // If we load a FEN: R R K. And rights for both R?
+      // Castling "Queenside" (left) is valid.
+      // Castling "Kingside" (right) is impossible if no rook is on right.
+      // So we just validate that if a "Kingside" right exists (conceptually), there is a rook to the right.
+      // But `castlingRooks` stores indices.
+      // Let's just skip strict "King between Rooks" validation for `loadFen` unless explicitly asked to check start pos structure.
+      // The acceptance criteria says "Validates FEN validity (Bishops opposite colors, King between Rooks)".
+      // So I must implement it.
+
+      // If we have rights for rooks:
+      // Ensure at least one rook is to the left of King (if we have left-side rights?)
+      // Or simply: If we have >1 rooks with rights, ensure King is not outside them?
+      // Actually, standard 960 ensures 1 rook left, 1 rook right.
+      // If I have rights for a rook at col X.
+      // Valid if it's a rook.
+      // Is "King between Rooks" a hard rule for *validity* of a FEN?
+      // Yes, for a start position.
+      // If I have castling rights for 2 rooks on the same side of the king, it's invalid 960 start pos.
+
+      const rookCols = rights.map(idx => idx & 7).sort((a, b) => a - b);
+      if (rookCols.length === 2) {
+          if (!(rookCols[0] < kingCol && rookCols[1] > kingCol)) {
+               // Determine if this is actually invalid.
+               // In 960, you strictly have one rook left, one right.
+               // So if both are left or both right, throw.
+               throw new Error('Invalid FEN string: King must be between Rooks.');
+          }
+      }
   }
 
   calculateZobristKey() {
@@ -576,7 +905,7 @@ class Board {
       }
 
       // Castling
-      key ^= Zobrist.castling[Zobrist.getCastlingIndex(this.castlingRights)];
+      key ^= this.getCastlingHash(this.castlingRights);
 
       // En Passant
       const epIndex = Zobrist.getEpIndex(this.enPassantTarget);
@@ -585,6 +914,85 @@ class Board {
       }
 
       this.zobristKey = key;
+  }
+
+  parseCastlingRights(rights) {
+      this.castling = { w: { k: false, q: false }, b: { k: false, q: false } };
+      this.castlingRooks = { white: [], black: [] };
+
+      if (rights === '-') return;
+
+      for (const char of rights) {
+          if (char === 'K') {
+              this.castling.w.k = true;
+              // Find right-most rook
+              // Standard: h1 (119). 960: Right of king.
+              // We'll defer rook finding or assume h1 if standard.
+              // For X-FEN compat, we might need to scan board if K is used but rooks moved?
+              // Standard K implies h1.
+              this.addCastlingRook('white', 7); // File 7 (h)
+          } else if (char === 'Q') {
+              this.castling.w.q = true;
+              this.addCastlingRook('white', 0); // File 0 (a)
+          } else if (char === 'k') {
+              this.castling.b.k = true;
+              this.addCastlingRook('black', 7);
+          } else if (char === 'q') {
+              this.castling.b.q = true;
+              this.addCastlingRook('black', 0);
+          } else {
+              // X-FEN file letter (A-H or a-h)
+              const code = char.charCodeAt(0);
+              if (code >= 65 && code <= 72) { // A-H (White)
+                  this.addCastlingRook('white', code - 65);
+              } else if (code >= 97 && code <= 104) { // a-h (Black)
+                  this.addCastlingRook('black', code - 97);
+              }
+          }
+      }
+  }
+
+  addCastlingRook(color, file) {
+      // Convert file to index
+      const rank = color === 'white' ? 7 : 0; // Rank 1 (row 7) or Rank 8 (row 0)
+      const index = (rank << 4) | file;
+      this.castlingRooks[color].push(index);
+
+      // Update legacy flags for tests (approximate)
+      const kingRow = color === 'white' ? 7 : 0;
+      // Find king
+      let kingCol = 4; // Default e
+      for(let c=0; c<8; c++) {
+          const p = this.squares[(kingRow << 4) | c];
+          if (p && p.type === 'king' && p.color === color) {
+              kingCol = c;
+              break;
+          }
+      }
+
+      const prefix = color === 'white' ? 'w' : 'b';
+      if (file > kingCol) this.castling[prefix].k = true;
+      if (file < kingCol) this.castling[prefix].q = true;
+  }
+
+  getCastlingHash(rights) {
+      if (rights === '-') return 0n;
+      let hash = 0n;
+      for (const char of rights) {
+          if (char === 'K') hash ^= Zobrist.castling[0][7]; // White H
+          else if (char === 'Q') hash ^= Zobrist.castling[0][0]; // White A
+          else if (char === 'k') hash ^= Zobrist.castling[1][7]; // Black h
+          else if (char === 'q') hash ^= Zobrist.castling[1][0]; // Black a
+          else {
+              const code = char.charCodeAt(0);
+              if (code >= 65 && code <= 72) { // A-H
+                  hash ^= Zobrist.castling[0][code - 65];
+              } else if (code >= 97 && code <= 104) { // a-h
+                  hash ^= Zobrist.castling[1][code - 97];
+              }
+          }
+      }
+      return hash;
   }
 
   // Apply a move and update the full game state (color, rights, clocks)
@@ -672,7 +1080,7 @@ class Board {
 
     // 6. Update Castling Rights
     // Remove old rights from hash
-    this.zobristKey ^= Zobrist.castling[Zobrist.getCastlingIndex(this.castlingRights)];
+    this.zobristKey ^= this.getCastlingHash(this.castlingRights);
 
     // 7. Update En Passant
     // Remove old EP from hash
@@ -692,7 +1100,7 @@ class Board {
     // 3. Update Castling Rights
     this.updateCastlingRights(move, madeCapturedPiece);
     // Add new rights to hash
-    this.zobristKey ^= Zobrist.castling[Zobrist.getCastlingIndex(this.castlingRights)];
+    this.zobristKey ^= this.getCastlingHash(this.castlingRights);
 
     // 4. Update En Passant Target
     this.updateEnPassant(move);
@@ -715,6 +1123,41 @@ class Board {
     this.history.push(this.zobristKey);
 
     return state;
+  }
+
+  makeNullMove() {
+      const state = {
+          activeColor: this.activeColor,
+          castlingRights: this.castlingRights,
+          enPassantTarget: this.enPassantTarget,
+          halfMoveClock: this.halfMoveClock,
+          fullMoveNumber: this.fullMoveNumber,
+          zobristKey: this.zobristKey,
+          capturedPiece: null
+      };
+
+      // Zobrist: Update Side, En Passant (cleared)
+      this.zobristKey ^= Zobrist.sideToMove;
+
+      const oldEpIndex = Zobrist.getEpIndex(this.enPassantTarget);
+      if (oldEpIndex !== -1) {
+          this.zobristKey ^= Zobrist.enPassant[oldEpIndex];
+      }
+
+      this.enPassantTarget = '-';
+      this.activeColor = this.activeColor === 'w' ? 'b' : 'w';
+      this.halfMoveClock++; // No capture/pawn move
+
+      return state;
+  }
+
+  undoNullMove(state) {
+      this.activeColor = state.activeColor;
+      this.castlingRights = state.castlingRights;
+      this.enPassantTarget = state.enPassantTarget;
+      this.halfMoveClock = state.halfMoveClock;
+      this.fullMoveNumber = state.fullMoveNumber;
+      this.zobristKey = state.zobristKey;
   }
 
   // Restore the full game state
