@@ -58,9 +58,9 @@ This document outlines a staged, long-term roadmap to develop a robust chess eng
 *   **Size:** Medium
 *   **Description:** Differentiate pseudo-legal moves from legal moves (check detection).
 *   **Acceptance Criteria:**
-    *   [ ] `isSquareAttacked(square, side)` implemented.
-    *   [ ] Generator filters moves leaving King in check.
-    *   [ ] Castling forbidden if King is in check or passes through check.
+    *   [x] `isSquareAttacked(square, side)` implemented.
+    *   [x] Generator filters moves leaving King in check.
+    *   [x] Castling forbidden if King is in check or passes through check.
 
 ### Story 1.5: Perft (Performance Test) Verification
 *   **Size:** Small
