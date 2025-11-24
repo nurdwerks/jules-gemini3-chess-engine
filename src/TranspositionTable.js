@@ -40,6 +40,16 @@ class TranspositionTable {
         this.scores = new Int32Array(count);
     }
 
+    resize(sizeInMB) {
+        const entrySize = 16;
+        const count = Math.floor((sizeInMB * 1024 * 1024) / entrySize);
+
+        this.size = count;
+        this.keys = new BigUint64Array(count);
+        this.data = new Uint32Array(count);
+        this.scores = new Int32Array(count);
+    }
+
     clear() {
         this.keys.fill(0n);
         this.data.fill(0);

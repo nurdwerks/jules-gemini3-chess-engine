@@ -2,10 +2,10 @@ const Evaluation = require('./Evaluation');
 const { TranspositionTable, TT_FLAG } = require('./TranspositionTable');
 
 class Search {
-  constructor(board) {
+  constructor(board, tt = null) {
     this.board = board;
     this.nodes = 0;
-    this.tt = new TranspositionTable(64); // 64MB
+    this.tt = tt || new TranspositionTable(64); // Use passed TT or default
     this.timer = null;
     this.stopFlag = false;
 
@@ -38,11 +38,19 @@ class Search {
   }
 
   // Iterative Deepening Search
-  search(maxDepth = 5, timeLimits = { hardLimit: 1000, softLimit: 1000 }) {
+  search(maxDepth = 5, timeLimits = { hardLimit: 1000, softLimit: 1000 }, options = {}) {
     // Backward compatibility: if timeLimits is a number, treat as hardLimit
     if (typeof timeLimits === 'number') {
         timeLimits = { hardLimit: timeLimits, softLimit: timeLimits };
     }
+
+    // Handle Limit Strength
+    let maxNodes = Infinity;
+    if (options.UCI_LimitStrength && options.UCI_Elo) {
+        const StrengthLimiter = require('./StrengthLimiter');
+        maxNodes = StrengthLimiter.getNodesForElo(options.UCI_Elo);
+    }
+    // console.log(`Search maxNodes: ${maxNodes}, Elo: ${options.UCI_Elo}`);
 
     this.nodes = 0;
     this.stopFlag = false;
@@ -58,36 +66,40 @@ class Search {
     let bestMove = null;
     let bestScore = -Infinity;
 
-    // Timer check function
-    const checkTime = () => {
+    // Timer/Node check function attached to instance
+    let checkMask = 2047;
+    if (maxNodes < 5000) checkMask = 127;
+    if (maxNodes < 128) checkMask = 15;
+    if (maxNodes < 16) checkMask = 0; // Check every node
+
+    this.checkLimits = () => {
+        if ((this.nodes & checkMask) !== 0) return false;
+
+        // Node limit check
+        if (this.nodes >= maxNodes) {
+            this.stopFlag = true;
+            return true;
+        }
+
         // We only check hard limit here to force stop
-        // Soft limit is checked inside loop to stop if "good enough" or between depths
         if (timeLimits.hardLimit !== Infinity) {
              if (Date.now() - startTime >= timeLimits.hardLimit) {
                  this.stopFlag = true;
+                 return true;
              }
         }
+        return false;
     };
 
     // Main Iterative Deepening Loop
     for (let depth = 1; depth <= maxDepth; depth++) {
-        // Periodically check time inside search?
-        // Right now we only check between depths. For deep searches, we need checks inside nodes.
-        // We will pass `checkTime` down or check periodically based on node count.
-
-        // Capture score from rootAlphaBeta? It currently only returns move.
-        // We need to update rootAlphaBeta to return { move, score }.
-        // Or probe TT.
         const entry = this.tt.probe(this.board.zobristKey);
         const score = entry && entry.depth === depth ? entry.score : -Infinity;
 
-        const move = this.rootAlphaBeta(depth, -Infinity, Infinity, () => {
-            if ((this.nodes & 2047) === 0) checkTime();
-            return this.stopFlag;
-        });
+        const move = this.rootAlphaBeta(depth, -Infinity, Infinity);
 
         // After depth complete
-        checkTime();
+        this.checkLimits();
 
         // Soft limit check
         if (timeLimits.softLimit !== Infinity && !this.stopFlag) {
@@ -145,7 +157,7 @@ class Search {
     return bestMove;
   }
 
-  rootAlphaBeta(depth, alpha, beta, shouldStopCallback) {
+  rootAlphaBeta(depth, alpha, beta) {
       // Similar to alphaBeta but returns the Move
       let bestMove = null;
       let bestScore = -Infinity;
@@ -162,10 +174,10 @@ class Search {
 
       for (const move of moves) {
           // Check stop condition
-          if (shouldStopCallback && shouldStopCallback()) return bestMove;
+          if (this.checkLimits()) return bestMove;
 
           const state = this.board.applyMove(move);
-          const score = -this.alphaBeta(depth - 1, -beta, -alpha, shouldStopCallback);
+          const score = -this.alphaBeta(depth - 1, -beta, -alpha);
           this.board.undoApplyMove(move, state);
 
           if (this.stopFlag) return bestMove; // Abort
@@ -187,14 +199,13 @@ class Search {
       return bestMove;
   }
 
-  alphaBeta(depth, alpha, beta, shouldStopCallback) {
+  alphaBeta(depth, alpha, beta) {
       this.nodes++;
 
-      // Periodically check stop (every 2048 nodes handled by caller, but we should call the callback if it exists)
-      if (shouldStopCallback && (this.nodes & 2047) === 0) {
-          if (shouldStopCallback()) return alpha; // Return alpha on abort? Or 0?
-      }
       if (this.stopFlag) return alpha;
+
+      // Check limits (frequency handled inside)
+      if (this.checkLimits && this.checkLimits()) return alpha;
 
       // Check 50-move and repetition
       if (this.board.isDrawBy50Moves() || this.board.isDrawByRepetition()) {
@@ -254,15 +265,15 @@ class Search {
           // Principal Variation Search (PVS)
           if (movesSearched === 0) {
               // Full window search for the first move
-              score = -this.alphaBeta(depth - 1, -beta, -alpha, shouldStopCallback);
+              score = -this.alphaBeta(depth - 1, -beta, -alpha);
           } else {
               // Null window search (prove move is worse than alpha)
               // Search with beta = alpha + 1 (or just -alpha as beta)
-              score = -this.alphaBeta(depth - 1, -alpha - 1, -alpha, shouldStopCallback);
+              score = -this.alphaBeta(depth - 1, -alpha - 1, -alpha);
 
               // If score > alpha, it might be a new best move, re-search with full window
               if (score > alpha && score < beta) {
-                  score = -this.alphaBeta(depth - 1, -beta, -alpha, shouldStopCallback);
+                  score = -this.alphaBeta(depth - 1, -beta, -alpha);
               }
           }
 
@@ -352,6 +363,10 @@ class Search {
 
   quiescence(alpha, beta) {
       this.nodes++;
+
+      if (this.stopFlag) return alpha;
+      if (this.checkLimits && this.checkLimits()) return alpha;
+
       const standPat = Evaluation.evaluate(this.board);
       if (standPat >= beta) {
           return beta;
@@ -377,6 +392,8 @@ class Search {
           const state = this.board.applyMove(move);
           const score = -this.quiescence(-beta, -alpha);
           this.board.undoApplyMove(move, state);
+
+          if (this.stopFlag) return alpha;
 
           if (score >= beta) {
               return beta;
