@@ -1,0 +1,43 @@
+name: Node.js CI
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    - run: npm ci
+    - run: npm test
+
+  # Optional: SPRT job (runs only on PRs or specific trigger to save resources)
+  # This serves as a template for 5.4b
+  sprt-check:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+      - run: npm ci
+      # Run a short match against self (Sanity Check)
+      - run: chmod +x src/engine.js tools/match.js
+      - run: ./tools/match.js ./src/engine.js ./src/engine.js 4
