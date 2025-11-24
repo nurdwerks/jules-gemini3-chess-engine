@@ -14,8 +14,8 @@ The following enhancements outline the roadmap for elevating the engine from a b
 1.  **Option Reporting (S)**
     *   *Description:* Send `option name ...` commands for Hash, Threads, Ponder, MultiPV.
     *   *Acceptance Criteria:*
-        *   [ ] Responds to `uci` with correct `option name <Name> type <Type>` lines.
-        *   [ ] Reports default values correctly.
+        *   [x] Responds to `uci` with correct `option name <Name> type <Type>` lines.
+        *   [x] Reports default values correctly.
 2.  **Handle Hash Option (S)**
     *   *Description:* Resize the Transposition Table when the `Hash` option is set.
     *   *Acceptance Criteria:*
