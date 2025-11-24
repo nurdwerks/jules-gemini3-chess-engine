@@ -2,10 +2,10 @@ const Evaluation = require('./Evaluation');
 const { TranspositionTable, TT_FLAG } = require('./TranspositionTable');
 
 class Search {
-  constructor(board) {
+  constructor(board, tt = null) {
     this.board = board;
     this.nodes = 0;
-    this.tt = new TranspositionTable(64); // 64MB
+    this.tt = tt || new TranspositionTable(64); // Use passed TT or default
     this.timer = null;
     this.stopFlag = false;
 

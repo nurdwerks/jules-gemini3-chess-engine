@@ -14,13 +14,13 @@ The following enhancements outline the roadmap for elevating the engine from a b
 1.  **Option Reporting (S)**
     *   *Description:* Send `option name ...` commands for Hash, Threads, Ponder, MultiPV.
     *   *Acceptance Criteria:*
-        *   [ ] Responds to `uci` with correct `option name <Name> type <Type>` lines.
-        *   [ ] Reports default values correctly.
+        *   [x] Responds to `uci` with correct `option name <Name> type <Type>` lines.
+        *   [x] Reports default values correctly.
 2.  **Handle Hash Option (S)**
     *   *Description:* Resize the Transposition Table when the `Hash` option is set.
     *   *Acceptance Criteria:*
-        *   [ ] `setoption name Hash value 128` allocates 128MB.
-        *   [ ] Previous TT data is cleared or resized safely.
+        *   [x] `setoption name Hash value 128` allocates 128MB.
+        *   [x] Previous TT data is cleared or resized safely.
 3.  **Handle Ponder Logic (S)**
     *   *Description:* Implement the state transition for "Pondering" (searching but not moving).
     *   *Acceptance Criteria:*
