@@ -3,7 +3,9 @@
 const readline = require('readline');
 const UCI = require('./UCI');
 
-const uci = new UCI(console.log);
+const uci = new UCI((msg) => {
+    process.stdout.write(msg + '\n');
+});
 
 const rl = readline.createInterface({
   input: process.stdin,

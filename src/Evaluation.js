@@ -8,6 +8,14 @@ const PIECE_VALUES = {
   'king': 20000
 };
 
+const PARAMS = {
+    DoubledPawnPenalty: 10,
+    IsolatedPawnPenalty: 15,
+    BackwardPawnPenalty: 10,
+    MobilityBonus: 2,
+    ShieldBonus: 5
+};
+
 // Simplified PSTs (from flipped perspective for black? Or always from white perspective and flip index?)
 // Commonly, PSTs are defined for White. For Black, we mirror the rank and file (index ^ 56 for vertical flip, but 0x88 is different).
 // 0x88 Board: 0-7 (Rank 8), ..., 112-119 (Rank 1).
@@ -153,6 +161,30 @@ class Evaluation {
         return board.activeColor === 'w' ? score : -score;
     }
 
+    static updateParam(name, value) {
+        // Handle piece values mapping (e.g. 'PawnValue' -> 'pawn')
+        const map = {
+            'PawnValue': 'pawn',
+            'KnightValue': 'knight',
+            'BishopValue': 'bishop',
+            'RookValue': 'rook',
+            'QueenValue': 'queen'
+        };
+
+        if (map[name] && PIECE_VALUES.hasOwnProperty(map[name])) {
+             PIECE_VALUES[map[name]] = value;
+             return;
+        }
+
+        if (PIECE_VALUES.hasOwnProperty(name)) {
+             PIECE_VALUES[name] = value;
+        }
+
+        if (PARAMS.hasOwnProperty(name)) {
+            PARAMS[name] = value;
+        }
+    }
+
     static evaluatePawnStructure(board, index, color) {
         let score = 0;
         const col = index & 7;
@@ -163,7 +195,7 @@ class Evaluation {
         // Just check if there's a pawn in front/behind (simple)
         const forward = color === 'white' ? -16 : 16;
         if (board.squares[index + forward] && board.squares[index + forward].type === 'pawn' && board.squares[index + forward].color === color) {
-            score -= 10; // Penalty for doubled
+            score -= PARAMS.DoubledPawnPenalty; // Penalty for doubled
         }
 
         // Isolated Pawns (Penalty)
@@ -185,7 +217,7 @@ class Evaluation {
                  }
              }
         }
-        if (!hasNeighbor) score -= 15;
+        if (!hasNeighbor) score -= PARAMS.IsolatedPawnPenalty;
 
         // Backward Pawns (Penalty)
         // A pawn is backward if:
@@ -232,7 +264,7 @@ class Evaluation {
                 }
             }
             if (isBehindAllNeighbors) {
-                 score -= 10;
+                 score -= PARAMS.BackwardPawnPenalty;
             }
         }
 
@@ -360,7 +392,7 @@ class Evaluation {
              }
         }
 
-        return count * 2; // 2cp per square?
+        return count * PARAMS.MobilityBonus;
     }
 
     static evaluateKingSafety(board, kingIndex, color) {
@@ -387,7 +419,7 @@ class Evaluation {
         }
 
         // Bonus for full shield
-        score += shieldCount * 5;
+        score += shieldCount * PARAMS.ShieldBonus;
 
         // Penalty for open file if King is on it
         // Check if file is open (no pawns).
