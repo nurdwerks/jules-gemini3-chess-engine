@@ -42,9 +42,9 @@ This document outlines a staged, long-term roadmap to develop a robust chess eng
 *   **Size:** Small
 *   **Description:** Implement move generation for Knights, Kings, and Pawns (basic moves).
 *   **Acceptance Criteria:**
-    *   [ ] Knights jump to correct offsets.
-    *   [ ] Kings move to adjacent squares.
-    *   [ ] Pawns push single, double (start), and capture diagonally.
+    *   [x] Knights jump to correct offsets.
+    *   [x] Kings move to adjacent squares.
+    *   [x] Pawns push single, double (start), and capture diagonally.
 
 ### Story 1.3c: Move Logic - Special Moves
 *   **Size:** Medium
