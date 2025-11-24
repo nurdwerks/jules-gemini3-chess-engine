@@ -48,14 +48,77 @@ class Board {
     return this.squares[index];
   }
 
+  generateMoves() {
+    const moves = [];
+    const color = this.activeColor === 'w' ? 'white' : 'black';
+    const opponent = this.activeColor === 'w' ? 'black' : 'white';
+
+    // Offsets
+    const offsets = {
+      'rook': [-16, 16, -1, 1],
+      'bishop': [-17, -15, 15, 17],
+      'queen': [-17, -15, 15, 17, -16, 16, -1, 1]
+    };
+
+    for (let i = 0; i < 128; i++) {
+      if (!this.isValidSquare(i)) continue; // Skip 0x88 invalid squares
+
+      const piece = this.squares[i];
+      if (!piece || piece.color !== color) continue;
+
+      if (['rook', 'bishop', 'queen'].includes(piece.type)) {
+        const directions = offsets[piece.type];
+        for (const dir of directions) {
+          let target = i + dir;
+          while (this.isValidSquare(target)) {
+            const targetPiece = this.squares[target];
+            if (!targetPiece) {
+              // Quiet move
+              moves.push({ from: i, to: target, flags: 'n', piece: piece });
+            } else {
+              if (targetPiece.color === opponent) {
+                // Capture
+                moves.push({ from: i, to: target, flags: 'c', piece: piece, captured: targetPiece });
+              }
+              // Blocked (either by own or enemy after capture)
+              break;
+            }
+            target += dir;
+          }
+        }
+      }
+      // TODO: Implement Pawn, Knight, King
+    }
+    return moves;
+  }
+
   isValidMove(start, end) {
     const startIndex = this.toIndex(start.row, start.col);
     const endIndex = this.toIndex(end.row, end.col);
 
-    if (!this.isValidSquare(startIndex) || !this.isValidSquare(endIndex)) return false;
+    // Maintain pawn logic for now as it's not fully in generateMoves yet
+    // Or we could implement pawn in generateMoves now?
+    // The previous implementation was hardcoded.
+    // Let's preserve the existing pawn logic for now to avoid regression on tests/movement.test.js
+    // while we add sliding logic via generateMoves.
 
+    if (!this.isValidSquare(startIndex) || !this.isValidSquare(endIndex)) return false;
     const piece = this.squares[startIndex];
     if (!piece) return false;
+
+    // Use generateMoves for sliding pieces
+    if (['rook', 'bishop', 'queen'].includes(piece.type)) {
+      // We need to temporarily set activeColor to piece color if we want to use generateMoves
+      // strictly, but isValidMove might be called for analysis.
+      // Assuming isValidMove is for the side to move or we just force it.
+      // But generateMoves relies on activeColor.
+      const savedActive = this.activeColor;
+      this.activeColor = piece.color === 'white' ? 'w' : 'b';
+      const moves = this.generateMoves();
+      this.activeColor = savedActive;
+
+      return moves.some(m => m.from === startIndex && m.to === endIndex);
+    }
 
     const rowDiff = end.row - start.row;
     const colDiff = end.col - start.col;
