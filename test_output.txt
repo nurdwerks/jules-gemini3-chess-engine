@@ -1,0 +1,3 @@
+
+> app@1.0.0 test
+> jest tests/search.test.js

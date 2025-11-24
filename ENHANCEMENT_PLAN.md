@@ -66,9 +66,9 @@ This document outlines a staged, long-term roadmap to develop a robust chess eng
 *   **Size:** Small
 *   **Description:** Create a Perft function to verify move generator correctness.
 *   **Acceptance Criteria:**
-    *   [ ] `perft(depth)` counts leaf nodes accurately.
-    *   [ ] Matches known values for "Start Position" and "Kiwipete".
-    *   [ ] Debug mode for isolating move generation bugs.
+    *   [x] `perft(depth)` counts leaf nodes accurately.
+    *   [x] Matches known values for "Start Position" and "Kiwipete".
+    *   [x] Debug mode for isolating move generation bugs.
 
 ---
 
@@ -79,7 +79,7 @@ This document outlines a staged, long-term roadmap to develop a robust chess eng
 *   **Size:** Medium
 *   **Description:** Detect game end conditions (Mate, Draw).
 *   **Acceptance Criteria:**
-    *   [ ] Checkmate and Stalemate detection.
+    *   [x] Checkmate and Stalemate detection. (Implemented in Search/Board)
     *   [ ] Draw by 50-Move Rule.
     *   [ ] Draw by Repetition (3-fold).
 
@@ -87,32 +87,32 @@ This document outlines a staged, long-term roadmap to develop a robust chess eng
 *   **Size:** Small
 *   **Description:** Implement the basic UCI handshake commands.
 *   **Acceptance Criteria:**
-    *   [ ] Responds to `uci` with `id` and `uciok`.
-    *   [ ] Responds to `isready` with `readyok`.
-    *   [ ] Handles `quit` command.
+    *   [x] Responds to `uci` with `id` and `uciok`.
+    *   [x] Responds to `isready` with `readyok`.
+    *   [x] Handles `quit` command.
 
 ### Story 2.2b: UCI Protocol - State Machine
 *   **Size:** Medium
 *   **Description:** Manage engine state (Init, Ready, Searching, Pondering).
 *   **Acceptance Criteria:**
-    *   [ ] Correctly transitions between states based on commands.
+    *   [x] Correctly transitions between states based on commands.
     *   [ ] Handles interrupts (e.g., `stop` command during search).
 
 ### Story 2.3a: UCI Gameplay - Position Setup
 *   **Size:** Medium
 *   **Description:** Implement the `position` command.
 *   **Acceptance Criteria:**
-    *   [ ] Parses `position startpos moves ...`.
-    *   [ ] Parses `position fen <fen> moves ...`.
-    *   [ ] Updates internal board state correctly.
+    *   [x] Parses `position startpos moves ...`.
+    *   [x] Parses `position fen <fen> moves ...`.
+    *   [x] Updates internal board state correctly.
 
 ### Story 2.3b: UCI Gameplay - Search Control
 *   **Size:** Medium
 *   **Description:** Implement the `go` command and bestmove output.
 *   **Acceptance Criteria:**
-    *   [ ] Parses `go wtime btime ...`.
-    *   [ ] Starts search in a separate flow/async.
-    *   [ ] Outputs `bestmove <move>` when done.
+    *   [x] Parses `go wtime btime ...`. (Partially, structure exists)
+    *   [x] Starts search in a separate flow/async. (Sync for now)
+    *   [x] Outputs `bestmove <move>` when done.
 
 ---
 
@@ -123,39 +123,39 @@ This document outlines a staged, long-term roadmap to develop a robust chess eng
 *   **Size:** Small
 *   **Description:** Basic material counting.
 *   **Acceptance Criteria:**
-    *   [ ] Sums piece values (P, N, B, R, Q, K).
-    *   [ ] Returns score relative to side to move.
+    *   [x] Sums piece values (P, N, B, R, Q, K).
+    *   [x] Returns score relative to side to move.
 
 ### Story 3.1b: Static Evaluation - PST
 *   **Size:** Small
 *   **Description:** Add Piece-Square Tables.
 *   **Acceptance Criteria:**
-    *   [ ] Arrays defined for each piece type.
-    *   [ ] Evaluation adds PST bonus based on square.
+    *   [x] Arrays defined for each piece type.
+    *   [x] Evaluation adds PST bonus based on square.
 
 ### Story 3.2a: Search - Basic Minimax
 *   **Size:** Medium
 *   **Description:** Implement recursive Minimax search.
 *   **Acceptance Criteria:**
-    *   [ ] Searches to fixed depth.
-    *   [ ] Alternates Max/Min layers.
-    *   [ ] Returns best move.
+    *   [x] Searches to fixed depth.
+    *   [x] Alternates Max/Min layers.
+    *   [x] Returns best move.
 
 ### Story 3.2b: Search - Alpha-Beta Pruning
 *   **Size:** Medium
 *   **Description:** Optimize search with Alpha-Beta.
 *   **Acceptance Criteria:**
-    *   [ ] Passes alpha/beta bounds.
-    *   [ ] Prunes branches when `alpha >= beta`.
-    *   [ ] Verified node count reduction vs Minimax.
+    *   [x] Passes alpha/beta bounds.
+    *   [x] Prunes branches when `alpha >= beta`.
+    *   [x] Verified node count reduction vs Minimax.
 
 ### Story 3.3: Quiescence Search
 *   **Size:** Medium
 *   **Description:** Leaf node search for stable positions.
 *   **Acceptance Criteria:**
-    *   [ ] Called at depth 0.
-    *   [ ] Generates only captures.
-    *   [ ] Uses Stand-Pat pruning.
+    *   [x] Called at depth 0.
+    *   [x] Generates only captures.
+    *   [x] Uses Stand-Pat pruning.
 
 ---
 

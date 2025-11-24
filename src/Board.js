@@ -210,6 +210,9 @@ class Board {
     const kingOffsets = [-17, -16, -15, -1, 1, 15, 16, 17];
     for (const offset of kingOffsets) {
         const source = squareIndex + offset;
+        // Don't check isValidSquare for simple offset check?
+        // isValidSquare logic: (index & 0x88) === 0.
+        // If source is valid, check piece.
         if (this.isValidSquare(source)) {
             const piece = this.squares[source];
             if (piece && piece.type === 'king' && piece.color === attackingSide) return true;
@@ -527,6 +530,132 @@ class Board {
 
     // 6. Fullmove Number
     this.fullMoveNumber = parseInt(fullMove, 10);
+  }
+
+  // Apply a move and update the full game state (color, rights, clocks)
+  // Returns an object containing the previous state to be restored by undoApplyMove
+  applyMove(move) {
+    const state = {
+      activeColor: this.activeColor,
+      castlingRights: this.castlingRights,
+      enPassantTarget: this.enPassantTarget,
+      halfMoveClock: this.halfMoveClock,
+      fullMoveNumber: this.fullMoveNumber,
+      capturedPiece: null // Will be populated by makeMove return
+    };
+
+    // 1. Update board squares (using existing makeMove)
+    const capturedPiece = this.makeMove(move);
+    state.capturedPiece = capturedPiece;
+
+    // 2. Update Active Color
+    this.activeColor = this.activeColor === 'w' ? 'b' : 'w';
+
+    // 3. Update Castling Rights
+    this.updateCastlingRights(move, capturedPiece);
+
+    // 4. Update En Passant Target
+    this.updateEnPassant(move);
+
+    // 5. Update Clocks
+    this.halfMoveClock++;
+    if (move.piece.type === 'pawn' || capturedPiece) {
+      this.halfMoveClock = 0;
+    }
+    if (this.activeColor === 'w') {
+      this.fullMoveNumber++;
+    }
+
+    return state;
+  }
+
+  // Restore the full game state
+  undoApplyMove(move, state) {
+    // 1. Restore board squares
+    this.unmakeMove(move, state.capturedPiece);
+
+    // 2. Restore State
+    this.activeColor = state.activeColor;
+    this.castlingRights = state.castlingRights;
+    this.enPassantTarget = state.enPassantTarget;
+    this.halfMoveClock = state.halfMoveClock;
+    this.fullMoveNumber = state.fullMoveNumber;
+  }
+
+  updateCastlingRights(move, capturedPiece) {
+    // If rights are already gone, nothing to do
+    if (this.castlingRights === '-') return;
+
+    // Helper to remove a char from string
+    const removeRight = (char) => {
+      this.castlingRights = this.castlingRights.replace(char, '');
+      if (this.castlingRights === '') this.castlingRights = '-';
+    };
+
+    // 1. Moving King
+    if (move.piece.type === 'king') {
+      if (move.piece.color === 'white') {
+        removeRight('K');
+        removeRight('Q');
+      } else {
+        removeRight('k');
+        removeRight('q');
+      }
+    }
+
+    // 2. Moving Rook
+    if (move.piece.type === 'rook') {
+      if (move.from === 119) removeRight('K'); // h1
+      else if (move.from === 112) removeRight('Q'); // a1
+      else if (move.from === 7) removeRight('k'); // h8
+      else if (move.from === 0) removeRight('q'); // a8
+    }
+
+    // 3. Capturing Rook
+    if (capturedPiece && capturedPiece.type === 'rook') {
+       if (move.to === 119) removeRight('K'); // h1
+       else if (move.to === 112) removeRight('Q'); // a1
+       else if (move.to === 7) removeRight('k'); // h8
+       else if (move.to === 0) removeRight('q'); // a8
+    }
+  }
+
+  updateEnPassant(move) {
+    if (move.piece.type === 'pawn') {
+      const diff = Math.abs(move.to - move.from);
+      if (diff === 32) { // Double push
+         // Target is the square skipped over
+         // White: from + 16 (or to + 16 if moving up? No white moves from 96-111 (rank 2) to 64-79 (rank 4).
+         // White moves -16. Double push -32.
+         // From index (e.g., 100 e2). To (68 e4). Target (84 e3).
+         // White moves decrease index.
+         // Black moves increase index.
+         const isWhite = move.piece.color === 'white';
+         const epIndex = isWhite ? move.from - 16 : move.from + 16;
+
+         // Convert index to algebraic
+         const { row, col } = this.toRowCol(epIndex);
+         const file = String.fromCharCode('a'.charCodeAt(0) + col);
+         const rank = 8 - row;
+         this.enPassantTarget = `${file}${rank}`;
+         return;
+      }
+    }
+    this.enPassantTarget = '-';
+  }
+
+  perft(depth) {
+    if (depth === 0) return 1;
+
+    const moves = this.generateMoves();
+    let nodes = 0;
+
+    for (const move of moves) {
+      const state = this.applyMove(move);
+      nodes += this.perft(depth - 1);
+      this.undoApplyMove(move, state);
+    }
+    return nodes;
   }
 
   generateFen() {
