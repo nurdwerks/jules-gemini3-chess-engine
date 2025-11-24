@@ -80,8 +80,8 @@ This document outlines a staged, long-term roadmap to develop a robust chess eng
 *   **Description:** Detect game end conditions (Mate, Draw).
 *   **Acceptance Criteria:**
     *   [x] Checkmate and Stalemate detection. (Implemented in Search/Board)
-    *   [ ] Draw by 50-Move Rule.
-    *   [ ] Draw by Repetition (3-fold).
+    *   [x] Draw by 50-Move Rule.
+    *   [x] Draw by Repetition (3-fold).
 
 ### Story 2.2a: UCI Protocol - Basic Handshake
 *   **Size:** Small
@@ -96,7 +96,7 @@ This document outlines a staged, long-term roadmap to develop a robust chess eng
 *   **Description:** Manage engine state (Init, Ready, Searching, Pondering).
 *   **Acceptance Criteria:**
     *   [x] Correctly transitions between states based on commands.
-    *   [ ] Handles interrupts (e.g., `stop` command during search).
+    *   [x] Handles interrupts (e.g., `stop` command during search).
 
 ### Story 2.3a: UCI Gameplay - Position Setup
 *   **Size:** Medium
@@ -166,60 +166,60 @@ This document outlines a staged, long-term roadmap to develop a robust chess eng
 *   **Size:** Medium
 *   **Description:** Implement Zobrist hashing for positions.
 *   **Acceptance Criteria:**
-    *   [ ] Random numbers initialized for [Piece][Square].
-    *   [ ] Hash updated incrementally during make/unmake move.
-    *   [ ] Detects repetition draws using hash history.
+    *   [x] Random numbers initialized for [Piece][Square].
+    *   [x] Hash updated incrementally during make/unmake move.
+    *   [x] Detects repetition draws using hash history.
 
 ### Story 4.1b: Transposition Table
 *   **Size:** Medium
 *   **Description:** Implement the TT storage and probing.
 *   **Acceptance Criteria:**
-    *   [ ] Fixed size hash table (e.g., 64MB).
-    *   [ ] Store/Retrieve bounds (Exact, Alpha, Beta).
-    *   [ ] Use TT move to order moves.
+    *   [x] Fixed size hash table (e.g., 64MB).
+    *   [x] Store/Retrieve bounds (Exact, Alpha, Beta).
+    *   [x] Use TT move to order moves.
 
 ### Story 4.2a: Iterative Deepening
 *   **Size:** Small
 *   **Description:** Loop depth 1 to N.
 *   **Acceptance Criteria:**
-    *   [ ] Loop calls search with increasing depth.
-    *   [ ] Checks for time expiry between depths.
+    *   [x] Loop calls search with increasing depth.
+    *   [x] Checks for time expiry between depths.
 
 ### Story 4.2b: Principal Variation Search (PVS)
 *   **Size:** Medium
 *   **Description:** Implement PVS logic.
 *   **Acceptance Criteria:**
-    *   [ ] Search PV move with full window.
-    *   [ ] Search other moves with null window.
-    *   [ ] Re-search if null window fails high.
+    *   [x] Search PV move with full window.
+    *   [x] Search other moves with null window.
+    *   [x] Re-search if null window fails high.
 
 ### Story 4.3a: Move Ordering - MVV-LVA
 *   **Size:** Small
 *   **Description:** Sort captures.
 *   **Acceptance Criteria:**
-    *   [ ] Capture moves scored by Victim - Attacker value.
-    *   [ ] Sorted before quiet moves.
+    *   [x] Capture moves scored by Victim - Attacker value.
+    *   [x] Sorted before quiet moves.
 
 ### Story 4.3b: Move Ordering - History/Killer
 *   **Size:** Medium
 *   **Description:** Heuristics for quiet moves.
 *   **Acceptance Criteria:**
-    *   [ ] Store Killer moves per depth.
-    *   [ ] Update History table on cutoffs.
-    *   [ ] Sort quiet moves using these scores.
+    *   [x] Store Killer moves per depth.
+    *   [x] Update History table on cutoffs.
+    *   [x] Sort quiet moves using these scores.
 
 ### Story 4.4a: Advanced Eval - Mobility/Safety
 *   **Size:** Medium
 *   **Description:** King safety and piece mobility.
 *   **Acceptance Criteria:**
-    *   [ ] Count safe squares for pieces.
-    *   [ ] Penalty for open King lines.
+    *   [x] Count safe squares for pieces.
+    *   [x] Penalty for open King lines.
 
 ### Story 4.4b: Advanced Eval - Pawn Structure
 *   **Size:** Medium
 *   **Description:** Pawn patterns.
 *   **Acceptance Criteria:**
-    *   [ ] Detect isolated, doubled, backward pawns.
+    *   [x] Detect isolated, doubled, backward pawns.
     *   [ ] Bonus for passed pawns.
 
 ---
