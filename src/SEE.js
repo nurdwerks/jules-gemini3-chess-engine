@@ -115,6 +115,16 @@ class SEE {
         movePiece(move.from, move.to, move.piece);
 
         let attacker = move.piece;
+        if (!attacker) {
+             console.error("SEE: attacker (move.piece) is null", move);
+             // Revert changes before returning
+             while (changes.length > 0) {
+                const c = changes.pop();
+                board.squares[c.from] = c.prevFrom;
+                board.squares[c.to] = c.prevTo;
+            }
+             return 0;
+        }
         let attackerValue = SEE.getPieceValue(attacker.type);
         let side = attacker.color === 'white' ? 'black' : 'white';
         const sq = move.to;
