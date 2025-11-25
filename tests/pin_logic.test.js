@@ -25,7 +25,7 @@ describe('Pin Logic Verification (Story 1.3a)', () => {
     });
 
     test('Absolute Pin: Diagonal Pin', () => {
-        board.loadFen('8/8/8/7b/8/8/5P2/4K3 w - - 0 1');
+        board.loadFen('6k1/b7/8/8/8/8/5P2/6K1 w - - 0 1');
 
         const moves = board.generateMoves();
         const pawnMoves = moves.filter(m => m.piece.type === 'pawn');
