@@ -112,5 +112,62 @@ describe('Special Moves', () => {
       expect(types).toEqual(['b', 'n', 'q', 'r']);
       expect(promoMoves[0].flags).toBe('p'); // p for promotion
     });
+
+    test('Promotion with check', () => {
+      // White Pawn on d7, Black King on f8. Move to d8, promote to Q. Checks King.
+      board.loadFen('5k2/3P4/8/8/8/8/8/K7 w - - 0 1');
+      const moves = board.generateMoves();
+      // d7 (1,3 -> 19) to d8 (0,3 -> 3)
+      const promoMoves = moves.filter(m => m.from === 19 && m.to === 3);
+      expect(promoMoves.length).toBe(4); // Q,R,B,N
+
+      // Find Queen promotion
+      const queenPromo = promoMoves.find(m => m.promotion === 'q');
+      expect(queenPromo).toBeDefined();
+
+      // Apply the move
+      board.applyMove(queenPromo);
+
+      // Check if black king is in check
+      expect(board.isInCheck()).toBe(true);
+    });
+
+    test('Promotion to escape check', () => {
+      // White King on a1, Black Rook on a8, White pawn on h7.
+      // White is in check, but can promote h7 to h8(Q) to block the check.
+      board.loadFen('r7/7P/8/8/8/8/8/K7 w - - 0 1');
+
+      // Verify white is in check
+      expect(board.isInCheck()).toBe(true);
+
+      const moves = board.generateMoves();
+
+      // h7 (1,7 -> 23) to h8 (0,7 -> 7)
+      const promoMoves = moves.filter(m => m.from === 23 && m.to === 7);
+      expect(promoMoves.length).toBe(4);
+
+      // Find Queen promotion
+      const queenPromo = promoMoves.find(m => m.promotion === 'q');
+      expect(queenPromo).toBeDefined();
+
+      // Apply the move
+      board.applyMove(queenPromo);
+
+      // White should no longer be in check
+      expect(board.isInCheck()).toBe(false);
+    });
+
+    test('Illegal promotion (exposes king to check)', () => {
+      // White King on e1, Black Rook on e8, White pawn on d7.
+      // Promoting d7 to d8 would expose king on e1 to check from rook on e8.
+      board.loadFen('4r3/3P4/8/8/8/8/8/4K3 w - - 0 1');
+      const moves = board.generateMoves();
+
+      // d7 (1,3 -> 19) to d8 (0,3 -> 3)
+      const promoMove = moves.find(m => m.from === 19 && m.to === 3);
+
+      // This move should not be generated because it is illegal
+      expect(promoMove).toBeUndefined();
+    });
   });
 });
