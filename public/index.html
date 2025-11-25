@@ -1,12 +1,21 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Chess Engine</title>
+  <meta charset="UTF-8">
+  <title>Jules & Gemini Chess</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Chess Engine</h1>
-  <div id="chessboard"></div>
+  <h1>Jules & Gemini Chess</h1>
+  <div id="game-container">
+    <div id="chessboard"></div>
+    <div id="controls">
+        <button id="new-game-btn">New Game</button>
+        <button id="flip-board-btn">Flip Board</button>
+        <div id="status">Status: Disconnected</div>
+        <div id="engine-output"></div>
+    </div>
+  </div>
   <script src="client.js"></script>
 </body>
 </html>
