@@ -131,6 +131,8 @@ class Evaluation {
             // Advanced: Pawn Structure
             let pawnStructure = 0;
             if (piece.type === 'pawn') {
+                 // Epic 20: Pawn Hash Probe could go here, but usually done globally for the pawn structure.
+                 // Since evaluatePawnStructure() is per pawn, we'll keep it simple for now.
                  pawnStructure = Evaluation.evaluatePawnStructure(board, i, piece.color);
             }
 

@@ -12,7 +12,8 @@ class UCI {
         Ponder: false,
         MultiPV: 1,
         UCI_LimitStrength: false,
-        UCI_Elo: 3000
+        UCI_Elo: 3000,
+        AspirationWindow: 50
     };
 
     // Initialize TT
@@ -42,6 +43,7 @@ class UCI {
         this.output(`option name MultiPV type spin default ${this.options.MultiPV} min 1 max 500`);
         this.output(`option name UCI_LimitStrength type check default ${this.options.UCI_LimitStrength}`);
         this.output(`option name UCI_Elo type spin default ${this.options.UCI_Elo} min 100 max 3000`);
+        this.output(`option name AspirationWindow type spin default ${this.options.AspirationWindow} min 10 max 500`);
         this.output('uciok');
         break;
 
