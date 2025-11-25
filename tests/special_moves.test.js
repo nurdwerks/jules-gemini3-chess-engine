@@ -103,18 +103,16 @@ describe('Special Moves', () => {
     });
 
     test('Promotion to escape check', () => {
-      // White King on a1, Black Rook on a8, White pawn on h7.
-      // White is in check, but can promote h7 to h8(Q) to block the check.
-      board.loadFen('r7/7P/8/8/8/8/8/K7 w - - 0 1');
+      // King on c8 is checked by a rook on a8. A pawn on b7 can promote to b8, blocking the check.
+      board.loadFen('r1K5/1P6/8/8/8/8/8/8 w - - 0 1');
 
       // Verify white is in check
       expect(board.isInCheck()).toBe(true);
-
       const moves = board.generateMoves();
 
-      // h7 (1,7 -> 23) to h8 (0,7 -> 7)
-      const promoMoves = moves.filter(m => m.from === 23 && m.to === 7);
-      expect(promoMoves.length).toBe(4);
+      // b7 (1,1 -> 17) to b8 (0,1 -> 1)
+      const promoMoves = moves.filter(m => m.from === 17 && m.to === 1);
+      expect(promoMoves.length).toBe(4); // Q, R, B, N
 
       // Find Queen promotion
       const queenPromo = promoMoves.find(m => m.promotion === 'q');

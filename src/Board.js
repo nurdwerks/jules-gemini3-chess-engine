@@ -546,9 +546,9 @@ class Board {
 
     const movingColor = this.activeColor === 'w' ? 'white' : 'black';
     return moves.filter(move => {
-      const state = this.applyMove(move);
+      const captured = this.makeMove(move);
       const legal = !this.isKingInCheck(movingColor);
-      this.undoApplyMove(move, state);
+      this.unmakeMove(move, captured);
       return legal;
     });
   }
