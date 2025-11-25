@@ -33,4 +33,26 @@ describe('Chess960 X-FEN Parsing', () => {
         expect(rooks).toContain(112);
         expect(rooks).toContain(114);
     });
+
+    test('loadFen parses a different Chess960 FEN', () => {
+        // Position 2: RNBQKBNR/PPPPPPPP/8/8/8/8/pppppppp/rnbqkbnr w FBfb - 0 1
+        const fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w FBfb - 0 1';
+        board.loadFen(fen);
+        expect(board.castling.w.k).toBe(true); // f-file rook
+        expect(board.castling.w.q).toBe(true); // b-file rook
+        expect(board.castling.b.k).toBe(true); // f-file rook
+        expect(board.castling.b.q).toBe(true); // b-file rook
+        const whiteRooks = board.castlingRooks.white;
+        expect(whiteRooks).toContain(113); // b1
+        expect(whiteRooks).toContain(117); // f1
+    });
+
+    test('loadFen handles no castling rights in Chess960', () => {
+        const fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1';
+        board.loadFen(fen);
+        expect(board.castling.w.k).toBe(false);
+        expect(board.castling.w.q).toBe(false);
+        expect(board.castling.b.k).toBe(false);
+        expect(board.castling.b.q).toBe(false);
+    });
 });
