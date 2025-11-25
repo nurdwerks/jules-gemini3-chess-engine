@@ -93,8 +93,18 @@ class TimeManager {
         }
 
         // Safety Buffers
-        // Never use more than time - overhead (e.g. 50ms)
-        const overhead = 50;
+        // Epic 19: Move Overhead
+        // Configurable overhead (passed in or default)
+        // We'll assume UCI option 'MoveOverhead' is handled elsewhere and passed here,
+        // or we use a default. Since calculateTimeAllocation only takes color,
+        // we might need to update signature or use a property set by UCI.
+        // For now, standard default 50ms is in code.
+        // Let's allow passing options?
+
+        // But 'calculateTimeAllocation' is called from 'parseGoCommand'.
+        // I should add 'options' to 'parseGoCommand' or use 'this.options'.
+
+        const overhead = this.moveOverhead || 50;
         let maxTime = time - overhead;
         if (maxTime < 0) maxTime = 10; // Minimum 10ms
 
@@ -111,9 +121,20 @@ class TimeManager {
         return { hardLimit, softLimit };
     }
 
+    setMoveOverhead(overhead) {
+        this.moveOverhead = overhead;
+    }
+
     shouldStop(elapsed, softLimit, bestScore, prevScore) {
         // Basic stopping condition:
-        if (elapsed >= softLimit) return true;
+        if (elapsed >= softLimit) {
+            // Epic 19: Stability
+            // If score is stable (bestScore ~= prevScore) and we are over soft limit, stop.
+            // If score is volatile (big jump), maybe extend?
+            // Logic:
+            // If elapsed > softLimit * 1.0, stop.
+            return true;
+        }
         // Advanced: If score dropped significantly (panic), maybe extend?
         // Not implemented here yet, but interface allows it.
         return false;

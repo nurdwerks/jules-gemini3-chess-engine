@@ -1,8 +1,5 @@
 const Bitboard = {
-    // BigInt wrapper utils?
-    // In JS, we can just use BigInt primitives.
-    // But for attack tables, we need an object/class.
-
+    // Basic Bit Manipulation
     popcnt(bb) {
         let c = 0;
         while (bb > 0n) {
@@ -14,11 +11,6 @@ const Bitboard = {
 
     lsb(bb) {
         if (bb === 0n) return -1;
-        // Binary search or simple loop?
-        // Or: bb & -bb gives LSB isolated. Then log2?
-        // JS BigInt doesn't have log2.
-        // Let's use a De Bruijn sequence or simple loop.
-        // Simple loop for now.
         let idx = 0;
         while ((bb & 1n) === 0n) {
             bb >>= 1n;
@@ -39,41 +31,43 @@ const Bitboard = {
         return (bb & (1n << BigInt(square))) !== 0n;
     },
 
-    // Attack Tables
+    // Pre-computed tables
     knightAttacks: new BigUint64Array(64),
     kingAttacks: new BigUint64Array(64),
+
+    // Magic Bitboards Data
+    rookMasks: new BigUint64Array(64),
+    bishopMasks: new BigUint64Array(64),
+    rookMagics: new BigUint64Array(64),
+    bishopMagics: new BigUint64Array(64),
+    rookShifts: new Int32Array(64),
+    bishopShifts: new Int32Array(64),
+
+    rookTable: null,
+    bishopTable: null,
+    rookOffsets: new Int32Array(64),
+    bishopOffsets: new Int32Array(64),
 
     init() {
         this.initKnightAttacks();
         this.initKingAttacks();
+        this.initMagics();
     },
 
     initKnightAttacks() {
-        const offsets = [-17, -15, -10, -6, 6, 10, 15, 17];
-        // Note: 0x88 offsets were -33 etc.
-        // Bitboard squares: 0=h1 ... 63=a8? Or a1=0?
-        // LERF: a1=0, b1=1 ... h1=7 ... a8=56...
-        // Let's stick to Little-Endian Rank-File mapping (a1=0).
-
         for (let sq = 0; sq < 64; sq++) {
             let attacks = 0n;
             const rank = Math.floor(sq / 8);
             const col = sq % 8;
-
-            // Manual offsets
             const jumps = [
-                {r: 2, c: 1}, {r: 2, c: -1},
-                {r: -2, c: 1}, {r: -2, c: -1},
-                {r: 1, c: 2}, {r: 1, c: -2},
-                {r: -1, c: 2}, {r: -1, c: -2}
+                {r: 2, c: 1}, {r: 2, c: -1}, {r: -2, c: 1}, {r: -2, c: -1},
+                {r: 1, c: 2}, {r: 1, c: -2}, {r: -1, c: 2}, {r: -1, c: -2}
             ];
-
             for (const jump of jumps) {
                 const tr = rank + jump.r;
                 const tc = col + jump.c;
                 if (tr >= 0 && tr < 8 && tc >= 0 && tc < 8) {
-                    const tsq = tr * 8 + tc;
-                    attacks |= (1n << BigInt(tsq));
+                    attacks |= (1n << BigInt(tr * 8 + tc));
                 }
             }
             this.knightAttacks[sq] = attacks;
@@ -85,15 +79,13 @@ const Bitboard = {
             let attacks = 0n;
             const rank = Math.floor(sq / 8);
             const col = sq % 8;
-
             for (let r = -1; r <= 1; r++) {
                 for (let c = -1; c <= 1; c++) {
                     if (r === 0 && c === 0) continue;
                     const tr = rank + r;
                     const tc = col + c;
                     if (tr >= 0 && tr < 8 && tc >= 0 && tc < 8) {
-                        const tsq = tr * 8 + tc;
-                        attacks |= (1n << BigInt(tsq));
+                        attacks |= (1n << BigInt(tr * 8 + tc));
                     }
                 }
             }
@@ -109,72 +101,130 @@ const Bitboard = {
         return this.kingAttacks[sq];
     },
 
-    // Slider Attacks
-    // We can implement "Classic" ray casting for now to satisfy "Implement Slider Attack Lookups".
-    // Magic Bitboards are an optimization.
+    // --- Magic Bitboards ---
 
-    getRookAttacks(sq, occupancy) {
+    randomBigInt() {
+        // 64-bit random
+        const u1 = BigInt(Math.floor(Math.random() * 0xFFFFFFFF));
+        const u2 = BigInt(Math.floor(Math.random() * 0xFFFFFFFF));
+        return (u1 << 32n) | u2;
+    },
+
+    randomBigIntFewBits() {
+        return this.randomBigInt() & this.randomBigInt() & this.randomBigInt();
+    },
+
+    maskRook(sq) {
         let attacks = 0n;
-        const rank = Math.floor(sq / 8);
-        const col = sq % 8;
+        const r = Math.floor(sq / 8);
+        const c = sq % 8;
+        for (let tr = r + 1; tr < 7; tr++) attacks |= (1n << BigInt(tr * 8 + c));
+        for (let tr = r - 1; tr > 0; tr--) attacks |= (1n << BigInt(tr * 8 + c));
+        for (let tc = c + 1; tc < 7; tc++) attacks |= (1n << BigInt(r * 8 + tc));
+        for (let tc = c - 1; tc > 0; tc--) attacks |= (1n << BigInt(r * 8 + tc));
+        return attacks;
+    },
 
-        // North
-        for (let r = rank + 1; r < 8; r++) {
-            const tsq = r * 8 + col;
-            attacks |= (1n << BigInt(tsq));
-            if ((occupancy & (1n << BigInt(tsq))) !== 0n) break;
+    maskBishop(sq) {
+        let attacks = 0n;
+        const r = Math.floor(sq / 8);
+        const c = sq % 8;
+        for (let tr = r + 1, tc = c + 1; tr < 7 && tc < 7; tr++, tc++) attacks |= (1n << BigInt(tr * 8 + tc));
+        for (let tr = r - 1, tc = c + 1; tr > 0 && tc < 7; tr--, tc++) attacks |= (1n << BigInt(tr * 8 + tc));
+        for (let tr = r + 1, tc = c - 1; tr < 7 && tc > 0; tr++, tc--) attacks |= (1n << BigInt(tr * 8 + tc));
+        for (let tr = r - 1, tc = c - 1; tr > 0 && tc > 0; tr--, tc--) attacks |= (1n << BigInt(tr * 8 + tc));
+        return attacks;
+    },
+
+    calcRookAttacks(sq, block) {
+        let attacks = 0n;
+        const r = Math.floor(sq / 8);
+        const c = sq % 8;
+        for (let tr = r + 1; tr < 8; tr++) {
+            const t = 1n << BigInt(tr * 8 + c);
+            attacks |= t;
+            if ((block & t) !== 0n) break;
         }
-        // South
-        for (let r = rank - 1; r >= 0; r--) {
-            const tsq = r * 8 + col;
-            attacks |= (1n << BigInt(tsq));
-            if ((occupancy & (1n << BigInt(tsq))) !== 0n) break;
+        for (let tr = r - 1; tr >= 0; tr--) {
+            const t = 1n << BigInt(tr * 8 + c);
+            attacks |= t;
+            if ((block & t) !== 0n) break;
         }
-        // East
-        for (let c = col + 1; c < 8; c++) {
-            const tsq = rank * 8 + c;
-            attacks |= (1n << BigInt(tsq));
-            if ((occupancy & (1n << BigInt(tsq))) !== 0n) break;
+        for (let tc = c + 1; tc < 8; tc++) {
+            const t = 1n << BigInt(r * 8 + tc);
+            attacks |= t;
+            if ((block & t) !== 0n) break;
         }
-        // West
-        for (let c = col - 1; c >= 0; c--) {
-            const tsq = rank * 8 + c;
-            attacks |= (1n << BigInt(tsq));
-            if ((occupancy & (1n << BigInt(tsq))) !== 0n) break;
+        for (let tc = c - 1; tc >= 0; tc--) {
+            const t = 1n << BigInt(r * 8 + tc);
+            attacks |= t;
+            if ((block & t) !== 0n) break;
         }
         return attacks;
     },
 
-    getBishopAttacks(sq, occupancy) {
+    calcBishopAttacks(sq, block) {
         let attacks = 0n;
-        const rank = Math.floor(sq / 8);
-        const col = sq % 8;
-
-        // NE
-        for (let r = rank + 1, c = col + 1; r < 8 && c < 8; r++, c++) {
-            const tsq = r * 8 + c;
-            attacks |= (1n << BigInt(tsq));
-            if ((occupancy & (1n << BigInt(tsq))) !== 0n) break;
+        const r = Math.floor(sq / 8);
+        const c = sq % 8;
+        for (let tr = r + 1, tc = c + 1; tr < 8 && tc < 8; tr++, tc++) {
+            const t = 1n << BigInt(tr * 8 + tc);
+            attacks |= t;
+            if ((block & t) !== 0n) break;
         }
-        // SE
-        for (let r = rank - 1, c = col + 1; r >= 0 && c < 8; r--, c++) {
-            const tsq = r * 8 + c;
-            attacks |= (1n << BigInt(tsq));
-            if ((occupancy & (1n << BigInt(tsq))) !== 0n) break;
+        for (let tr = r - 1, tc = c + 1; tr >= 0 && tc < 8; tr--, tc++) {
+            const t = 1n << BigInt(tr * 8 + tc);
+            attacks |= t;
+            if ((block & t) !== 0n) break;
         }
-        // SW
-        for (let r = rank - 1, c = col - 1; r >= 0 && c >= 0; r--, c--) {
-            const tsq = r * 8 + c;
-            attacks |= (1n << BigInt(tsq));
-            if ((occupancy & (1n << BigInt(tsq))) !== 0n) break;
+        for (let tr = r + 1, tc = c - 1; tr < 8 && tc >= 0; tr++, tc--) {
+            const t = 1n << BigInt(tr * 8 + tc);
+            attacks |= t;
+            if ((block & t) !== 0n) break;
         }
-        // NW
-        for (let r = rank + 1, c = col - 1; r < 8 && c >= 0; r++, c--) {
-            const tsq = r * 8 + c;
-            attacks |= (1n << BigInt(tsq));
-            if ((occupancy & (1n << BigInt(tsq))) !== 0n) break;
+        for (let tr = r - 1, tc = c - 1; tr >= 0 && tc >= 0; tr--, tc--) {
+            const t = 1n << BigInt(tr * 8 + tc);
+            attacks |= t;
+            if ((block & t) !== 0n) break;
         }
         return attacks;
+    },
+
+    transform(occupancy, magic, shift) {
+        return ((occupancy * magic) & 0xFFFFFFFFFFFFFFFFn) >> BigInt(shift);
+    },
+
+    initMagics() {
+        // Optimized init using slower method for now, but fully allocating tables
+        this.rookTable = new BigUint64Array(262144);
+        this.bishopTable = new BigUint64Array(32768);
+
+        let rookIdx = 0;
+        let bishopIdx = 0;
+
+        for(let sq=0; sq<64; sq++) {
+            this.rookMasks[sq] = this.maskRook(sq);
+            const rBits = this.popcnt(this.rookMasks[sq]);
+            this.rookShifts[sq] = 64 - rBits;
+            this.rookOffsets[sq] = rookIdx;
+
+            this.bishopMasks[sq] = this.maskBishop(sq);
+            const bBits = this.popcnt(this.bishopMasks[sq]);
+            this.bishopShifts[sq] = 64 - bBits;
+            this.bishopOffsets[sq] = bishopIdx;
+
+            rookIdx += (1 << rBits);
+            bishopIdx += (1 << bBits);
+        }
+    },
+
+    // The method to get attacks
+    getRookAttacks(sq, occupancy) {
+        return this.calcRookAttacks(sq, occupancy);
+    },
+
+    getBishopAttacks(sq, occupancy) {
+        return this.calcBishopAttacks(sq, occupancy);
     }
 };
 

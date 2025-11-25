@@ -12,7 +12,9 @@ class UCI {
         Ponder: false,
         MultiPV: 1,
         UCI_LimitStrength: false,
-        UCI_Elo: 3000
+        UCI_Elo: 3000,
+        AspirationWindow: 50,
+        Contempt: 0
     };
 
     // Initialize TT
@@ -42,6 +44,8 @@ class UCI {
         this.output(`option name MultiPV type spin default ${this.options.MultiPV} min 1 max 500`);
         this.output(`option name UCI_LimitStrength type check default ${this.options.UCI_LimitStrength}`);
         this.output(`option name UCI_Elo type spin default ${this.options.UCI_Elo} min 100 max 3000`);
+        this.output(`option name AspirationWindow type spin default ${this.options.AspirationWindow} min 10 max 500`);
+        this.output(`option name Contempt type spin default ${this.options.Contempt} min -100 max 100`);
         this.output('uciok');
         break;
 
@@ -95,6 +99,12 @@ class UCI {
          this.currentSearch.search(2, { hardLimit: Infinity }, { debug: true, debugFile: 'debug_tree.json' });
          this.currentSearch = null;
          this.output('info string Debug tree written to debug_tree.json');
+         break;
+
+      case 'bench':
+         // Epic 27: Bench Command
+         const Bench = require('./Bench');
+         Bench.run(this);
          break;
 
       default:
@@ -156,10 +166,22 @@ class UCI {
   }
 
   handleGo(args) {
+    // Epic 29: Searchmoves
+    let searchMoves = null;
+    if (args.includes('searchmoves')) {
+        const idx = args.indexOf('searchmoves');
+        searchMoves = args.slice(idx + 1);
+        // Remove searchmoves from args to avoid confusing other parsers?
+        // Actually, TimeManager parsing logic might get confused if 'wtime' comes after?
+        // Usually 'searchmoves' is at the end.
+        // Let's extract it.
+    }
+
     // Check Opening Book first
     // Only if 'infinite' is NOT present (book moves are instant)
     // And if we are in normal play mode.
     // If 'ponder' is present, we shouldn't play immediately?
+    // Also disable book if searchmoves is set (force analysis).
 
     const isPonder = args.includes('ponder');
     this.pendingBestMove = null;
@@ -207,8 +229,11 @@ class UCI {
     // If hardLimit is Infinity, it runs until depth or stop.
     // If hardLimit is number, Search should respect it.
 
+    // Add searchMoves to options
+    const searchOptions = { ...this.options, searchMoves };
+
     // The search function signature needs update or we pass object
-    const bestMove = this.currentSearch.search(depth, timeLimits, this.options);
+    const bestMove = this.currentSearch.search(depth, timeLimits, searchOptions);
     this.currentSearch = null;
 
     let bestMoveStr = 'bestmove 0000';
