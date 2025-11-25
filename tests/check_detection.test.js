@@ -108,6 +108,24 @@ describe('Attack Detection & Legal Moves', () => {
         expect(destinations).toContain('f1');
     });
 
+    test('Pinned piece cannot move off the pin line', () => {
+      // White King on e1, White Rook on e2, Black Rook on e8.
+      // The White Rook on e2 is pinned and cannot move to d2.
+      board.loadFen('4r3/8/8/8/8/8/4R3/4K3 w - - 0 1');
+      const moves = board.generateMoves();
+      const rookMove = moves.find(m => m.from === 100 && m.to === 99); // e2 to d2
+      expect(rookMove).toBeUndefined();
+    });
+
+    test('King cannot move into an attacked square', () => {
+      // White King on e1, Black Rook on a2.
+      // The King cannot move to d2, which is attacked by the Rook.
+      board.loadFen('8/8/8/8/8/8/r7/4K3 w - - 0 1');
+      const moves = board.generateMoves();
+      const kingMove = moves.find(m => m.from === 116 && m.to === 99); // e1 to d2
+      expect(kingMove).toBeUndefined();
+    });
+
     test('castling prevented if path is attacked', () => {
         // White King e1. Rooks a1, h1.
         // Black Rook on d8. Attacks d file.
