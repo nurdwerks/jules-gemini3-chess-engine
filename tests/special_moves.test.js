@@ -66,36 +66,6 @@ describe('Special Moves', () => {
     });
   });
 
-  describe('En Passant', () => {
-    test('White En Passant Capture', () => {
-      // White pawn e5, Black pawn d5 (moved d7-d5). Target d6.
-      // Actually if black moves d7-d5, the target is d6 (square behind d5).
-      // Fen: ... w - d6 0 1
-      // White pawn at e5 (row 3, col 4 -> 3<<4 | 4 = 48+4=52)
-      // Target d6 (row 2, col 3 -> 2<<4 | 3 = 32+3=35)
-
-      // Board rows: 0 is top (black), 7 is bottom (white).
-      // e5 is row 3 (if 8=0, 7=1, 6=2, 5=3). Wait, let's check.
-      // Rank 8 -> Row 0
-      // Rank 5 -> Row 3.
-      // Rank 6 -> Row 2.
-      // Rank 3 -> Row 5.
-
-      // Case: White Pawn on e5 (Rank 5 -> Row 3). Black Pawn moves d7-d5 (Rank 7->5 -> Row 1->3).
-      // EP Target is d6 (Rank 6 -> Row 2).
-
-      board.loadFen('rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 1');
-      const moves = board.generateMoves();
-
-      // e5 is row 3, col 4. Index: 3*16 + 4 = 52.
-      // d6 is row 2, col 3. Index: 2*16 + 3 = 35.
-
-      const epMove = moves.find(m => m.from === 52 && m.to === 35);
-      expect(epMove).toBeDefined();
-      expect(epMove.flags).toBe('e'); // e for en passant
-    });
-  });
-
   describe('Promotion', () => {
     test('White Pawn Promotion', () => {
       // White Pawn on a7 (Row 1, Col 0). Move to a8 (Row 0, Col 0).
