@@ -14,6 +14,7 @@ class Board {
     this.history = []; // Array of hashes for repetition detection
     this.castling = { w: { k: false, q: false }, b: { k: false, q: false } }; // Backward compatibility structure
     this.castlingRooks = { white: [], black: [] }; // Stores 0x88 indices of castling rooks
+    this.isChess960 = false;
 
     // Bitboards
     this.bitboards = {
@@ -118,36 +119,28 @@ class Board {
           }
       }
 
-      if (move.flags === 'k' || move.flags === 'q' || move.flags === 'k960') {
-          if (move.flags === 'k960') {
+      if (move.flags === 'k' || move.flags === 'q' || move.flags === 'k960' || move.flags === 'q960') {
+          if (move.flags === 'k960' || move.flags === 'q960') {
               const kingSource = move.from;
-              const rookSource = move.to;
-
-              const isKingside = (rookSource & 7) > (kingSource & 7);
+              const rookSource = move.rookSource;
+              const kingTarget = move.to;
+              const isKingside = move.flags === 'k960';
               const rank = move.piece.color === 'white' ? 7 : 0;
-              const kingTargetFile = isKingside ? 6 : 2;
               const rookTargetFile = isKingside ? 5 : 3;
-
-              const kingTarget = (rank << 4) | kingTargetFile;
               const rookTarget = (rank << 4) | rookTargetFile;
 
-              // 'captured' is the rook (it was at move.to/rookSource).
-              // Generic code already removed it from bitboard at rookSource.
-              const rook = captured;
+              const rook = this.squares[rookSource];
 
-              // We need to place the rook at rookTarget.
-              this.toggleBitboard(rook, rookTarget);
-
-              // Generic code placed King at move.to (rookSource).
-              // If kingTarget != rookSource, we must move King.
-              if (kingTarget !== move.to) {
-                  this.toggleBitboard(move.piece, move.to); // Remove King from rookSource
-                  this.toggleBitboard(move.piece, kingTarget); // Place King at kingTarget
-                  this.squares[move.to] = null; // Clear King from rookSource
-              }
+              this.squares[kingSource] = null;
+              this.squares[rookSource] = null;
 
               this.squares[kingTarget] = move.piece;
               this.squares[rookTarget] = rook;
+
+              this.toggleBitboard(move.piece, kingSource);
+              this.toggleBitboard(move.piece, kingTarget);
+              this.toggleBitboard(rook, rookSource);
+              this.toggleBitboard(rook, rookTarget);
           } else {
               if (move.piece.color === 'white') {
                   if (move.flags === 'k') {
@@ -218,36 +211,28 @@ class Board {
           this.toggleBitboard(capturedPawn, captureSq);
       }
 
-      if (move.flags === 'k' || move.flags === 'q' || move.flags === 'k960') {
-          if (move.flags === 'k960') {
+      if (move.flags === 'k' || move.flags === 'q' || move.flags === 'k960' || move.flags === 'q960') {
+          if (move.flags === 'k960' || move.flags === 'q960') {
               const kingSource = move.from;
-              const rookSource = move.to;
-              const isKingside = (rookSource & 7) > (kingSource & 7);
+              const rookSource = move.rookSource;
+              const kingTarget = move.to;
+              const isKingside = move.flags === 'k960';
               const rank = move.piece.color === 'white' ? 7 : 0;
-              const kingTarget = (rank << 4) | (isKingside ? 6 : 2);
-              const rookTarget = (rank << 4) | (isKingside ? 5 : 3);
-
-              if (kingTarget !== kingSource) {
-                  this.squares[kingTarget] = null;
-              }
+              const rookTargetFile = isKingside ? 5 : 3;
+              const rookTarget = (rank << 4) | rookTargetFile;
 
               const rook = this.squares[rookTarget];
+
+              this.squares[kingTarget] = null;
               this.squares[rookTarget] = null;
+
+              this.squares[kingSource] = move.piece;
               this.squares[rookSource] = rook;
 
+              this.toggleBitboard(move.piece, kingTarget);
+              this.toggleBitboard(move.piece, kingSource);
               this.toggleBitboard(rook, rookTarget);
               this.toggleBitboard(rook, rookSource);
-
-              if (kingTarget !== move.to) {
-                  this.toggleBitboard(move.piece, kingTarget);
-                  this.bitboards[color] ^= toBit;
-                  this.bitboards[pieceType] ^= toBit;
-              }
-
-              if (rookTarget === kingSource) {
-                  this.squares[kingSource] = move.piece;
-              }
-
           } else {
               this.squares[move.to] = null;
               if (move.piece.color === 'white') {
@@ -449,17 +434,15 @@ class Board {
                    continue;
                }
 
-               const isStandardWhiteK = (from0x88 === 116 && rookIndex === 119);
-               const isStandardWhiteQ = (from0x88 === 116 && rookIndex === 112);
-               const isStandardBlackK = (from0x88 === 4 && rookIndex === 7);
-               const isStandardBlackQ = (from0x88 === 4 && rookIndex === 0);
-
-               if (isStandardWhiteK || isStandardBlackK) {
-                   moves.push({ from: from0x88, to: kingTargetIndex, flags: 'k', piece: piece });
-               } else if (isStandardWhiteQ || isStandardBlackQ) {
-                   moves.push({ from: from0x88, to: kingTargetIndex, flags: 'q', piece: piece });
+               if (this.isChess960) {
+                    const flag = isKingside ? 'k960' : 'q960';
+                    moves.push({ from: from0x88, to: kingTargetIndex, flags: flag, piece: piece, rookSource: rookIndex });
                } else {
-                   moves.push({ from: from0x88, to: rookIndex, flags: 'k960', piece: piece });
+                   if (isKingside) {
+                       moves.push({ from: from0x88, to: kingTargetIndex, flags: 'k', piece: piece });
+                   } else {
+                       moves.push({ from: from0x88, to: kingTargetIndex, flags: 'q', piece: piece });
+                   }
                }
            }
         }
@@ -559,6 +542,7 @@ class Board {
 
     const [placement, activeColor, castling, enPassant, halfMove, fullMove] = parts;
     this.squares.fill(null);
+    this.isChess960 = false;
     // Reset Bitboards
     this.bitboards = { white: 0n, black: 0n, pawn: 0n, knight: 0n, bishop: 0n, rook: 0n, queen: 0n, king: 0n };
 
@@ -708,8 +692,10 @@ class Board {
           } else {
               const code = char.charCodeAt(0);
               if (code >= 65 && code <= 72) {
+                  this.isChess960 = true;
                   this.addCastlingRook('white', code - 65);
               } else if (code >= 97 && code <= 104) {
+                  this.isChess960 = true;
                   this.addCastlingRook('black', code - 97);
               }
           }
