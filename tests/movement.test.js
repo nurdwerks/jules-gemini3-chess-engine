@@ -8,41 +8,39 @@ describe('Piece Movement Logic', () => {
     board = new Board();
   });
 
+  const findMove = (moves, r1, c1, r2, c2) => {
+    const from = (r1 << 4) | c1;
+    const to = (r2 << 4) | c2;
+    return moves.find(m => m.from === from && m.to === to);
+  };
+
   test('pawn basic movement (white)', () => {
-    // White pawn at 6, 0 moving to 5, 0
-    const start = { row: 6, col: 0 };
-    const end = { row: 5, col: 0 };
-    expect(board.isValidMove(start, end)).toBe(true);
+    board.loadFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+    const moves = board.generateMoves();
+    expect(findMove(moves, 6, 0, 5, 0)).toBeTruthy();
   });
 
   test('pawn basic movement (black)', () => {
-    // Black pawn at 1, 0 moving to 2, 0
-    const start = { row: 1, col: 0 };
-    const end = { row: 2, col: 0 };
-    expect(board.isValidMove(start, end)).toBe(true);
+    board.loadFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1');
+    const moves = board.generateMoves();
+    expect(findMove(moves, 1, 0, 2, 0)).toBeTruthy();
   });
 
   test('pawn cannot move backwards', () => {
-    // White pawn trying to move back
-    // Let's test a valid position first, say we move a pawn to 5,0 manually then try to move back
-    board.placePiece(5, 0, new Piece('white', 'pawn'));
-    board.placePiece(6, 0, null);
-
-    const start = { row: 5, col: 0 };
-    const end = { row: 6, col: 0 };
-    expect(board.isValidMove(start, end)).toBe(false);
+    board.loadFen('rnbqkbnr/p1pppppp/8/1p6/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+    const moves = board.generateMoves();
+    expect(findMove(moves, 3, 1, 4, 1)).toBeFalsy();
   });
 
   test('pawn initial double move', () => {
-     // White pawn at 6, 1 moving to 4, 1
-     const start = { row: 6, col: 1 };
-     const end = { row: 4, col: 1 };
-     expect(board.isValidMove(start, end)).toBe(true);
+    board.loadFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+    const moves = board.generateMoves();
+    expect(findMove(moves, 6, 1, 4, 1)).toBeTruthy();
   });
 
   test('pawn invalid move (sideways)', () => {
-      const start = { row: 6, col: 1 };
-      const end = { row: 6, col: 2 };
-      expect(board.isValidMove(start, end)).toBe(false);
+    board.loadFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+    const moves = board.generateMoves();
+    expect(findMove(moves, 6, 1, 6, 2)).toBeFalsy();
   });
 });

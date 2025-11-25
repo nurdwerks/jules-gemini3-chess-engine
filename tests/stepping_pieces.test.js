@@ -6,8 +6,7 @@ describe('Stepping Pieces Movement (Story 1.3b)', () => {
 
   beforeEach(() => {
     board = new Board();
-    // Clear the board for specific setups
-    board.squares.fill(null);
+    board.loadFen('8/8/8/8/8/8/8/8 w - - 0 1');
   });
 
   // Helper to get moves in a friendly format

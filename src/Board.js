@@ -294,9 +294,8 @@ class Board {
     return this.squares[index];
   }
 
-  isInCheck() {
-      const kingColor = this.activeColor === 'w' ? 'white' : 'black';
-      const opponentColor = this.activeColor === 'w' ? 'black' : 'white';
+  isKingInCheck(kingColor) {
+      const opponentColor = kingColor === 'white' ? 'black' : 'white';
       let kingIndex = -1;
       for (let i = 0; i < 128; i++) {
           if (this.isValidSquare(i)) {
@@ -307,8 +306,15 @@ class Board {
               }
           }
       }
-      if (kingIndex === -1) return false;
+      if (kingIndex === -1) {
+          return false;
+      }
       return this.isSquareAttacked(kingIndex, opponentColor);
+  }
+
+  isInCheck() {
+      const kingColor = this.activeColor === 'w' ? 'white' : 'black';
+      return this.isKingInCheck(kingColor);
   }
 
   isSquareAttacked(squareIndex, attackingSide) {
@@ -538,15 +544,13 @@ class Board {
         pawns &= (pawns - 1n);
     }
 
-    const legalMoves = [];
-    for (const move of moves) {
-        const captured = this.makeMove(move);
-        if (!this.isInCheck()) {
-            legalMoves.push(move);
-        }
-        this.unmakeMove(move, captured);
-    }
-    return legalMoves;
+    const movingColor = this.activeColor === 'w' ? 'white' : 'black';
+    return moves.filter(move => {
+      const state = this.applyMove(move);
+      const legal = !this.isKingInCheck(movingColor);
+      this.undoApplyMove(move, state);
+      return legal;
+    });
   }
 
   loadFen(fen) {
