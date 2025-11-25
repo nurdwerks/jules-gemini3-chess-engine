@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const boardElement = document.getElementById('chessboard');
     const statusElement = document.getElementById('status');
     const engineOutputElement = document.getElementById('engine-output');
+    const uciOptionsElement = document.getElementById('uci-options');
     const newGameBtn = document.getElementById('new-game-btn');
     const flipBoardBtn = document.getElementById('flip-board-btn');
 
@@ -32,7 +33,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // logToOutput(msg);
 
             const parts = msg.split(' ');
-            if (parts[0] === 'uciok') {
+            if (msg.startsWith('option name')) {
+                parseOption(msg);
+            } else if (parts[0] === 'uciok') {
                 socket.send('isready');
             } else if (parts[0] === 'readyok') {
                 if (!gameStarted) {
@@ -64,6 +67,135 @@ document.addEventListener('DOMContentLoaded', () => {
         line.textContent = msg;
         engineOutputElement.appendChild(line);
         engineOutputElement.scrollTop = engineOutputElement.scrollHeight;
+    }
+
+    function parseOption(line) {
+        // Format: option name <name> type <type> [default <default>] [min <min>] [max <max>] [var <var>]
+        const parts = line.split(' ');
+        let nameIdx = parts.indexOf('name');
+        let typeIdx = parts.indexOf('type');
+
+        if (nameIdx === -1 || typeIdx === -1) return;
+
+        // Extract name (can be multiple words)
+        const name = parts.slice(nameIdx + 1, typeIdx).join(' ');
+        const type = parts[typeIdx + 1];
+
+        // Helper to find value between keywords
+        const getVal = (key) => {
+             const start = parts.indexOf(key);
+             if (start === -1) return null;
+             // Find end: next keyword or end of string
+             // Keywords: name, type, default, min, max, var
+             const keywords = ['name', 'type', 'default', 'min', 'max', 'var'];
+             let end = parts.length;
+             for (let i = start + 1; i < parts.length; i++) {
+                 if (keywords.includes(parts[i])) {
+                     end = i;
+                     break;
+                 }
+             }
+             return parts.slice(start + 1, end).join(' ');
+        };
+
+        const defaultValue = getVal('default');
+        const min = getVal('min');
+        const max = getVal('max');
+
+        // Handle vars for combo
+        const vars = [];
+        parts.forEach((part, index) => {
+            if (part === 'var') {
+                // The value follows 'var', might be multi-word
+                // But UCI spec says "var <value>". If value has spaces, it might be tricky without quotes.
+                // However, standard UCI often assumes single tokens or predictable parsing.
+                // Let's assume 'var' takes the rest until next keyword.
+                 const keywords = ['name', 'type', 'default', 'min', 'max', 'var'];
+                 let end = parts.length;
+                 for (let i = index + 1; i < parts.length; i++) {
+                     if (keywords.includes(parts[i])) {
+                         end = i;
+                         break;
+                     }
+                 }
+                 vars.push(parts.slice(index + 1, end).join(' '));
+            }
+        });
+
+        createOptionUI(name, type, defaultValue, min, max, vars);
+    }
+
+    function createOptionUI(name, type, defaultValue, min, max, vars) {
+        const container = document.createElement('div');
+        container.classList.add('option-item');
+
+        const label = document.createElement('label');
+        label.textContent = name + ': ';
+        container.appendChild(label);
+
+        let input;
+
+        if (type === 'spin') {
+            input = document.createElement('input');
+            input.type = 'number';
+            if (min) input.min = min;
+            if (max) input.max = max;
+            if (defaultValue) input.value = defaultValue;
+
+            input.addEventListener('change', () => {
+                sendOption(name, input.value);
+            });
+        } else if (type === 'check') {
+            input = document.createElement('input');
+            input.type = 'checkbox';
+            if (defaultValue === 'true') input.checked = true;
+
+            input.addEventListener('change', () => {
+                sendOption(name, input.checked);
+            });
+        } else if (type === 'string') {
+            input = document.createElement('input');
+            input.type = 'text';
+            if (defaultValue) input.value = defaultValue;
+
+            input.addEventListener('change', () => {
+                sendOption(name, input.value);
+            });
+        } else if (type === 'button') {
+            input = document.createElement('button');
+            input.textContent = 'Trigger';
+            input.addEventListener('click', () => {
+                sendOption(name);
+            });
+        } else if (type === 'combo') {
+             input = document.createElement('select');
+             if (vars) {
+                 vars.forEach(v => {
+                     const option = document.createElement('option');
+                     option.value = v;
+                     option.textContent = v;
+                     if (v === defaultValue) option.selected = true;
+                     input.appendChild(option);
+                 });
+             }
+             input.addEventListener('change', () => {
+                 sendOption(name, input.value);
+             });
+        }
+
+        if (input) {
+            container.appendChild(input);
+            uciOptionsElement.appendChild(container);
+        }
+    }
+
+    function sendOption(name, value) {
+        let command = `setoption name ${name}`;
+        if (value !== undefined) {
+            command += ` value ${value}`;
+        }
+        socket.send(command);
+        logToOutput(`> ${command}`);
     }
 
     function initBoard() {

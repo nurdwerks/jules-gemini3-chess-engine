@@ -79,3 +79,35 @@ button {
     border: 1px solid #555;
     white-space: pre-wrap;
 }
+
+#uci-options-container {
+    background-color: #444;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+#uci-options-container h3 {
+    margin-top: 0;
+    font-size: 16px;
+    border-bottom: 1px solid #666;
+    padding-bottom: 5px;
+}
+
+.option-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.option-item label {
+    flex: 1;
+}
+
+.option-item input[type="number"],
+.option-item input[type="text"] {
+    width: 80px;
+    padding: 2px;
+}
