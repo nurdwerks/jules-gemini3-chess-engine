@@ -1,5 +1,6 @@
 const Evaluation = require('./Evaluation');
 const { TranspositionTable, TT_FLAG } = require('./TranspositionTable');
+const SEE = require('./SEE');
 
 class Search {
   constructor(board, tt = null) {
@@ -85,6 +86,7 @@ class Search {
     const startTime = Date.now();
     let bestMove = null;
     let bestScore = -Infinity;
+        let persistentBestMove = null; // Keep track across ID iterations
 
     // Timer/Node check function attached to instance
     let checkMask = 2047;
@@ -121,9 +123,151 @@ class Search {
              this.debugTree.iteration = depth;
         }
 
-        const move = this.rootAlphaBeta(depth, -Infinity, Infinity);
+        // Aspiration Windows
+        let alpha = -Infinity;
+        let beta = Infinity;
+        const windowSize = options.AspirationWindow || 50;
 
-        // After depth complete
+        if (depth > 1) {
+            alpha = bestScore - windowSize;
+            beta = bestScore + windowSize;
+        }
+
+        let move = null;
+        let result = null;
+
+        while (true) {
+             result = this.rootAlphaBeta(depth, alpha, beta);
+             move = result.move;
+
+             // Check if stopped during root search
+             if (this.stopFlag) {
+                 if (move) bestMove = move;
+                 // If we stopped, we must break. But we might have a valid partial result.
+                 break;
+             }
+
+             const val = result.score;
+
+             // Safety check: if val is null/undefined (e.g. no moves?), break
+             if (val === undefined || val === null) break;
+
+             // If we found a move, update bestMove (even if we re-search)
+             if (move) bestMove = move;
+
+             // Fail Low
+             if (val <= alpha) {
+                 if (alpha === -Infinity) {
+                     bestMove = move;
+                     bestScore = val;
+                     break;
+                 }
+                 alpha = -Infinity;
+                 continue;
+             }
+             // Fail High
+             if (val >= beta) {
+                 if (beta === Infinity) {
+                     bestMove = move;
+                     bestScore = val;
+                     break;
+                 }
+                 beta = Infinity;
+                 continue;
+             }
+
+             // Exact
+             bestMove = move;
+             bestScore = val;
+             break;
+        }
+
+        // Ensure we set bestMove if it was set inside the loop (redundant but safe)
+        // Actually bestMove is updated in the loop.
+
+        // Fallback if loop somehow exited without setting bestMove (e.g. immediate stop)
+        // If we have a result.move, it's the best we found in that partial search.
+        if (!bestMove && result && result.move) {
+            bestMove = result.move;
+        }
+
+        // Safety fallback if bestMove is STILL null (e.g. interrupted before any move found in depth 1?)
+        // If depth > 1, we should have bestMove from previous depth.
+        // But Search resets bestMove to null at start of search.
+        // In ID loop, bestMove persists? No, let bestMove = null inside search() scope.
+        // Wait, bestMove is local to search().
+        // In ID loop: `if (move) bestMove = move;`
+        // `move` comes from `rootAlphaBeta`.
+        // If `rootAlphaBeta` failed immediately (stopFlag), it returns whatever it found.
+        // If it found nothing, it returns null.
+        // If we have NO move, we can't output bestmove 0000.
+        // We should use previous iteration bestMove if available.
+        // But `bestMove` variable accumulates across depths?
+        // Yes: `let bestMove = null;` outside loop.
+        // Inside loop: `bestMove = move;`
+        // But wait, `move` is result of `rootAlphaBeta`.
+        // If `rootAlphaBeta` returns valid result, update.
+
+        // If depth 1 fails to find ANY move (e.g. mate/stalemate), bestMove remains null.
+        // If no legal moves, it returns { move: null, score: -Inf }.
+        // Then we return null.
+        // UCI expects 'bestmove (none)' or similar if mate?
+        // Or 'bestmove 0000' if no moves?
+        // But `position startpos` has moves.
+        // If `test_aspiration.js` outputs `bestmove 0000`, it means `bestMove` is null.
+        // This means `rootAlphaBeta` returned null move even at depth 1.
+        // Why?
+        // `rootAlphaBeta`: `const moves = this.board.generateMoves();`
+        // If moves.length > 0, it loops.
+        // `bestMove` starts null.
+        // Loop finds `bestScore` and `bestMove`.
+        // `score > bestScore` (-Inf).
+        // First move will update bestMove.
+        // UNLESS `stopFlag` is set immediately.
+        // `test_aspiration.js` runs `go depth 4`. No stop.
+        // So it should run.
+        // Did `checkLimits` return true immediately?
+        // `this.nodes` starts at 0. `checkMask` depends on `maxNodes`.
+        // `UCI_LimitStrength` is false by default. `maxNodes` = Infinity.
+        // `checkMask` = 2047.
+        // `this.nodes & checkMask`.
+        // `timeLimits`: hard/soft Infinity?
+        // `test_aspiration.js`: `go depth 4`.
+        // `UCI.js`: if no wtime/movetime, `timeLimits` = Infinity.
+        // So `checkLimits` should return false.
+
+        // Maybe `AspirationWindow` logic failed?
+        // Depth 1: `alpha = -Inf, beta = Inf`.
+        // Loop runs.
+        // `val` returned.
+        // `if (val <= alpha)` -> `if (val <= -Inf)` -> False (unless -Inf).
+        // `if (val >= beta)` -> `if (val >= Inf)` -> False.
+        // Break.
+        // `bestMove = move`.
+        // So depth 1 should work.
+
+        // Depth 2: `alpha = score - 25`.
+        // If `rootAlphaBeta` returns null move?
+        // `rootAlphaBeta` ALWAYS returns a move if it found one better than -Inf.
+        // Wait, `bestScore` starts at -Inf.
+        // If all moves are -Inf (illegal?? No, legal moves).
+        // Score should be > -Inf.
+        // So `bestMove` should be set.
+
+        // Is it possible `rootAlphaBeta` returned `move: null`?
+        // Only if `moves` is empty.
+        // Startpos has moves.
+
+        // Maybe `options.AspirationWindow` is undefined?
+        // I added it to UCI options.
+        // Default 50.
+        // Passed to search.
+        // `const windowSize = options.AspirationWindow || 50;`
+        // Should be 25.
+
+        // Let's add console.log in Search.js to debug.
+
+        // After depth complete (or aborted)
         this.checkLimits();
 
         // Soft limit check
@@ -157,19 +301,11 @@ class Search {
              }
         }
 
+        if (bestMove) persistentBestMove = bestMove;
+
         if (this.stopFlag) {
-            // If we completed the depth, use the result.
-            // If we aborted in the middle (rootAlphaBeta returned null or partial), use previous best.
-            // My rootAlphaBeta returns valid move even if aborted? No, it might be partial.
-            // However, rootAlphaBeta logic:
-            // "if (this.stopFlag) return bestMove;" -> returns best move found SO FAR in that depth.
-            // This is safer than returning null.
-            if (move) bestMove = move;
-            else if (!bestMove) bestMove = move; // If depth 1 failed?
             break;
         }
-
-        bestMove = move;
     // Error Injection (Blunder Logic)
     if (options.UCI_LimitStrength && options.UCI_Elo && bestMove) {
         // Simple blunder chance: (2000 - Elo) / 10000
@@ -216,11 +352,11 @@ class Search {
         console.log(`Search Stats: Nodes=${this.nodes} NullMove=${this.stats.pruning.nullMove} Futility=${this.stats.pruning.futility}`);
     }
 
-    return bestMove;
+    return persistentBestMove || bestMove;
   }
 
   rootAlphaBeta(depth, alpha, beta) {
-      // Similar to alphaBeta but returns the Move
+      // Similar to alphaBeta but returns object { move, score }
       let bestMove = null;
       let bestScore = -Infinity;
 
@@ -229,14 +365,14 @@ class Search {
       let ttMove = ttEntry ? ttEntry.move : null;
 
       const moves = this.board.generateMoves();
-      if (moves.length === 0) return null;
+      if (moves.length === 0) return { move: null, score: -Infinity };
 
       // Move Ordering
       this.orderMoves(moves, ttMove, depth);
 
       for (const move of moves) {
           // Check stop condition
-          if (this.checkLimits()) return bestMove;
+          if (this.checkLimits()) return { move: bestMove, score: bestScore };
 
           // Debug Logging
           let debugNode = null;
@@ -264,7 +400,7 @@ class Search {
               this.currentDebugNode = prevDebugNode;
           }
 
-          if (this.stopFlag) return bestMove; // Abort
+          if (this.stopFlag) return { move: bestMove, score: bestScore }; // Abort
 
           if (score > bestScore) {
               bestScore = score;
@@ -280,7 +416,7 @@ class Search {
           this.tt.save(this.board.zobristKey, bestScore, depth, TT_FLAG.EXACT, bestMove);
       }
 
-      return bestMove;
+      return { move: bestMove, score: bestScore };
   }
 
   alphaBeta(depth, alpha, beta) {
@@ -485,11 +621,20 @@ class Search {
         }
 
         const scoreMove = (m) => {
-             // Captures: MVV-LVA
+             // Captures: MVV-LVA and SEE
              if (m.flags.includes('c')) {
+                 // SEE Score
+                 const seeScore = SEE.see(this.board, m);
+                 if (seeScore < 0) {
+                     // Bad capture: Score low (below quiet moves but above pure losing moves?)
+                     // Usually bad captures are ordered after killer/history.
+                     return -1000000 + seeScore;
+                 }
+
+                 // Good capture
                  const victim = m.captured ? this.getPieceValue(m.captured) : 0;
                  const attacker = this.getPieceValue(m.piece);
-                 return 1000000 + victim * 10 - attacker;
+                 return 1000000 + victim * 10 - attacker + seeScore; // Break ties with SEE
              }
 
              // Quiet Moves
@@ -541,6 +686,8 @@ class Search {
       });
 
       for (const move of captures) {
+          // SEE Pruning
+          if (SEE.see(this.board, move) < 0) continue;
           const state = this.board.applyMove(move);
           const score = -this.quiescence(-beta, -alpha);
           this.board.undoApplyMove(move, state);
