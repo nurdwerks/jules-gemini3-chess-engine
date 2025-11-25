@@ -18,11 +18,17 @@ describe('Endgame Tablebases (Syzygy)', () => {
         if (fs.existsSync(mockFile)) fs.unlinkSync(mockFile);
     });
 
-    test('Syzygy Header Parser reads magic', () => {
+    test('Syzygy Header Parser reads magic', async () => {
         const syzygy = new Syzygy();
-        const success = syzygy.loadTable(mockFile);
+        const success = await syzygy.loadTable(mockFile);
         expect(success).toBe(true);
         expect(syzygy.tables[mockFile].magic).toBe(0x71525554);
+    });
+
+    test('Syzygy loadTable returns false on non-existent file', async () => {
+        const syzygy = new Syzygy();
+        const success = await syzygy.loadTable('non-existent-file.rtbw');
+        expect(success).toBe(false);
     });
 
     test('Syzygy Index Calculation (Binomial)', () => {
