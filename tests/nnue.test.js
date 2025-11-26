@@ -44,24 +44,36 @@ describe('NNUE', () => {
         expect(incrementalAccumulator.black).toEqual(refreshAccumulator.black);
     });
 
-    // This test is skipped because the logic for Chess960 castling is not yet correct.
-    test.skip('incremental update should match full refresh for Chess960 castling', () => {
+    test('incremental update should match full refresh for Chess960 castling', () => {
         const board = new Board();
-        board.loadFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1');
-        const accumulator = new Accumulator();
-        nnue.refreshAccumulator(accumulator, board);
+        board.loadFen('5k1r/8/8/8/8/8/8/5K1R w FHfh - 0 1');
 
         const moves = board.generateMoves();
-        const move = moves.find(m => m.flags === 'k'); // Standard kingside castling
+        const move = moves.find(m => m.flags === 'k960');
+        const boardAfterMove = board.clone();
+        boardAfterMove.makeMove(move);
 
+        const refreshAccumulator = new Accumulator();
+        nnue.refreshAccumulator(refreshAccumulator, boardAfterMove);
+
+        const accumulatorBefore = new Accumulator();
+        nnue.refreshAccumulator(accumulatorBefore, board);
+        const incrementalAccumulator = accumulatorBefore.clone();
         const changes = nnue.getChangedIndices(board, move, null);
 
-        const incrementalAccumulator = accumulator.clone();
-        nnue.updateAccumulator(incrementalAccumulator, changes);
+        if (changes.white.refresh) {
+            incrementalAccumulator.white.set(refreshAccumulator.white);
+        } else {
+            const whiteOnlyChanges = { white: changes.white, black: { added: [], removed: [] }};
+            nnue.updateAccumulator(incrementalAccumulator, whiteOnlyChanges);
+        }
 
-        board.makeMove(move);
-        const refreshAccumulator = new Accumulator();
-        nnue.refreshAccumulator(refreshAccumulator, board);
+        if (changes.black.refresh) {
+            incrementalAccumulator.black.set(refreshAccumulator.black);
+        } else {
+            const blackOnlyChanges = { white: { added: [], removed: [] }, black: changes.black };
+            nnue.updateAccumulator(incrementalAccumulator, blackOnlyChanges);
+        }
 
         expect(incrementalAccumulator.white).toEqual(refreshAccumulator.white);
         expect(incrementalAccumulator.black).toEqual(refreshAccumulator.black);
