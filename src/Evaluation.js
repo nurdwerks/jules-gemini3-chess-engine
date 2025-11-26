@@ -104,6 +104,16 @@ const KING_PST_MIDGAME = [
      20, 30, 10,  0,  0, 10, 30, 20,  0,0,0,0,0,0,0,0
 ];
 
+const FILE_MASKS = [
+    0x0101010101010101n, 0x0202020202020202n, 0x0404040404040404n, 0x0808080808080808n,
+    0x1010101010101010n, 0x2020202020202020n, 0x4040404040404040n, 0x8080808080808080n
+];
+
+const RANK_MASKS = [
+    0xFFn, 0xFF00n, 0xFF0000n, 0xFF000000n,
+    0xFF00000000n, 0xFF0000000000n, 0xFF000000000000n, 0xFF00000000000000n
+];
+
 const PSTS = {
     'pawn': PAWN_PST,
     'knight': KNIGHT_PST,
@@ -128,6 +138,43 @@ class Evaluation {
         } catch (error) {
             console.error('Error loading tuned parameters, using defaults:', error);
         }
+    }
+
+    static isPassedPawn(board, squareIndex) {
+        const piece = board.squares[squareIndex];
+        if (!piece || piece.type !== 'pawn') {
+            return false;
+        }
+
+        const color = piece.color;
+        const opponentColor = color === 'white' ? 'black' : 'white';
+        const sq64 = Bitboard.to64(squareIndex);
+        const rank = Math.floor(sq64 / 8);
+        const col = sq64 % 8;
+
+        let fileMask = FILE_MASKS[col];
+        if (col > 0) {
+            fileMask |= FILE_MASKS[col - 1];
+        }
+        if (col < 7) {
+            fileMask |= FILE_MASKS[col + 1];
+        }
+
+        let rankMask = 0n;
+        if (color === 'white') {
+            for (let r = rank + 1; r < 8; r++) {
+                rankMask |= RANK_MASKS[r];
+            }
+        } else {
+            for (let r = 0; r < rank; r++) {
+                rankMask |= RANK_MASKS[r];
+            }
+        }
+
+        const finalMask = fileMask & rankMask;
+        const opponentPawns = board.bitboards.pawn & board.bitboards[opponentColor];
+
+        return (finalMask & opponentPawns) === 0n;
     }
 
     static evaluate(board) {

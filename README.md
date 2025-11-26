@@ -10,15 +10,6 @@ Benchmarking functions can be written and verified, but performance-critical ben
 
 The following enhancements outline the next phase of development, focusing on competitive strength, optimization, and advanced features.
 
-### Epic 38: Passed Pawn Extensions
-**Size:** Small (1 day)
-**Description:** Extend search depth when a pawn is passed and advanced (Rank 6/7).
-**User Stories:**
-1.  **Detection & Extension (S)**
-    *   *Description:* Identify advanced passed pawns and add extensions.
-    *   *Acceptance Criteria:*
-        *   [ ] Finds promotion tactics faster.
-
 ### Epic 39: Code Cleanup & Strict Typing
 **Size:** Large (1 week)
 **Description:** Refactor codebase for maintainability and type safety (preparation for TypeScript migration or JSDoc enforcement).
