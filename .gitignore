@@ -1,3 +1,4 @@
 node_modules/
 tuning_data.epd
 tuned_evaluation_params.json
+*.log

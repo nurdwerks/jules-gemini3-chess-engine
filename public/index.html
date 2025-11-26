@@ -4,21 +4,55 @@
   <meta charset="UTF-8">
   <title>Jules & Gemini Chess</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <h1>Jules & Gemini Chess</h1>
-  <div id="game-container">
-    <div id="chessboard"></div>
-    <div id="controls">
-        <button id="new-game-btn">New Game</button>
-        <button id="flip-board-btn">Flip Board</button>
-        <div id="status">Status: Disconnected</div>
-        <div id="uci-options-container">
-            <h3>UCI Options</h3>
-            <div id="uci-options"></div>
+  <div class="container">
+    <header class="main-header">
+        <h1>Jules & Gemini Chess</h1>
+    </header>
+    <main id="dashboard">
+        <div class="panel chessboard-panel">
+            <div class="panel-header">
+                <h2 class="panel-title">Board</h2>
+            </div>
+            <div class="panel-content">
+                <div id="chessboard"></div>
+            </div>
         </div>
-        <div id="engine-output"></div>
-    </div>
+        <div class="sidebar">
+            <div class="panel controls-panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">Game Controls</h2>
+                </div>
+                <div class="panel-content">
+                     <div id="status">Status: Disconnected</div>
+                     <div class="button-group">
+                        <button id="new-game-btn">New Game</button>
+                        <button id="flip-board-btn">Flip Board</button>
+                     </div>
+                </div>
+            </div>
+            <div class="panel uci-options-panel">
+                 <div class="panel-header">
+                    <h2 class="panel-title">Engine Options</h2>
+                </div>
+                <div class="panel-content" id="uci-options">
+                    <!-- UCI options will be generated here -->
+                </div>
+            </div>
+            <div class="panel engine-output-panel">
+                 <div class="panel-header">
+                    <h2 class="panel-title">Engine Output</h2>
+                </div>
+                <div class="panel-content">
+                    <div id="engine-output"></div>
+                </div>
+            </div>
+        </div>
+    </main>
   </div>
   <script src="client.js"></script>
 </body>
