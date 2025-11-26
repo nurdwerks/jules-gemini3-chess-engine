@@ -65,8 +65,9 @@ class Search {
   }
 
   // Iterative Deepening Search
-  search(maxDepth = 5, timeLimits = { hardLimit: 1000, softLimit: 1000 }, options = {}) {
+  search(maxDepth = 5, timeLimits = { hardLimit: 1000, softLimit: 1000 }, options = {}, timeManager = null) {
     this.options = options;
+    this.isStable = false;
 
     if (this.options.UCI_UseNNUE && this.nnue && this.nnue.network) {
         this.accumulatorStack = [new Accumulator()];
@@ -110,7 +111,9 @@ class Search {
     const startTime = Date.now();
     let bestMove = null;
     let bestScore = -Infinity;
-        let persistentBestMove = null; // Keep track across ID iterations
+    let persistentBestMove = null; // Keep track across ID iterations
+    let lastBestMove = null;
+    let stableMoveCount = 0;
 
     // Timer/Node check function attached to instance
     let checkMask = 2047;
@@ -297,33 +300,47 @@ class Search {
 
         // Soft limit check
         if (timeLimits.softLimit !== Infinity && !this.stopFlag) {
-             const elapsed = Date.now() - startTime;
-             let limit = timeLimits.softLimit;
+            const elapsed = Date.now() - startTime;
+            let limit = timeLimits.softLimit;
 
-             // Panic logic:
-             // If we have a previous best score (from bestScore variable), and current score is much worse?
-             // 'bestScore' tracks score from PREVIOUS depths.
-             // 'score' (probed above) was before this depth ran, so it's useless.
-             // We need score AFTER this depth.
-             const newEntry = this.tt.probe(this.board.zobristKey);
-             const currentScore = newEntry && newEntry.depth === depth ? newEntry.score : -Infinity;
+            // Track search stability
+            if (lastBestMove && bestMove && lastBestMove.from === bestMove.from && lastBestMove.to === bestMove.to) {
+                stableMoveCount++;
+            } else {
+                stableMoveCount = 0;
+            }
+            lastBestMove = bestMove;
 
-             // If we dropped > 60cp (approx 0.6 pawn) from previous best, extend time.
-             if (depth > 1 && bestScore > -10000 && currentScore > -10000) {
-                 if (bestScore - currentScore > 60) {
-                     // Panic! Extend soft limit to hard limit (or halfway)
-                     limit = Math.min(timeLimits.hardLimit, limit * 2);
-                 }
-             }
+            this.isStable = stableMoveCount >= 2;
 
-             if (elapsed >= limit) {
-                 this.stopFlag = true;
-             }
+            // Panic logic:
+            const newEntry = this.tt.probe(this.board.zobristKey);
+            const currentScore = newEntry && newEntry.depth === depth ? newEntry.score : -Infinity;
 
-             // Update bestScore for next depth comparison
-             if (newEntry && newEntry.flag === TT_FLAG.EXACT) {
-                 bestScore = newEntry.score;
-             }
+            if (depth > 1 && bestScore > -10000 && currentScore > -10000) {
+                if (bestScore - currentScore > 60) {
+                    limit = Math.min(timeLimits.hardLimit, limit * 2);
+                    this.isStable = false; // Score is unstable
+                }
+            }
+
+            if (timeManager) {
+                if (timeManager.shouldStop(elapsed, limit, this.isStable)) {
+                    this.stopFlag = true;
+                }
+            } else { // Fallback for bench or tests
+                if (elapsed >= limit && this.isStable) {
+                    this.stopFlag = true;
+                }
+                if (elapsed >= timeLimits.hardLimit) {
+                   this.stopFlag = true;
+                }
+            }
+
+            // Update bestScore for next depth comparison
+            if (newEntry && newEntry.flag === TT_FLAG.EXACT) {
+                bestScore = newEntry.score;
+            }
         }
 
         if (bestMove) persistentBestMove = bestMove;

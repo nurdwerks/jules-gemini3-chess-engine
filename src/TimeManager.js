@@ -25,8 +25,9 @@ class TimeManager {
      * Parse UCI 'go' command arguments.
      * @param {string[]} args
      * @param {string} color 'w' or 'b'
+     * @param {Board} board The current board state.
      */
-    parseGoCommand(args, color) {
+    parseGoCommand(args, color, board) {
         this.reset();
         this.startTime = Date.now();
 
@@ -41,80 +42,57 @@ class TimeManager {
             if (arg === 'infinite') this.infinite = true;
         }
 
-        return this.calculateTimeAllocation(color);
+        return this.calculateTimeAllocation(color, board);
     }
 
-    calculateTimeAllocation(color) {
-        // If fixed time per move
+    calculateTimeAllocation(color, board) {
         if (this.movetime > 0) {
-            return {
-                hardLimit: this.movetime,
-                softLimit: this.movetime
-            };
+            return { hardLimit: this.movetime, softLimit: this.movetime };
         }
 
         if (this.infinite) {
-            return {
-                hardLimit: Infinity,
-                softLimit: Infinity
-            };
-        }
-
-        // Clock details
-        let time = color === 'w' ? this.wtime : this.btime;
-        let inc = color === 'w' ? this.winc : this.binc;
-
-        if (time === 0 && inc === 0) {
-            // Default fallback if no time provided (e.g. just 'go')
-            // Or maybe fixed depth? Let Search handle it if no time limit is passed.
             return { hardLimit: Infinity, softLimit: Infinity };
         }
 
-        // Logic
-        // Moves to go (if known, usually 40, otherwise assume ~30-40 moves left in game)
-        // If movestogo not provided, assume sudden death or long increment?
-        // Standard heuristic: Divide time by 30 or 40.
-        // Or if increment, use time/20 + inc/2?
+        const time = color === 'w' ? this.wtime : this.btime;
+        const inc = color === 'w' ? this.winc : this.binc;
+        const opponentTime = color === 'w' ? this.btime : this.wtime;
 
-        let movesLeft = this.movestogo > 0 ? this.movestogo : 30;
-
-        // Basic allocation
-        let targetTime = time / movesLeft;
-
-        // Adjust for increment
-        if (inc > 0) {
-            // Don't just add increment, it's safer to rely on remaining time.
-            // A common formula: (Time / 20) + (Inc / 2)
-            if (this.movestogo === 0) {
-                targetTime = (time / 20) + (inc / 2);
-            } else {
-                 targetTime = (time / movesLeft) + inc;
-            }
+        if (time === 0) {
+            return { hardLimit: Infinity, softLimit: Infinity };
         }
-
-        // Safety Buffers
-        // Epic 19: Move Overhead
-        // Configurable overhead (passed in or default)
-        // We'll assume UCI option 'MoveOverhead' is handled elsewhere and passed here,
-        // or we use a default. Since calculateTimeAllocation only takes color,
-        // we might need to update signature or use a property set by UCI.
-        // For now, standard default 50ms is in code.
-        // Let's allow passing options?
-
-        // But 'calculateTimeAllocation' is called from 'parseGoCommand'.
-        // I should add 'options' to 'parseGoCommand' or use 'this.options'.
 
         const overhead = this.moveOverhead || 50;
         let maxTime = time - overhead;
-        if (maxTime < 0) maxTime = 10; // Minimum 10ms
+        if (maxTime < 10) maxTime = 10;
 
-        // Hard Limit: Max time we are allowed to spend (usually up to 5x optimum, but constrained by total time)
-        // Soft Limit: Optimum time. We stop here if score is stable or not improving.
+        // Game Phase Logic
+        let movesLeft;
+        if (this.movestogo > 0) {
+            movesLeft = this.movestogo;
+        } else if (board.moveNumber < 15) { // Opening
+            movesLeft = 50; // Spend less time
+        } else if (board.moveNumber > 40) { // Endgame
+            movesLeft = 20; // Spend more time
+        } else { // Middlegame
+            movesLeft = 30;
+        }
 
-        let hardLimit = Math.min(maxTime, targetTime * 5);
+        let targetTime = (time / movesLeft) + (inc * 0.75); // Use most of the increment
+
+        // Opponent Time Logic
+        const timeRatio = time / (opponentTime + 1); // Add 1 to avoid division by zero
+        if (timeRatio > 2) {
+            targetTime *= 0.8; // We have a large time advantage, be conservative
+        } else if (timeRatio < 0.5) {
+            targetTime *= 1.2; // We are in time trouble, think a bit more
+        }
+
+
+        // Safety Buffers
         let softLimit = Math.min(maxTime, targetTime);
+        let hardLimit = Math.min(maxTime, softLimit * 4);
 
-        // Ensure we don't return crazy small values if time is low
         if (softLimit < 10) softLimit = 10;
         if (hardLimit < softLimit) hardLimit = softLimit;
 
@@ -125,18 +103,12 @@ class TimeManager {
         this.moveOverhead = overhead;
     }
 
-    shouldStop(elapsed, softLimit, bestScore, prevScore) {
-        // Basic stopping condition:
+    shouldStop(elapsed, softLimit, isStable) {
         if (elapsed >= softLimit) {
-            // Epic 19: Stability
-            // If score is stable (bestScore ~= prevScore) and we are over soft limit, stop.
-            // If score is volatile (big jump), maybe extend?
-            // Logic:
-            // If elapsed > softLimit * 1.0, stop.
-            return true;
+            if (isStable) {
+                return true;
+            }
         }
-        // Advanced: If score dropped significantly (panic), maybe extend?
-        // Not implemented here yet, but interface allows it.
         return false;
     }
 }

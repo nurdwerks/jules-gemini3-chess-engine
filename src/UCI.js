@@ -189,7 +189,7 @@ class UCI {
     }
     const TimeManager = require('./TimeManager');
     const tm = new TimeManager();
-    const timeLimits = tm.parseGoCommand(args, this.board.activeColor);
+    const timeLimits = tm.parseGoCommand(args, this.board.activeColor, this.board);
     let depth = 64;
     if (args.includes('depth')) {
         depth = parseInt(args[args.indexOf('depth') + 1], 10);
@@ -206,7 +206,7 @@ class UCI {
     for (const worker of this.workers) {
         worker.postMessage({ type: 'search', fen: this.board.generateFen(), depth: depth, limits: timeLimits });
     }
-    const bestMove = this.currentSearch.search(depth, timeLimits, searchOptions);
+    const bestMove = this.currentSearch.search(depth, timeLimits, searchOptions, tm);
     this.currentSearch = null;
     this.stopWorkers();
     let bestMoveStr = 'bestmove 0000';
