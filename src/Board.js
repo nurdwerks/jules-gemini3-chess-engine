@@ -1047,6 +1047,29 @@ class Board {
     }
     return `${placement} ${this.activeColor} ${this.castlingRights} ${this.enPassantTarget} ${this.halfMoveClock} ${this.fullMoveNumber}`;
   }
+
+  clone() {
+    const newBoard = new Board();
+    newBoard.squares = this.squares.map(p => p ? new Piece(p.color, p.type) : null);
+    newBoard.activeColor = this.activeColor;
+    newBoard.castlingRights = this.castlingRights;
+    newBoard.enPassantTarget = this.enPassantTarget;
+    newBoard.halfMoveClock = this.halfMoveClock;
+    newBoard.fullMoveNumber = this.fullMoveNumber;
+    newBoard.zobristKey = this.zobristKey;
+    newBoard.history = [...this.history];
+    newBoard.castling = {
+        w: { ...this.castling.w },
+        b: { ...this.castling.b }
+    };
+    newBoard.castlingRooks = {
+        white: [...this.castlingRooks.white],
+        black: [...this.castlingRooks.black]
+    };
+    newBoard.isChess960 = this.isChess960;
+    newBoard.bitboards = { ...this.bitboards };
+    return newBoard;
+  }
 }
 
 module.exports = Board;

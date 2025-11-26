@@ -225,6 +225,12 @@ const Bitboard = {
 
     getBishopAttacks(sq, occupancy) {
         return this.calcBishopAttacks(sq, occupancy);
+    },
+
+    to64(index0x88) {
+        const row = index0x88 >> 4;
+        const col = index0x88 & 7;
+        return (7 - row) * 8 + col;
     }
 };
 
