@@ -44,6 +44,97 @@ describe('NNUE', () => {
         expect(incrementalAccumulator.black).toEqual(refreshAccumulator.black);
     });
 
+    test('incremental update should match full refresh for pawn promotion', () => {
+        const board = new Board();
+        board.loadFen('8/P7/8/8/8/8/8/k1K5 w - - 0 1');
+        const accumulator = new Accumulator();
+        nnue.refreshAccumulator(accumulator, board);
+
+        const moves = board.generateMoves();
+        const move = moves.find(m => m.promotion === 'q' && m.from === board.algebraicToIndex('a7') && m.to === board.algebraicToIndex('a8'));
+
+        const changes = nnue.getChangedIndices(board, move, null);
+        const incrementalAccumulator = accumulator.clone();
+        nnue.updateAccumulator(incrementalAccumulator, changes);
+
+        const boardAfterMove = board.clone();
+        boardAfterMove.makeMove(move);
+
+        const refreshAccumulator = new Accumulator();
+        nnue.refreshAccumulator(refreshAccumulator, boardAfterMove);
+
+        expect(incrementalAccumulator.white).toEqual(refreshAccumulator.white);
+        expect(incrementalAccumulator.black).toEqual(refreshAccumulator.black);
+    });
+
+    test('incremental update should match full refresh for en passant', () => {
+        const board = new Board();
+        board.loadFen('rnbqkbnr/ppp2ppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2');
+        const accumulator = new Accumulator();
+        nnue.refreshAccumulator(accumulator, board);
+
+        const moves = board.generateMoves();
+        const move = moves.find(m => m.flags === 'e' && m.from === board.algebraicToIndex('e5') && m.to === board.algebraicToIndex('d6'));
+
+        const changes = nnue.getChangedIndices(board, move, null);
+        const incrementalAccumulator = accumulator.clone();
+        nnue.updateAccumulator(incrementalAccumulator, changes);
+
+        const boardAfterMove = board.clone();
+        boardAfterMove.makeMove(move);
+
+        const refreshAccumulator = new Accumulator();
+        nnue.refreshAccumulator(refreshAccumulator, boardAfterMove);
+
+        expect(incrementalAccumulator.white).toEqual(refreshAccumulator.white);
+        expect(incrementalAccumulator.black).toEqual(refreshAccumulator.black);
+    });
+
+    test('incremental update should match full refresh for a capture move', () => {
+        const board = new Board();
+        board.loadFen('rnbqkb1r/ppp1pppp/5n2/3p4/4P3/2N5/PPPP1PPP/R1BQKBNR w KQkq - 0 3');
+        const accumulator = new Accumulator();
+        nnue.refreshAccumulator(accumulator, board);
+
+        const moves = board.generateMoves();
+        const move = moves.find(m => m.from === board.algebraicToIndex('e4') && m.to === board.algebraicToIndex('d5'));
+
+        const changes = nnue.getChangedIndices(board, move, board.squares[board.algebraicToIndex('d5')]);
+        const incrementalAccumulator = accumulator.clone();
+        nnue.updateAccumulator(incrementalAccumulator, changes);
+
+        const boardAfterMove = board.clone();
+        boardAfterMove.makeMove(move);
+
+        const refreshAccumulator = new Accumulator();
+        nnue.refreshAccumulator(refreshAccumulator, boardAfterMove);
+
+        expect(incrementalAccumulator.white).toEqual(refreshAccumulator.white);
+        expect(incrementalAccumulator.black).toEqual(refreshAccumulator.black);
+    });
+
+    test('incremental update should match full refresh for a knight move', () => {
+        const board = new Board();
+        const accumulator = new Accumulator();
+        nnue.refreshAccumulator(accumulator, board);
+
+        const moves = board.generateMoves();
+        const move = moves.find(m => m.from === board.algebraicToIndex('g1') && m.to === board.algebraicToIndex('f3'));
+
+        const changes = nnue.getChangedIndices(board, move, null);
+        const incrementalAccumulator = accumulator.clone();
+        nnue.updateAccumulator(incrementalAccumulator, changes);
+
+        const boardAfterMove = board.clone();
+        boardAfterMove.makeMove(move);
+
+        const refreshAccumulator = new Accumulator();
+        nnue.refreshAccumulator(refreshAccumulator, boardAfterMove);
+
+        expect(incrementalAccumulator.white).toEqual(refreshAccumulator.white);
+        expect(incrementalAccumulator.black).toEqual(refreshAccumulator.black);
+    });
+
     test('incremental update should match full refresh for Chess960 castling', () => {
         const board = new Board();
         board.loadFen('5k1r/8/8/8/8/8/8/5K1R w FHfh - 0 1');

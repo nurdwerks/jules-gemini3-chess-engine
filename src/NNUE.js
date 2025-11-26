@@ -176,7 +176,9 @@ function NNUE() {
             const toSq64 = Bitboard.to64(move.to);
 
             remove(fromSq64, movingPiece);
-            const arrivalPiece = move.promotion ? new Piece(movingPiece.color, move.promotion) : movingPiece;
+            const arrivalPiece = move.promotion
+                ? new Piece(movingPiece.color, { 'q': 'queen', 'r': 'rook', 'b': 'bishop', 'n': 'knight' }[move.promotion])
+                : movingPiece;
             add(toSq64, arrivalPiece);
 
             if (captured) {
