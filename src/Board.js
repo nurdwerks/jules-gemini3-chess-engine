@@ -1,7 +1,7 @@
 const Piece = require('./Piece');
 const Zobrist = require('./Zobrist');
 const Bitboard = require('./Bitboard');
-
+const trace = require('./trace');
 class Board {
   constructor() {
     this.squares = new Array(128).fill(null);
@@ -110,13 +110,13 @@ class Board {
       this.squares[move.from] = null;
 
       if (move.flags === 'e' || move.flags === 'ep') {
-          const isWhite = move.piece.color === 'white';
-          const captureSq = isWhite ? move.to + 16 : move.to - 16;
-          const capPawn = this.squares[captureSq];
-          if (capPawn) {
-              this.toggleBitboard(capPawn, captureSq);
-              this.squares[captureSq] = null;
-          }
+        const isWhite = move.piece.color === 'white';
+        const captureSq = isWhite ? move.to + 16 : move.to - 16;
+        const capPawn = this.squares[captureSq];
+        if (capPawn) {
+            this.toggleBitboard(capPawn, captureSq);
+        }
+        this.squares[captureSq] = null;
       }
 
       if (move.flags === 'k' || move.flags === 'q' || move.flags === 'k960' || move.flags === 'q960') {
@@ -145,30 +145,30 @@ class Board {
               if (move.piece.color === 'white') {
                   if (move.flags === 'k') {
                       const rook = this.squares[119];
-                      this.toggleBitboard(rook, 119);
-                      this.toggleBitboard(rook, 117);
                       this.squares[117] = rook;
                       this.squares[119] = null;
+                      this.toggleBitboard(rook, 119);
+                      this.toggleBitboard(rook, 117);
                   } else {
                       const rook = this.squares[112];
-                      this.toggleBitboard(rook, 112);
-                      this.toggleBitboard(rook, 115);
                       this.squares[115] = rook;
                       this.squares[112] = null;
+                      this.toggleBitboard(rook, 112);
+                      this.toggleBitboard(rook, 115);
                   }
               } else {
                   if (move.flags === 'k') {
                       const rook = this.squares[7];
-                      this.toggleBitboard(rook, 7);
-                      this.toggleBitboard(rook, 5);
                       this.squares[5] = rook;
                       this.squares[7] = null;
+                      this.toggleBitboard(rook, 7);
+                      this.toggleBitboard(rook, 5);
                   } else {
                       const rook = this.squares[0];
-                      this.toggleBitboard(rook, 0);
-                      this.toggleBitboard(rook, 3);
                       this.squares[3] = rook;
                       this.squares[0] = null;
+                      this.toggleBitboard(rook, 0);
+                      this.toggleBitboard(rook, 3);
                   }
               }
           }
@@ -279,6 +279,18 @@ class Board {
     return this.squares[index];
   }
 
+  getKingIndex(kingColor) {
+    for (let i = 0; i < 128; i++) {
+      if (this.isValidSquare(i)) {
+        const piece = this.squares[i];
+        if (piece && piece.type === 'king' && piece.color === kingColor) {
+          return i;
+        }
+      }
+    }
+    return -1;
+  }
+
   isKingInCheck(kingColor) {
       const opponentColor = kingColor === 'white' ? 'black' : 'white';
       let kingIndex = -1;
@@ -341,6 +353,7 @@ class Board {
   }
 
   generateMoves() {
+    trace(`generateMoves(color: ${this.activeColor})`);
     const moves = [];
     const color = this.activeColor === 'w' ? 'white' : 'black';
     const opponent = this.activeColor === 'w' ? 'black' : 'white';
@@ -393,6 +406,7 @@ class Board {
         const piece = this.squares[from0x88];
 
         if (!this.isSquareAttacked(from0x88, opponent)) {
+          if (this.isChess960) {
            const rooks = this.castlingRooks[color];
            for (const rookIndex of rooks) {
                const rookPiece = this.squares[rookIndex];
@@ -451,6 +465,25 @@ class Board {
                    }
                }
            }
+         } else { // Standard chess
+            const kingIndex = this.getKingIndex(color);
+            if (kingIndex === -1) return;
+            const kingPiece = this.squares[kingIndex];
+            if (this.castling[color === 'white' ? 'w' : 'b'].k) {
+                const rook = this.squares[kingIndex + 3];
+                if (rook && rook.type === 'rook' && !this.squares[kingIndex+1] && !this.squares[kingIndex+2] &&
+                    !this.isSquareAttacked(kingIndex, opponent) && !this.isSquareAttacked(kingIndex+1, opponent) && !this.isSquareAttacked(kingIndex+2, opponent)) {
+                    moves.push({ from: kingIndex, to: kingIndex + 2, flags: 'k', piece: kingPiece });
+                }
+            }
+            if (this.castling[color === 'white' ? 'w' : 'b'].q) {
+                const rook = this.squares[kingIndex - 4];
+                if (rook && rook.type === 'rook' && !this.squares[kingIndex-1] && !this.squares[kingIndex-2] && !this.squares[kingIndex-3] &&
+                    !this.isSquareAttacked(kingIndex, opponent) && !this.isSquareAttacked(kingIndex-1, opponent) && !this.isSquareAttacked(kingIndex-2, opponent)) {
+                    moves.push({ from: kingIndex, to: kingIndex - 2, flags: 'q', piece: kingPiece });
+                }
+            }
+          }
         }
     }
 
@@ -942,8 +975,10 @@ class Board {
   }
 
   perft(depth) {
+    trace(`perft(depth: ${depth})`);
     if (depth === 0) return 1;
     const moves = this.generateMoves();
+    trace(`perft(depth: ${depth}, moves: ${moves.length})`);
     let nodes = 0;
     for (const move of moves) {
       const state = this.applyMove(move);

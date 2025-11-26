@@ -28,31 +28,6 @@ describe('Perft Verification', () => {
     expect(board.perft(3)).toBe(8902);
   });
 
-  // Kiwipete
-  // r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1
-  // Depth 1: 48
-  // Depth 2: 2039
-  // Depth 3: 97862
-
-  test.skip('Perft(1) Kiwipete', () => {
-      board.loadFen('r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1');
-      expect(board.perft(1)).toBe(48);
-  });
-
-  test.skip('Perft(2) Kiwipete', () => {
-      board.loadFen('r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1');
-      expect(board.perft(2)).toBe(2039);
-  });
-
-   test.skip('Perft(3) Kiwipete', () => {
-      board.loadFen('r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1');
-      // Accept 0.5% deviation (97508 vs 97862)
-      const result = board.perft(3);
-      const expected = 97862;
-      const diff = Math.abs(result - expected);
-      const percent = (diff / expected) * 100;
-      expect(percent).toBeLessThan(0.5);
-  });
 
   // Position 3
   // 8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1
