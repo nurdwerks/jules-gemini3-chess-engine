@@ -634,3 +634,12 @@ The following Epics were part of the initial development phase and are either co
     *   *Description:* Tune weights for each piece type.
     *   *Acceptance Criteria:*
         *   [x] Elo gain.
+
+### Epic 38: Passed Pawn Extensions
+**Size:** Small (1 day)
+**Description:** Extend search depth when a pawn is passed and advanced (Rank 6/7).
+**User Stories:**
+1.  **Detection & Extension (S)**
+    *   *Description:* Identify advanced passed pawns and add extensions.
+    *   *Acceptance Criteria:*
+        *   [x] Finds promotion tactics faster.

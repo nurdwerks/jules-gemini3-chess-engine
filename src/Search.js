@@ -475,15 +475,19 @@ class Search {
           const prevDebugNode = this.currentDebugNode;
           if (this.debugMode) this.currentDebugNode = debugNode;
 
+          let extension = this._getPassedPawnExtension(move);
+
           const state = this.board.applyMove(move);
-          const score = -this.alphaBeta(depth - 1, -beta, -alpha, move);
+          if (this.board.isInCheck()) {
+              extension = Math.max(extension, 1);
+          }
+          const score = -this.alphaBeta(depth - 1 + extension, -beta, -alpha, move);
           this.board.undoApplyMove(move, state);
 
           if (this.debugMode) {
               debugNode.score = score;
               this.currentDebugNode = prevDebugNode;
           }
-
           if (this.stopFlag) return { move: bestMove, score: bestScore }; // Abort
 
           if (score > bestScore) {
@@ -494,13 +498,28 @@ class Search {
               alpha = score;
           }
       }
-
       // Store Root in TT? Yes
       if (!this.stopFlag && bestMove) {
           this.tt.save(this.board.zobristKey, bestScore, depth, TT_FLAG.EXACT, bestMove);
       }
 
       return { move: bestMove, score: bestScore };
+  }
+
+  _getPassedPawnExtension(move) {
+      if (move.piece.type === 'pawn') {
+          const toRow = move.to >> 4;
+          const color = move.piece.color;
+          // Ranks 6 and 7 from white's perspective.
+          // White: rows 2 (rank 6) and 1 (rank 7).
+          // Black: rows 5 (rank 3) and 6 (rank 2).
+          if ((color === 'white' && toRow <= 2) || (color === 'black' && toRow >= 5)) {
+              if (Evaluation.isPassedPawn(this.board, move.from)) {
+                  return 1;
+              }
+          }
+      }
+      return 0;
   }
 
   alphaBeta(depth, alpha, beta, prevMove = null) {
@@ -721,8 +740,11 @@ class Search {
 
           // Principal Variation Search (PVS)
 
-          // Apply Extension
-          const nextDepth = depth + extension - 1;
+          // Apply Extensions
+          let currentExtension = extension; // Base extension from check
+          currentExtension = Math.max(currentExtension, this._getPassedPawnExtension(move));
+
+          const nextDepth = depth + currentExtension - 1;
 
           if (movesSearched === 0) {
               // Full window search for the first move
@@ -909,22 +931,20 @@ class Search {
           alpha = standPat;
       }
 
-      // Generate only captures
       const moves = this.board.generateMoves();
-      // Filter for captures only
-      const captures = moves.filter(m => m.flags.includes('c'));
+      // Filter for captures and promotions, which are tactical moves.
+      const interestingMoves = moves.filter(m => m.flags.includes('c') || m.flags.includes('p'));
 
       // Sort captures (MVV-LVA simplified: just capture high value piece)
-      captures.sort((a, b) => {
-          // captured piece value
-          const valA = a.captured ? this.getPieceValue(a.captured) : 0;
-          const valB = b.captured ? this.getPieceValue(b.captured) : 0;
+      interestingMoves.sort((a, b) => {
+          const valA = (a.promotion ? 900 : 0) + (a.captured ? this.getPieceValue(a.captured) : 0);
+          const valB = (b.promotion ? 900 : 0) + (b.captured ? this.getPieceValue(b.captured) : 0);
           return valB - valA;
       });
 
-      for (const move of captures) {
-          // SEE Pruning
-          if (SEE.see(this.board, move) < 0) continue;
+      for (const move of interestingMoves) {
+          // SEE Pruning for captures
+          if (move.flags.includes('c') && SEE.see(this.board, move) < 0) continue;
 
           const state = this.board.applyMove(move);
 
