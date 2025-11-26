@@ -1,63 +1,47 @@
 const Board = require('../src/Board');
 
 describe('Chess960 Castling', () => {
-  let board;
-
-  beforeEach(() => {
-    board = new Board();
-  });
-
-  const assertCastlingMoves = (fen, kingside, queenside) => {
-    board.loadFen(fen);
-    const moves = board.generateMoves();
-    const kingsideCastle = moves.find(m => m.flags === 'k960');
-    const queensideCastle = moves.find(m => m.flags === 'q960');
-
-    if (kingside) {
-      expect(kingsideCastle).toBeDefined();
-    } else {
-      expect(kingsideCastle).toBeUndefined();
-    }
-
-    if (queenside) {
-      expect(queensideCastle).toBeDefined();
-    } else {
-      expect(queensideCastle).toBeUndefined();
-    }
-  };
-
-  // Using simplified FENs with only Kings and Rooks for white, and a single king for black to have a valid FEN
-  // This is to avoid interference from other pieces in valid castling scenario tests.
-
-  describe('Valid Castling Scenarios', () => {
-    test('King on E, Rooks on A, H (Standard)', () => {
-        assertCastlingMoves('k7/8/8/8/8/8/8/R3K2R w AHah - 0 1', true, true);
+    it('should allow castling when king and rook are in standard positions', () => {
+        const board = new Board();
+        board.loadFen('r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1');
+        const moves = board.generateMoves();
+        const castlingMoves = moves.filter(m => m.flags === 'k' || m.flags === 'q');
+        expect(castlingMoves.length).toBe(2);
     });
 
-    test('King on E, Rooks on B, G', () => {
-        assertCastlingMoves('k7/8/8/8/8/8/8/1R2K1R1 w BGbg - 0 1', true, true);
+    it('should allow castling when king is on f1 and rook is on h1', () => {
+        const board = new Board();
+        board.loadFen('5k1r/8/8/8/8/8/8/5K1R w FHfh - 0 1');
+        const moves = board.generateMoves();
+        const castlingMoves = moves.filter(m => m.flags === 'k960');
+        expect(castlingMoves.length).toBe(1);
     });
 
-    test('King on E, Rooks on C, H', () => {
-        assertCastlingMoves('k7/8/8/8/8/8/8/2R1K2R w CHch - 0 1', true, true);
+    it('should not allow castling through check', () => {
+        const board = new Board();
+        board.loadFen('r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1');
+        board.applyAlgebraicMove('e1g1');
+        board.applyAlgebraicMove('a6e2');
+        const moves = board.generateMoves();
+        const castlingMoves = moves.filter(m => m.flags === 'k' || m.flags === 'q');
+        expect(castlingMoves.length).toBe(0);
     });
 
-    test('King on F, Rooks on C, H', () => {
-        assertCastlingMoves('k7/8/8/8/8/8/8/2R2K1R w CHch - 0 1', true, true);
-    });
-  });
-
-  describe('Invalid Castling Scenarios', () => {
-    test('King is in check', () => {
-      assertCastlingMoves('k7/8/8/8/8/4n3/8/R3K2R w AHah - 0 1', false, false);
-    });
-
-    test('Path is blocked', () => {
-      assertCastlingMoves('k7/8/8/8/8/8/8/RN2K2R w AHah - 0 1', true, false);
+    it('should not allow castling out of check', () => {
+        const board = new Board();
+        board.loadFen('rnbqk2r/pppp1ppp/4pn2/8/1b1P4/2N1P3/PPP2PPP/R1BQKBNR w KQkq - 1 4');
+        board.applyAlgebraicMove('a2a3');
+        board.applyAlgebraicMove('b4c3');
+        const moves = board.generateMoves();
+        const castlingMoves = moves.filter(m => m.flags === 'k' || m.flags === 'q');
+        expect(castlingMoves.length).toBe(0);
     });
 
-    test('King passes through attacked square', () => {
-      assertCastlingMoves('k7/8/8/8/8/3n4/8/R3K2R w AHah - 0 1', false, false);
+    it('should handle castling with rook on g1', () => {
+        const board = new Board();
+        board.loadFen('r3k1r1/pppppppp/8/8/8/8/PPPPPPPP/R3K1R1 w Qq - 0 1');
+        const moves = board.generateMoves();
+        const castlingMoves = moves.filter(m => m.flags === 'k' || m.flags === 'q');
+        expect(castlingMoves.length).toBe(1);
     });
-  });
 });

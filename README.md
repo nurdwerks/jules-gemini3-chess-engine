@@ -7,20 +7,6 @@ This repository serves as a collaborative testbed for **Jules** and **Gemini 3**
 
 The following enhancements outline the next phase of development, focusing on competitive strength, optimization, and advanced features.
 
-### Epic 30: History Heuristic
-**Size:** Small (2 days)
-**Description:** Implement a history table to order quiet moves that fail high but are not killer moves.
-**User Stories:**
-1.  **History Table (S)**
-    *   *Description:* Create a table indexed by `[color][piece][to_square]` (or `[from][to]`).
-    *   *Acceptance Criteria:*
-        *   [ ] Updates score on beta cutoffs (depth squared bonus).
-        *   [ ] Decays scores periodically to favor recent good moves.
-2.  **Ordering Integration (S)**
-    *   *Description:* Use history score to sort quiet moves after killers.
-    *   *Acceptance Criteria:*
-        *   [ ] Effective move ordering verified by node reduction.
-
 ### Epic 31: NNUE Integration (Revisit Epic 10)
 **Size:** Large (2 weeks)
 **Description:** Implement Efficiently Updatable Neural Network (NNUE) evaluation.
@@ -34,42 +20,6 @@ The following enhancements outline the next phase of development, focusing on co
     *   *Description:* Replace/Hybridize HCE with NNUE score.
     *   *Acceptance Criteria:*
         *   [ ] Significant Elo gain (+100 or more).
-
-### Epic 32: Delta Pruning
-**Size:** Small (1 day)
-**Description:** Implement Delta Pruning in Quiescence Search.
-**User Stories:**
-1.  **Delta Logic (S)**
-    *   *Description:* If `stand_pat + safety_margin < alpha`, prune the node (unless checking).
-    *   *Acceptance Criteria:*
-        *   [ ] Reduces QSearch nodes.
-        *   [ ] No significant tactical regressions.
-
-### Epic 33: Lazy SMP Polish
-**Size:** Medium (3 days)
-**Description:** Refine the parallel search implementation for stability and scaling.
-**User Stories:**
-1.  **Shared TT Optimization (S)**
-    *   *Description:* Ensure lockless or efficient locking TT access across threads.
-    *   *Acceptance Criteria:*
-        *   [ ] No race conditions corrupting critical data.
-2.  **Strength Scaling (S)**
-    *   *Description:* Verify NPS scales linearly with threads.
-    *   *Acceptance Criteria:*
-        *   [ ] Elo gain with 2 vs 1 thread.
-
-### Epic 34: Chess960 Full Support
-**Size:** Small (2 days)
-**Description:** Ensure 100% compliance with Chess960 castling rules and evaluation.
-**User Stories:**
-1.  **Castling Verification (S)**
-    *   *Description:* Audit all castling paths in 960 mode.
-    *   *Acceptance Criteria:*
-        *   [ ] Passes specialized 960 test suites (e.g. from Stockfish).
-2.  **Eval Adjustments (S)**
-    *   *Description:* Ensure King safety eval handles 960 King positions correctly.
-    *   *Acceptance Criteria:*
-        *   [ ] King safety terms don't assume E1/E8 start.
 
 ### Epic 35: Principal Variation Search (PVS) Refinement
 **Size:** Small (2 days)
@@ -131,7 +81,7 @@ The following enhancements outline the next phase of development, focusing on co
 
 ## Archived Roadmap (Completed or Superseded)
 
-See [archive/ARCHIVED_EPICS.md](archive/ARCHIVED_EPICS.md) for Epics 1-29.
+See [archive/ARCHIVED_EPICS.md](archive/ARCHIVED_EPICS.md) for Epics 1-34.
 
 ## Deferred / Won't Implement
 

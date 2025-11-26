@@ -26,6 +26,31 @@ class UCI {
     this.book = new Polyglot();
     // Try to load 'book.bin' if it exists in current dir
     this.book.loadBook('book.bin');
+    this.workers = [];
+    this.startWorkers();
+  }
+
+  startWorkers() {
+    const { Worker } = require('worker_threads');
+    const sharedBuffer = this.tt.getSharedBuffer();
+
+    for (let i = 0; i < this.options.Threads - 1; i++) {
+        const worker = new Worker('./src/Worker.js', {
+            workerData: {
+                sharedBuffer,
+                hashSize: this.options.Hash,
+                options: this.options
+            }
+        });
+        this.workers.push(worker);
+    }
+  }
+
+  stopWorkers() {
+    for (const worker of this.workers) {
+        worker.postMessage({ type: 'quit' });
+    }
+    this.workers = [];
   }
 
   processCommand(command) {
@@ -46,6 +71,7 @@ class UCI {
         this.output(`option name UCI_Elo type spin default ${this.options.UCI_Elo} min 100 max 3000`);
         this.output(`option name AspirationWindow type spin default ${this.options.AspirationWindow} min 10 max 500`);
         this.output(`option name Contempt type spin default ${this.options.Contempt} min -100 max 100`);
+        this.output(`option name UseHistory type check default true`);
         this.output('uciok');
         break;
 
@@ -73,6 +99,7 @@ class UCI {
         if (this.currentSearch) {
           this.currentSearch.stopFlag = true;
         }
+        this.stopWorkers();
         if (this.pendingBestMove) {
             this.output(this.pendingBestMove);
             this.pendingBestMove = null;
@@ -233,9 +260,17 @@ class UCI {
     const searchOptions = { ...this.options, searchMoves };
 
     // The search function signature needs update or we pass object
+    for (const worker of this.workers) {
+        worker.postMessage({
+            type: 'search',
+            fen: this.board.generateFen(),
+            depth: depth,
+            limits: timeLimits
+        });
+    }
     const bestMove = this.currentSearch.search(depth, timeLimits, searchOptions);
     this.currentSearch = null;
-
+    this.stopWorkers();
     let bestMoveStr = 'bestmove 0000';
     if (bestMove) {
         const fromAlg = this.indexToAlgebraic(bestMove.from);
@@ -298,6 +333,9 @@ class UCI {
                 this.tt.resize(value);
                 this.output(`info string Hash resized to ${value} MB`);
             }
+        } else if (name === 'Threads') {
+            this.stopWorkers();
+            this.startWorkers();
         }
     } else {
         const Evaluation = require('./Evaluation');

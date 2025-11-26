@@ -128,6 +128,10 @@ class TranspositionTable {
             move
         };
     }
+
+    getSharedBuffer() {
+        return this.buffer;
+    }
 }
 
 module.exports = { TranspositionTable, TT_FLAG };
