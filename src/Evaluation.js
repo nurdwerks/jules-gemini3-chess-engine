@@ -1,4 +1,5 @@
-// Piece values (centi-pawns)
+const fs = require('fs');
+const path = require('path');
 const PawnHash = require('./PawnHash');
 
 // Pawn Hash Global Instance (Should be in Search or Board, but Evaluation is static?)
@@ -109,6 +110,22 @@ const PSTS = {
 };
 
 class Evaluation {
+    static {
+        // Static initializer block to load tuned parameters
+        try {
+            const paramsPath = path.join(__dirname, '..', 'tuned_evaluation_params.json');
+            if (fs.existsSync(paramsPath)) {
+                console.log("Loading tuned evaluation parameters...");
+                const tunedParams = JSON.parse(fs.readFileSync(paramsPath, 'utf8'));
+                for (const key in tunedParams) {
+                    this.updateParam(key, tunedParams[key]);
+                }
+            }
+        } catch (error) {
+            console.error('Error loading tuned parameters, using defaults:', error);
+        }
+    }
+
     static evaluate(board) {
         let score = 0;
         let whiteKingIndex = -1;
