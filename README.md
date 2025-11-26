@@ -29,26 +29,6 @@ See [archive/ARCHIVED_EPICS.md](archive/ARCHIVED_EPICS.md) for Epics 1-34.
 
 ## Deferred / Won't Implement
 
-### Epic 40: Advanced Time Management
-**Size:** Medium (4 days)
-**Description:** Implement more sophisticated time management logic that adapts to the a game state (e.g., opponent's time, move number, search stability).
-**User Stories:**
-1.  **Game Phase Awareness (S)**
-    *   *Description:* Adjust time allocation based on the current game phase (opening, middlegame, endgame).
-    *   *Acceptance Criteria:*
-        *   [ ] Spends less time in the opening and more in complex middlegames.
-        *   [ ] Recognizes critical endgame positions and allocates more time.
-2.  **Search Stability Factoring (M)**
-    *   *Description:* Use search stability (i.e., how much the best move changes between iterations) to decide when to stop.
-    *   *Acceptance Criteria:*
-        *   [ ] Stops search early if the best move is stable for several iterations.
-        *   [ ] Extends search if the evaluation or best move is unstable.
-3.  **Opponent Time Tracking (S)**
-    *   *Description:* Factor the opponent's remaining time into time allocation calculations.
-    *   *Acceptance Criteria:*
-        *   [ ] Uses less time when the opponent is in severe time trouble.
-        *   [ ] Avoids risky lines when having a large time advantage.
-
 ### Epic 41: Syzygy Endgame Tablebase Integration
 **Size:** Medium (3 days)
 **Description:** Fully integrate 7-piece Syzygy endgame tablebases to provide perfect play in endgame positions.
