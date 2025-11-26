@@ -2,9 +2,11 @@ const TimeManager = require('../src/TimeManager');
 
 describe('TimeManager', () => {
     let tm;
+    let mockBoard;
 
     beforeEach(() => {
-        tm = new TimeManager();
+        mockBoard = { fullMoveNumber: 20 };
+        tm = new TimeManager(mockBoard);
     });
 
     test('Parses wtime/btime correctly', () => {
@@ -30,7 +32,7 @@ describe('TimeManager', () => {
     });
 
     test('Handles movesToGo', () => {
-        const args = ['wtime', '10000', 'movestogo', '10'];
+        const args = ['wtime', '10000', 'btime', '10000', 'movestogo', '10'];
         const limits = tm.parseGoCommand(args, 'w');
 
         // 10000 / 10 = 1000
@@ -52,5 +54,58 @@ describe('TimeManager', () => {
         // min soft = 10.
         expect(limits.hardLimit).toBeLessThanOrEqual(50);
         expect(limits.softLimit).toBeGreaterThanOrEqual(10);
+    });
+
+    test('should allocate less time in the opening', () => {
+        mockBoard.fullMoveNumber = 5;
+        const args = ['wtime', '60000', 'btime', '60000'];
+        const timeLimits = tm.parseGoCommand(args, 'w');
+        expect(timeLimits.softLimit).toBeLessThan(2000);
+    });
+
+    test('should allocate more time in the middlegame', () => {
+        mockBoard.fullMoveNumber = 25;
+        const args = ['wtime', '60000', 'btime', '60000'];
+        const timeLimits = tm.parseGoCommand(args, 'w');
+        expect(timeLimits.softLimit).toBeGreaterThan(1500);
+    });
+
+    test('should allocate even more time in the endgame', () => {
+        mockBoard.fullMoveNumber = 45;
+        const args = ['wtime', '60000', 'btime', '60000'];
+        const timeLimits = tm.parseGoCommand(args, 'w');
+        expect(timeLimits.softLimit).toBeGreaterThan(2000);
+    });
+
+    test('should use less time with a time advantage', () => {
+        mockBoard.fullMoveNumber = 25;
+        const args = ['wtime', '120000', 'btime', '30000'];
+        const timeLimits = tm.parseGoCommand(args, 'w');
+        const baseTm = new TimeManager(mockBoard);
+        const baseTime = baseTm.parseGoCommand(['wtime', '60000', 'btime', '60000'], 'w');
+        expect(timeLimits.softLimit).toBeLessThan(baseTime.softLimit * 2);
+    });
+
+    test('should use more time in time trouble', () => {
+        mockBoard.fullMoveNumber = 25;
+        const args = ['wtime', '30000', 'btime', '120000'];
+        const timeLimits = tm.parseGoCommand(args, 'w');
+        const baseTm = new TimeManager(mockBoard);
+        const baseTime = baseTm.parseGoCommand(['wtime', '60000', 'btime', '60000'], 'w');
+        expect(timeLimits.softLimit).toBeGreaterThan(baseTime.softLimit * 0.5);
+    });
+
+    test('should stop if search is stable', () => {
+        const softLimit = 1000;
+        const elapsed = 1100;
+        const isStable = true;
+        expect(tm.shouldStop(elapsed, softLimit, isStable)).toBe(true);
+    });
+
+    test('should not stop if search is unstable', () => {
+        const softLimit = 1000;
+        const elapsed = 1100;
+        const isStable = false;
+        expect(tm.shouldStop(elapsed, softLimit, isStable)).toBe(false);
     });
 });

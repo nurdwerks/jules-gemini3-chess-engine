@@ -87,15 +87,15 @@ See [archive/ARCHIVED_EPICS.md](archive/ARCHIVED_EPICS.md) for Epics 1-34.
 1.  **Polyglot Book Support (M)**
     *   *Description:* Add support for the widely-used Polyglot opening book format.
     *   *Acceptance Criteria:*
-        *   [ ] Can load and read `.bin` Polyglot book files.
-        *   [ ] Correctly plays moves from the book according to the current position's hash.
+        *   [x] Can load and read `.bin` Polyglot book files.
+        *   [x] Correctly plays moves from the book according to the current position's hash.
 2.  **Weighted Move Selection (S)**
     *   *Description:* Implement weighted random selection of moves from the opening book to increase opening variety.
     *   *Acceptance Criteria:*
-        *   [ ] Selects moves based on weights/probabilities defined in the book.
-        *   [ ] Avoids playing the same opening line deterministically.
+        *   [x] Selects moves based on weights/probabilities defined in the book.
+        *   [x] Avoids playing the same opening line deterministically.
 3.  **Book Management Tool (S)**
     *   *Description:* Create a simple command-line tool to create, merge, or filter opening books from PGN files.
     *   *Acceptance Criteria:*
-        *   [ ] Tool can convert a PGN file into a custom opening book format.
-        *   [ ] Allows for basic book manipulation without external software.
+        *   [x] Tool can convert a PGN file into a custom opening book format.
+        *   [x] Allows for basic book manipulation without external software.
