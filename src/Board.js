@@ -398,41 +398,47 @@ class Board {
                const rookPiece = this.squares[rookIndex];
                if (!rookPiece || rookPiece.type !== 'rook' || rookPiece.color !== color) continue;
 
-               const isKingside = (rookIndex & 7) > (from0x88 & 7);
+               const kingCol = from0x88 & 7;
+               const rookCol = rookIndex & 7;
+
+               const canCastleKingside = this.castling[color === 'white' ? 'w' : 'b'].k && rookCol > kingCol;
+               const canCastleQueenside = this.castling[color === 'white' ? 'w' : 'b'].q && rookCol < kingCol;
+               if (!canCastleKingside && !canCastleQueenside) continue;
+
+               const isKingside = rookCol > kingCol;
                const targetFile = isKingside ? 6 : 2;
                const rank = color === 'white' ? 7 : 0;
                const kingTargetIndex = (rank << 4) | targetFile;
                const rookTargetFile = isKingside ? 5 : 3;
                const rookTargetIndex = (rank << 4) | rookTargetFile;
 
-               let pathClear = true;
-               const start = Math.min(from0x88, rookIndex);
-               const end = Math.max(from0x88, rookIndex);
-               for (let sq = start + 1; sq < end; sq++) {
-                   if (this.squares[sq]) {
-                       pathClear = false;
+               // Rules 2, 3, 5: All squares between king's initial and final squares (inclusive)
+               // and all squares between the rook's initial and final squares (inclusive)
+               // must be vacant, except for the king and castling rook. Also, the king may not pass through attacked squares.
+               const kingPath = [from0x88, kingTargetIndex].sort((a,b)=>a-b);
+               const rookPath = [rookIndex, rookTargetIndex].sort((a,b)=>a-b);
+
+               const squaresToCheck = new Set();
+               for (let i = kingPath[0]; i <= kingPath[1]; i++) squaresToCheck.add(i);
+               for (let i = rookPath[0]; i <= rookPath[1]; i++) squaresToCheck.add(i);
+
+               let canCastle = true;
+               for (const sq of squaresToCheck) {
+                   if (this.squares[sq] && sq !== from0x88 && sq !== rookIndex) {
+                       canCastle = false; // Obstruction
                        break;
                    }
                }
-               if (!pathClear) continue;
+               if (!canCastle) continue;
 
-               const kStart = Math.min(from0x88, kingTargetIndex);
-               const kEnd = Math.max(from0x88, kingTargetIndex);
-               let safe = true;
-               for (let sq = kStart; sq <= kEnd; sq++) {
-                   if (sq === from0x88) continue;
-                   if (this.squares[sq] && sq !== rookIndex && sq !== from0x88) {
-                       safe = false; break;
-                   }
-                   if (this.isSquareAttacked(sq, opponent)) {
-                       safe = false; break;
+               // Check if king passes through an attacked square
+               for (let i = kingPath[0]; i <= kingPath[1]; i++) {
+                   if (this.isSquareAttacked(i, opponent)) {
+                       canCastle = false;
+                       break;
                    }
                }
-               if (!safe) continue;
-
-               if (this.squares[rookTargetIndex] && rookTargetIndex !== from0x88 && rookTargetIndex !== rookIndex) {
-                   continue;
-               }
+               if (!canCastle) continue;
 
                if (this.isChess960) {
                     const flag = isKingside ? 'k960' : 'q960';
@@ -708,7 +714,7 @@ class Board {
       this.castlingRooks[color].push(index);
 
       const kingRow = color === 'white' ? 7 : 0;
-      let kingCol = 4;
+      let kingCol = -1;
       for(let c=0; c<8; c++) {
           const p = this.squares[(kingRow << 4) | c];
           if (p && p.type === 'king' && p.color === color) {
@@ -716,9 +722,17 @@ class Board {
               break;
           }
       }
-      const prefix = color === 'white' ? 'w' : 'b';
-      if (file > kingCol) this.castling[prefix].k = true;
-      if (file < kingCol) this.castling[prefix].q = true;
+
+      if (kingCol !== -1) {
+          const rooks = this.castlingRooks[color].map(idx => idx & 7).sort((a,b)=>a-b);
+          const prefix = color === 'white' ? 'w' : 'b';
+
+          const leftRooks = rooks.filter(rCol => rCol < kingCol);
+          const rightRooks = rooks.filter(rCol => rCol > kingCol);
+
+          if (rightRooks.length > 0) this.castling[prefix].k = true;
+          if (leftRooks.length > 0) this.castling[prefix].q = true;
+      }
   }
 
   getCastlingHash(rights) {
