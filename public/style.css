@@ -1,113 +1,191 @@
-body {
-    font-family: Arial, sans-serif;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    background-color: #333;
-    color: white;
+:root {
+    --grafana-dark-bg: #181B21;
+    --grafana-panel-bg: #111217;
+    --grafana-border: #303641;
+    --grafana-text-primary: #E3E3E3;
+    --grafana-text-secondary: #AAB4C1;
+    --grafana-accent-blue: #33B5E5;
+    --grafana-accent-green: #9AC42A;
+    --grafana-input-bg: #21252B;
+
+    --board-light-square: #E3E3E3;
+    --board-dark-square: #6B6B6B;
+    --board-selected-square: rgba(51, 181, 229, 0.7);
+    --board-last-move-square: rgba(154, 196, 42, 0.7);
 }
 
-#game-container {
+body {
+    font-family: 'Roboto', Arial, sans-serif;
+    background-color: var(--grafana-dark-bg);
+    color: var(--grafana-text-primary);
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.main-header {
+    text-align: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--grafana-border);
+    padding-bottom: 10px;
+}
+
+#dashboard {
     display: flex;
     gap: 20px;
 }
 
+.chessboard-panel {
+    flex-grow: 1;
+}
+
+.sidebar {
+    width: 350px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.panel {
+    background-color: var(--grafana-panel-bg);
+    border: 1px solid var(--grafana-border);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+}
+
+.panel-header {
+    padding: 10px 15px;
+    border-bottom: 1px solid var(--grafana-border);
+}
+
+.panel-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.panel-content {
+    padding: 15px;
+}
+
 #chessboard {
   display: grid;
-  grid-template-columns: repeat(8, 60px);
-  grid-template-rows: repeat(8, 60px);
-  width: 480px;
-  height: 480px;
-  border: 5px solid #5c4033;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  aspect-ratio: 1 / 1;
+  border: 2px solid var(--grafana-border);
   user-select: none;
 }
 
 .square {
-  width: 60px;
-  height: 60px;
+  width: 100%;
+  height: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
-  font-size: 40px;
+  font-size: clamp(20px, 6vmin, 40px);
   cursor: pointer;
 }
 
 .white {
-  background-color: #f0d9b5;
-  color: black;
+  background-color: var(--board-light-square);
+  color: var(--board-dark-square);
 }
 
 .black {
-  background-color: #b58863;
-  color: black;
+  background-color: var(--board-dark-square);
+  color: var(--board-light-square);
 }
 
 .selected {
-    background-color: #7b61ff !important;
+    background-color: var(--board-selected-square) !important;
 }
 
 .last-move {
-    background-color: rgba(155, 199, 0, 0.41) !important;
+    background-color: var(--board-last-move-square) !important;
 }
 
-#controls {
+.button-group {
     display: flex;
-    flex-direction: column;
     gap: 10px;
-    width: 300px;
 }
 
 button {
+    flex-grow: 1;
     padding: 10px;
-    font-size: 16px;
+    font-size: 14px;
+    font-weight: 500;
     cursor: pointer;
+    background-color: var(--grafana-accent-blue);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    background-color: #1e9ac8;
 }
 
 #status {
     padding: 10px;
-    background-color: #444;
+    background-color: var(--grafana-input-bg);
     border-radius: 4px;
+    border: 1px solid var(--grafana-border);
+    margin-bottom: 15px;
+    text-align: center;
+    font-size: 14px;
 }
 
 #engine-output {
-    height: 300px;
+    height: 250px;
     overflow-y: auto;
-    background-color: #222;
+    background-color: var(--grafana-input-bg);
     padding: 10px;
     font-family: monospace;
     font-size: 12px;
-    border: 1px solid #555;
+    border: 1px solid var(--grafana-border);
     white-space: pre-wrap;
-}
-
-#uci-options-container {
-    background-color: #444;
-    padding: 10px;
     border-radius: 4px;
-    margin-bottom: 10px;
+    color: var(--grafana-text-secondary);
 }
 
-#uci-options-container h3 {
-    margin-top: 0;
-    font-size: 16px;
-    border-bottom: 1px solid #666;
-    padding-bottom: 5px;
+#uci-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .option-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px;
     font-size: 14px;
 }
 
 .option-item label {
     flex: 1;
+    color: var(--grafana-text-secondary);
 }
 
 .option-item input[type="number"],
-.option-item input[type="text"] {
-    width: 80px;
-    padding: 2px;
+.option-item input[type="text"],
+.option-item select {
+    width: 100px;
+    padding: 5px;
+    background-color: var(--grafana-input-bg);
+    border: 1px solid var(--grafana-border);
+    color: var(--grafana-text-primary);
+    border-radius: 4px;
+}
+
+.option-item input[type="checkbox"] {
+    margin-left: 10px;
+    height: 16px;
+    width: 16px;
 }
