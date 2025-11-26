@@ -151,12 +151,13 @@ function NNUE() {
         };
         const movingPiece = move.piece;
 
-        for (const color of ['white', 'black']) {
-            if (movingPiece.type === 'king' && movingPiece.color === color) {
-                changes[color].refresh = true;
-                continue;
-            }
+        if (movingPiece.type === 'king') {
+            changes.white.refresh = true;
+            changes.black.refresh = true;
+            return changes;
+        }
 
+        for (const color of ['white', 'black']) {
             const kingBb = board.bitboards.king & board.bitboards[color];
             if (!kingBb) continue;
             let kingSq = Bitboard.lsb(kingBb);
@@ -175,7 +176,9 @@ function NNUE() {
             const toSq64 = Bitboard.to64(move.to);
 
             remove(fromSq64, movingPiece);
-            const arrivalPiece = move.promotion ? new Piece(movingPiece.color, move.promotion) : movingPiece;
+            const arrivalPiece = move.promotion
+                ? new Piece(movingPiece.color, { 'q': 'queen', 'r': 'rook', 'b': 'bishop', 'n': 'knight' }[move.promotion])
+                : movingPiece;
             add(toSq64, arrivalPiece);
 
             if (captured) {
@@ -184,15 +187,6 @@ function NNUE() {
                 const capturedPawnSq = Bitboard.to64(movingPiece.color === 'white' ? move.to + 16 : move.to - 16);
                 const capturedPawn = new Piece(movingPiece.color === 'white' ? 'black' : 'white', 'pawn');
                 remove(capturedPawnSq, capturedPawn);
-            } else if (move.flags.includes('k960') || move.flags.includes('q960')) {
-                const rook = board.squares[move.rookSource];
-                const rookFromSq = Bitboard.to64(move.rookSource);
-                const isKingside = move.flags.includes('k960');
-                const rank = movingPiece.color === 'white' ? 7 : 0;
-                const rookTo0x88 = isKingside ? (rank << 4) | 5 : (rank << 4) | 3;
-                const rookToSq = Bitboard.to64(rookTo0x88);
-                remove(rookFromSq, rook);
-                add(rookToSq, rook);
             }
         }
         return changes;
