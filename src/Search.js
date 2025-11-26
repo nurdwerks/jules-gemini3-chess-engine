@@ -677,10 +677,22 @@ class Search {
 
           // LMR (Late Move Reduction)
           let reduction = 0;
-          if (depth >= 3 && movesSearched > 3 && !move.flags.includes('c') && !this.board.isInCheck()) {
-              reduction = 1;
-              // If depth is high, reduce more?
-              if (depth >= 6 && movesSearched > 8) reduction = 2;
+          const isQuiet = !move.flags.includes('c') && !move.flags.includes('p');
+          if (depth >= 3 && movesSearched > 1 && isQuiet && !inCheck) {
+              // Formula inspired by common LMR implementations, using natural logs.
+              // R = c1 + ln(depth) * ln(movesSearched) / c2
+              const R = Math.floor(0.75 + (Math.log(depth) * Math.log(movesSearched)) / 2.25);
+
+              // Apply the reduction, but don't reduce too much.
+              reduction = Math.max(0, R);
+
+              // Don't reduce the search to less than 2 ply.
+              // nextDepth = depth - 1 + extension. lmrDepth = nextDepth - reduction.
+              // We need lmrDepth >= 1.
+              // So, depth - 1 + extension - reduction >= 1
+              // reduction <= depth - 2 + extension
+              const maxReduction = depth - 2 + extension;
+              reduction = Math.min(reduction, maxReduction);
           }
 
           // Principal Variation Search (PVS)
@@ -704,8 +716,10 @@ class Search {
                   score = -this.alphaBeta(nextDepth, -alpha - 1, -alpha, move);
               }
 
-              // Full window search if PVS failed (score > alpha and < beta)
+              // If the null-window search failed high (score > alpha), it's possible
+              // this move is better than we thought. We must re-search with the full window.
               if (score > alpha && score < beta) {
+                  // Re-search with full depth and full window
                   score = -this.alphaBeta(nextDepth, -beta, -alpha, move);
               }
           }
