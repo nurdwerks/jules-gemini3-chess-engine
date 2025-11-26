@@ -621,3 +621,16 @@ The following Epics were part of the initial development phase and are either co
     *   *Acceptance Criteria:*
         *   [x] Single command execution.
         *   [x] Generates updated parameter file.
+
+### Epic 37: Mobility Evaluation
+**Size:** Small (2 days)
+**Description:** Add piece mobility terms to the evaluation.
+**User Stories:**
+1.  **Bitboard Mobility (S)**
+    *   *Description:* Count safe moves available for each piece using bitboards.
+    *   *Acceptance Criteria:*
+        *   [x] Bonus for high mobility, penalty for restricted pieces.
+2.  **Tuning (S)**
+    *   *Description:* Tune weights for each piece type.
+    *   *Acceptance Criteria:*
+        *   [x] Elo gain.

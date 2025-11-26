@@ -21,19 +21,6 @@ The following enhancements outline the next phase of development, focusing on co
     *   *Acceptance Criteria:*
         *   [ ] Significant Elo gain (+100 or more).
 
-### Epic 37: Mobility Evaluation
-**Size:** Small (2 days)
-**Description:** Add piece mobility terms to the evaluation.
-**User Stories:**
-1.  **Bitboard Mobility (S)**
-    *   *Description:* Count safe moves available for each piece using bitboards.
-    *   *Acceptance Criteria:*
-        *   [ ] Bonus for high mobility, penalty for restricted pieces.
-2.  **Tuning (S)**
-    *   *Description:* Tune weights for each piece type.
-    *   *Acceptance Criteria:*
-        *   [ ] Elo gain.
-
 ### Epic 38: Passed Pawn Extensions
 **Size:** Small (1 day)
 **Description:** Extend search depth when a pawn is passed and advanced (Rank 6/7).
