@@ -1,15 +1,18 @@
 const Evaluation = require('./Evaluation');
 const { TranspositionTable, TT_FLAG } = require('./TranspositionTable');
+const { Accumulator } = require('./NNUE');
 const SEE = require('./SEE');
 const Syzygy = require('./Syzygy'); // Epic 15
 
 class Search {
-  constructor(board, tt = null) {
+  constructor(board, tt = null, nnue = null) {
     this.board = board;
+    this.nnue = nnue;
     this.nodes = 0;
     this.tt = tt || new TranspositionTable(64); // Use passed TT or default
     this.timer = null;
     this.stopFlag = false;
+    this.accumulatorStack = [];
 
     // Epic 15: Syzygy
     this.syzygy = new Syzygy();
@@ -64,6 +67,11 @@ class Search {
   // Iterative Deepening Search
   search(maxDepth = 5, timeLimits = { hardLimit: 1000, softLimit: 1000 }, options = {}) {
     this.options = options;
+
+    if (this.options.UCI_UseNNUE && this.nnue && this.nnue.network) {
+        this.accumulatorStack = [new Accumulator()];
+        this.nnue.refreshAccumulator(this.accumulatorStack[0], this.board);
+    }
     // Backward compatibility: if timeLimits is a number, treat as hardLimit
     if (typeof timeLimits === 'number') {
         timeLimits = { hardLimit: timeLimits, softLimit: timeLimits };
@@ -570,7 +578,10 @@ class Search {
       const ttMove = (ttEntryAfterIID && ttEntryAfterIID.move) ? ttEntryAfterIID.move : (ttEntry ? ttEntry.move : null);
 
       // Epic 17: Advanced Pruning
-      const staticEval = Evaluation.evaluate(this.board);
+      const currentAccumulator = this.accumulatorStack[this.accumulatorStack.length - 1];
+      const staticEval = (this.options && this.options.UCI_UseNNUE && this.nnue && this.nnue.network)
+        ? this.nnue.evaluate(this.board, currentAccumulator)
+        : Evaluation.evaluate(this.board);
 
       // Razoring
       // If depth is low and static eval is way below alpha, drop to qsearch.
@@ -675,6 +686,19 @@ class Search {
           const state = this.board.applyMove(move);
           let score;
 
+          if (this.options.UCI_UseNNUE && this.nnue && this.nnue.network) {
+              const newAccumulator = this.accumulatorStack[this.accumulatorStack.length - 1].clone();
+              const changes = this.nnue.getChangedIndices(this.board, move, state.capturedPiece);
+              if (changes[move.piece.color].refresh) {
+                  const tempBoard = this.board.clone(); // Assumes clone
+                  tempBoard.applyMove(move);
+                  this.nnue.refreshAccumulator(newAccumulator, tempBoard);
+              } else {
+                  this.nnue.updateAccumulator(newAccumulator, changes);
+              }
+              this.accumulatorStack.push(newAccumulator);
+          }
+
           // LMR (Late Move Reduction)
           let reduction = 0;
           const isQuiet = !move.flags.includes('c') && !move.flags.includes('p');
@@ -725,6 +749,9 @@ class Search {
           }
 
           this.board.undoApplyMove(move, state);
+          if (this.options.UCI_UseNNUE && this.nnue && this.nnue.network) {
+              this.accumulatorStack.pop();
+          }
 
           if (this.debugMode && debugNode) {
               debugNode.score = score;
@@ -860,7 +887,10 @@ class Search {
       if (this.stopFlag) return alpha;
       if (this.checkLimits && this.checkLimits()) return alpha;
 
-      const standPat = Evaluation.evaluate(this.board);
+      const currentAccumulator = this.accumulatorStack.length > 0 ? this.accumulatorStack[this.accumulatorStack.length - 1] : null;
+      const standPat = (this.options && this.options.UCI_UseNNUE && this.nnue && this.nnue.network)
+        ? this.nnue.evaluate(this.board, currentAccumulator)
+        : Evaluation.evaluate(this.board);
       if (standPat >= beta) {
           return beta;
       }
@@ -895,9 +925,28 @@ class Search {
       for (const move of captures) {
           // SEE Pruning
           if (SEE.see(this.board, move) < 0) continue;
+
           const state = this.board.applyMove(move);
+
+          if (this.options.UCI_UseNNUE && this.nnue && this.nnue.network) {
+              const newAccumulator = this.accumulatorStack[this.accumulatorStack.length - 1].clone();
+              const changes = this.nnue.getChangedIndices(this.board, move, state.capturedPiece);
+              if (changes[move.piece.color].refresh) {
+                  const tempBoard = this.board.clone(); // Assumes clone
+                  tempBoard.applyMove(move);
+                  this.nnue.refreshAccumulator(newAccumulator, tempBoard);
+              } else {
+                  this.nnue.updateAccumulator(newAccumulator, changes);
+              }
+              this.accumulatorStack.push(newAccumulator);
+          }
+
           const score = -this.quiescence(-beta, -alpha);
           this.board.undoApplyMove(move, state);
+
+          if (this.options.UCI_UseNNUE && this.nnue && this.nnue.network) {
+              this.accumulatorStack.pop();
+          }
 
           if (this.stopFlag) return alpha;
 

@@ -10,20 +10,6 @@ Benchmarking functions can be written and verified, but performance-critical ben
 
 The following enhancements outline the next phase of development, focusing on competitive strength, optimization, and advanced features.
 
-### Epic 31: NNUE Integration (Revisit Epic 10)
-**Size:** Large (2 weeks)
-**Description:** Implement Efficiently Updatable Neural Network (NNUE) evaluation.
-**User Stories:**
-1.  **Architecture Support (M)**
-    *   *Description:* Support standard HalfKP-256x2-32-32 architecture.
-    *   *Acceptance Criteria:*
-        *   [ ] Loads binary network file.
-        *   [ ] Computes correct accumulation.
-2.  **Search Integration (M)**
-    *   *Description:* Replace/Hybridize HCE with NNUE score.
-    *   *Acceptance Criteria:*
-        *   [ ] The implementation is expected to yield a significant Elo gain.
-
 ### Epic 38: Passed Pawn Extensions
 **Size:** Small (1 day)
 **Description:** Extend search depth when a pawn is passed and advanced (Rank 6/7).
@@ -52,49 +38,9 @@ See [archive/ARCHIVED_EPICS.md](archive/ARCHIVED_EPICS.md) for Epics 1-34.
 
 ## Deferred / Won't Implement
 
-### Epic 10: Neural Network Evaluation (NNUE) (Not to be implemented)
-**Size:** Large (1-2 weeks)
-**Description:** Replace the current Hand-Crafted Evaluation (HCE) with an Efficiently Updatable Neural Network (NNUE).
-**User Stories:**
-1.  **Load NNUE Architecture (S)**
-    *   *Description:* Create a loader for standard NNUE architecture files.
-    *   *Acceptance Criteria:*
-        *   [ ] Reads binary file format.
-        *   [ ] Matches expected hash/checksum of the net.
-2.  **Implement HalfKP Indexing (S)**
-    *   *Description:* Implement the logic to map King square + Piece square to the feature index.
-    *   *Acceptance Criteria:*
-        *   [ ] Correctly calculates indices for white and black perspectives.
-        *   [ ] Handles "Dirty" pieces logic if needed.
-3.  **Implement Accumulator Refresh (S)**
-    *   *Description:* Create the logic to compute the accumulator state from scratch.
-    *   *Acceptance Criteria:*
-        *   [ ] Result matches golden vectors for startpos.
-        *   [ ] Performance is acceptable (< 1ms).
-4.  **Implement Incremental Accumulator Update (S)**
-    *   *Description:* Update the accumulator values based on the move without full re-computation.
-    *   *Acceptance Criteria:*
-        *   [ ] Updated accumulator matches "Refresh" accumulator exactly.
-        *   [ ] Handles quiet moves and captures correctly.
-5.  **Implement Layer 1 & 2 Transforms (S)**
-    *   *Description:* Implement the affine transformation and Clipped ReLU activation for the first hidden layer.
-    *   *Acceptance Criteria:*
-        *   [ ] Implementation matches math definition.
-        *   [ ] SIMD intrinsics used if available/mocked.
-6.  **Implement Output Layer (S)**
-    *   *Description:* Implement the final affine transformation to produce the evaluation score.
-    *   *Acceptance Criteria:*
-        *   [ ] Output scaled correctly to centipawns.
-        *   [ ] Agrees with external NNUE probe tools.
-7.  **Integrate NNUE into Evaluation (S)**
-    *   *Description:* Switch `Evaluation.evaluate()` to use the NNUE score.
-    *   *Acceptance Criteria:*
-        *   [ ] `UCI_UseNNUE` toggles evaluation source.
-        *   [ ] Search uses NNUE score for node evaluation.
-
 ### Epic 40: Advanced Time Management
 **Size:** Medium (4 days)
-**Description:** Implement more sophisticated time management logic that adapts to the game state (e.g., opponent's time, move number, search stability).
+**Description:** Implement more sophisticated time management logic that adapts to the a game state (e.g., opponent's time, move number, search stability).
 **User Stories:**
 1.  **Game Phase Awareness (S)**
     *   *Description:* Adjust time allocation based on the current game phase (opening, middlegame, endgame).

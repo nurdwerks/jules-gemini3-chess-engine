@@ -1,4 +1,5 @@
 const Board = require('./Board');
+const { NNUE, Accumulator } = require('./NNUE');
 
 class UCI {
   constructor(outputCallback = console.log) {
@@ -14,17 +15,24 @@ class UCI {
         UCI_LimitStrength: false,
         UCI_Elo: 3000,
         AspirationWindow: 50,
-        Contempt: 0
+        Contempt: 0,
+        UCI_UseNNUE: true,
+        UCI_NNUE_File: 'https://tests.stockfishchess.org/api/nn/nn-46832cfbead3.nnue',
     };
 
     // Initialize TT
     const { TranspositionTable } = require('./TranspositionTable');
     this.tt = new TranspositionTable(this.options.Hash);
 
+    // Initialize NNUE
+    this.nnue = new NNUE();
+    if (this.options.UCI_UseNNUE) {
+      this.nnue.loadNetwork(this.options.UCI_NNUE_File);
+    }
+
     // Initialize Book
     const Polyglot = require('./Polyglot');
     this.book = new Polyglot();
-    // Try to load 'book.bin' if it exists in current dir
     this.book.loadBook('book.bin');
     this.workers = [];
     this.startWorkers();
@@ -72,70 +80,54 @@ class UCI {
         this.output(`option name AspirationWindow type spin default ${this.options.AspirationWindow} min 10 max 500`);
         this.output(`option name Contempt type spin default ${this.options.Contempt} min -100 max 100`);
         this.output(`option name UseHistory type check default true`);
+        this.output(`option name UCI_UseNNUE type check default ${this.options.UCI_UseNNUE}`);
+        this.output(`option name UCI_NNUE_File type string default ${this.options.UCI_NNUE_File}`);
         this.output('uciok');
         break;
-
       case 'isready':
         this.output('readyok');
         break;
-
       case 'ucinewgame':
         this.board = new Board();
         break;
-
       case 'position':
         this.handlePosition(parts.slice(1));
         break;
-
       case 'setoption':
         this.handleSetOption(parts.slice(1));
         break;
-
       case 'go':
         this.handleGo(parts.slice(1));
         break;
-
       case 'stop':
-        if (this.currentSearch) {
-          this.currentSearch.stopFlag = true;
-        }
+        if (this.currentSearch) this.currentSearch.stopFlag = true;
         this.stopWorkers();
         if (this.pendingBestMove) {
             this.output(this.pendingBestMove);
             this.pendingBestMove = null;
         }
         break;
-
       case 'ponderhit':
         if (this.pendingBestMove) {
             this.output(this.pendingBestMove);
             this.pendingBestMove = null;
         }
         break;
-
       case 'quit':
         process.exit(0);
         break;
-
       case 'debug_tree':
-         // Run a fixed depth search with debug enabled
-         this.output('info string Starting debug search...');
          const Search = require('./Search');
          this.currentSearch = new Search(this.board, this.tt);
-         // Search depth 2 to keep it small
          this.currentSearch.search(2, { hardLimit: Infinity }, { debug: true, debugFile: 'debug_tree.json' });
          this.currentSearch = null;
          this.output('info string Debug tree written to debug_tree.json');
          break;
-
       case 'bench':
-         // Epic 27: Bench Command
          const Bench = require('./Bench');
          Bench.run(this);
          break;
-
       default:
-        // Ignore unknown commands
         break;
     }
   }
@@ -143,13 +135,11 @@ class UCI {
   handlePosition(args) {
     let moveStartIndex = 0;
     if (args[0] === 'startpos') {
-      this.board = new Board(); // Reset to start
+      this.board = new Board();
       moveStartIndex = 1;
     } else if (args[0] === 'fen') {
-      // Find where 'moves' starts
       let movesIndex = args.indexOf('moves');
       if (movesIndex === -1) movesIndex = args.length;
-
       const fen = args.slice(1, movesIndex).join(' ');
       try {
         this.board.loadFen(fen);
@@ -160,113 +150,61 @@ class UCI {
       moveStartIndex = movesIndex;
     }
 
-    // Process moves if any
     if (args[moveStartIndex] === 'moves') {
       const moves = args.slice(moveStartIndex + 1);
-      for (const moveStr of moves) {
-        this.applyAlgebraicMove(moveStr);
-      }
+      for (const moveStr of moves) this.applyAlgebraicMove(moveStr);
     }
   }
 
   applyAlgebraicMove(moveStr) {
-    // Parse algebraic move (e2e4, e7e8q)
     const fromStr = moveStr.slice(0, 2);
     const toStr = moveStr.slice(2, 4);
     const promotionChar = moveStr.length > 4 ? moveStr[4] : null;
-
     const from = this.board.algebraicToIndex(fromStr);
     const to = this.board.algebraicToIndex(toStr);
-
-    // Generate legal moves to find the matching move object
-    const moves = this.board.generateMoves();
-    const move = moves.find(m => {
-      return m.from === from && m.to === to &&
-             (!promotionChar || m.promotion === promotionChar);
-    });
-
+    const move = this.board.generateMoves().find(m => m.from === from && m.to === to && (!promotionChar || m.promotion === promotionChar));
     if (move) {
       this.board.applyMove(move);
     } else {
-        this.output(`info string Illegal move: ${moveStr}`);
+      this.output(`info string Illegal move: ${moveStr}`);
     }
   }
 
   handleGo(args) {
-    // Epic 29: Searchmoves
     let searchMoves = null;
     if (args.includes('searchmoves')) {
         const idx = args.indexOf('searchmoves');
         searchMoves = args.slice(idx + 1);
-        // Remove searchmoves from args to avoid confusing other parsers?
-        // Actually, TimeManager parsing logic might get confused if 'wtime' comes after?
-        // Usually 'searchmoves' is at the end.
-        // Let's extract it.
     }
-
-    // Check Opening Book first
-    // Only if 'infinite' is NOT present (book moves are instant)
-    // And if we are in normal play mode.
-    // If 'ponder' is present, we shouldn't play immediately?
-    // Also disable book if searchmoves is set (force analysis).
-
     const isPonder = args.includes('ponder');
     this.pendingBestMove = null;
-
     if (!args.includes('infinite') && !isPonder) {
         const bookMove = this.book.findMove(this.board);
         if (bookMove) {
              const fromAlg = this.indexToAlgebraic(bookMove.from);
              const toAlg = this.indexToAlgebraic(bookMove.to);
-             const promo = bookMove.promotion ? bookMove.promotion : '';
-             this.output(`bestmove ${fromAlg}${toAlg}${promo}`);
+             this.output(`bestmove ${fromAlg}${toAlg}${bookMove.promotion || ''}`);
              return;
         }
     }
-
     const TimeManager = require('./TimeManager');
     const tm = new TimeManager();
-    const color = this.board.activeColor;
-
-    // Parse time limits
-    const timeLimits = tm.parseGoCommand(args, color);
-
-    // Parse depth if present
-    let depth = 64; // Max depth if time-based
+    const timeLimits = tm.parseGoCommand(args, this.board.activeColor);
+    let depth = 64;
     if (args.includes('depth')) {
-        const idx = args.indexOf('depth');
-        if (idx + 1 < args.length) {
-            depth = parseInt(args[idx+1], 10);
-        }
-        // If depth is specified but no time, we respect depth (handled by Search/TimeManager implicit infinite)
+        depth = parseInt(args[args.indexOf('depth') + 1], 10);
         if (!args.includes('wtime') && !args.includes('movetime')) {
              timeLimits.hardLimit = Infinity;
              timeLimits.softLimit = Infinity;
         }
     } else if (!args.includes('wtime') && !args.includes('movetime') && !args.includes('infinite')) {
-        // 'go' with no args -> default small depth or infinite?
-        // UCI standard: infinite unless stopped. But for testing, let's default to depth 5.
         depth = 5;
     }
-
     const Search = require('./Search');
-    this.currentSearch = new Search(this.board, this.tt);
-
-    // Pass time limits to search
-    // If hardLimit is Infinity, it runs until depth or stop.
-    // If hardLimit is number, Search should respect it.
-
-    // Add searchMoves to options
+    this.currentSearch = new Search(this.board, this.tt, this.nnue);
     const searchOptions = { ...this.options, searchMoves };
-
-    // The search function signature needs update or we pass object
     for (const worker of this.workers) {
-        worker.postMessage({
-            type: 'search',
-            fen: this.board.generateFen(),
-            depth: depth,
-            limits: timeLimits
-        });
+        worker.postMessage({ type: 'search', fen: this.board.generateFen(), depth: depth, limits: timeLimits });
     }
     const bestMove = this.currentSearch.search(depth, timeLimits, searchOptions);
     this.currentSearch = null;
@@ -275,10 +213,8 @@ class UCI {
     if (bestMove) {
         const fromAlg = this.indexToAlgebraic(bestMove.from);
         const toAlg = this.indexToAlgebraic(bestMove.to);
-        const promo = bestMove.promotion ? bestMove.promotion : '';
-        bestMoveStr = `bestmove ${fromAlg}${toAlg}${promo}`;
+        bestMoveStr = `bestmove ${fromAlg}${toAlg}${bestMove.promotion || ''}`;
     }
-
     if (isPonder) {
         this.pendingBestMove = bestMoveStr;
     } else {
@@ -288,58 +224,39 @@ class UCI {
 
   indexToAlgebraic(index) {
     const { row, col } = this.board.toRowCol(index);
-    const file = String.fromCharCode('a'.charCodeAt(0) + col);
-    const rank = 8 - row;
-    return `${file}${rank}`;
+    return `${String.fromCharCode('a'.charCodeAt(0) + col)}${8 - row}`;
   }
 
   handleSetOption(args) {
-    // Syntax: setoption name <name> [value <value>]
-    // Example: setoption name PawnValue value 100
-    let nameIdx = -1;
-    let valueIdx = -1;
-
+    let nameIdx = -1, valueIdx = -1;
     for (let i = 0; i < args.length; i++) {
         if (args[i] === 'name') nameIdx = i;
         if (args[i] === 'value') valueIdx = i;
     }
-
-    if (nameIdx === -1) return; // Invalid
-
-    // Extract Name
-    // Name can be multiple words between 'name' and 'value' (or end)
-    const nameStart = nameIdx + 1;
-    const nameEnd = valueIdx !== -1 ? valueIdx : args.length;
-    const name = args.slice(nameStart, nameEnd).join(' ');
-
-    // Extract Value
+    if (nameIdx === -1) return;
+    const name = args.slice(nameIdx + 1, valueIdx !== -1 ? valueIdx : args.length).join(' ');
     let value = null;
     if (valueIdx !== -1 && valueIdx + 1 < args.length) {
         const valStr = args[valueIdx + 1];
         if (valStr === 'true') value = true;
         else if (valStr === 'false') value = false;
-        else {
-            const parsed = parseInt(valStr, 10);
-            value = isNaN(parsed) ? valStr : parsed;
-        }
+        else value = isNaN(parseInt(valStr, 10)) ? valStr : parseInt(valStr, 10);
     }
-
     if (this.options.hasOwnProperty(name)) {
         this.options[name] = value;
-        if (name === 'Hash') {
-            // If Threads > 1, we need to re-allocate SharedArrayBuffer.
-            // For now, only resize local if single thread.
-            if (this.options.Threads === 1) {
-                this.tt.resize(value);
-                this.output(`info string Hash resized to ${value} MB`);
-            }
+        if (name === 'Hash' && this.options.Threads === 1) {
+            this.tt.resize(value);
+            this.output(`info string Hash resized to ${value} MB`);
         } else if (name === 'Threads') {
             this.stopWorkers();
             this.startWorkers();
+        } else if (name === 'UCI_UseNNUE' || name === 'UCI_NNUE_File') {
+            if (this.options.UCI_UseNNUE) {
+                this.nnue.loadNetwork(this.options.UCI_NNUE_File);
+            }
         }
     } else {
-        const Evaluation = require('./Evaluation');
-        Evaluation.updateParam(name, value);
+        require('./Evaluation').updateParam(name, value);
     }
   }
 }
