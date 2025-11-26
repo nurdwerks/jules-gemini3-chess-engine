@@ -549,216 +549,52 @@ The following Epics were part of the initial development phase and are either co
     *   *Acceptance Criteria:*
         *   [x] Engine never plays a move not in the list.
         *   [x] If best move is excluded, picks the best *allowed* move.
-
-### Epic 13: Magic Bitboards & Move Gen V2
-**Size:** Medium (3-5 days)
-**Description:** Migrate the move generation from 0x88 array-based to fully bitboard-based for performance.
+### Epic 30: History Heuristic
+**Size:** Small (2 days)
+**Description:** Implement a history table to order quiet moves that fail high but are not killer moves.
 **User Stories:**
-1.  **Magic Bitboard Generation (S)**
-    *   *Description:* Implement generation/loading of magic numbers for sliding pieces.
+1.  **History Table (S)**
+    *   *Description:* Create a table indexed by `[color][piece][to_square]` (or `[from][to]`).
     *   *Acceptance Criteria:*
-        *   [x] Generates valid magic numbers.
-        *   [x] Lookup table size is optimized.
-2.  **Implement Slider Attacks (S)**
-    *   *Description:* Implement `getRookAttacks` and `getBishopAttacks` using magics.
+        *   [x] Updates score on beta cutoffs (depth squared bonus).
+        *   [x] Decays scores periodically to favor recent good moves.
+2.  **Ordering Integration (S)**
+    *   *Description:* Use history score to sort quiet moves after killers.
     *   *Acceptance Criteria:*
-        *   [x] Returns correct bitmask for any occupancy.
-        *   [x] Performance is significantly faster than ray-casting.
-3.  **Refactor Board to Bitboards (S)**
-    *   *Description:* Update `Board` class to maintain bitboards for all pieces (in parallel or replacement).
-    *   *Acceptance Criteria:*
-        *   [x] `this.bitboards` maintained incrementally.
-        *   [x] `applyMove` updates bitboards.
-4.  **Bitboard Move Generation (S)**
-    *   *Description:* Rewrite `generateMoves` to use bitwise operations.
-    *   *Acceptance Criteria:*
-        *   [x] Matches perft results of 0x88 generator.
-        *   [x] Is measurably faster (benchmarked).
+        *   [x] Effective move ordering verified by node reduction.
 
-### Epic 14: Polyglot Opening Book
-**Size:** Small (2-3 days)
-**Description:** Fully integrate Polyglot opening book support.
+### Epic 32: Delta Pruning
+**Size:** Small (1 day)
+**Description:** Implement Delta Pruning in Quiescence Search.
 **User Stories:**
-1.  **Load .bin Files (S)**
-    *   *Description:* Implement `loadBook` to read standard Polyglot .bin files.
+1.  **Delta Logic (S)**
+    *   *Description:* If `stand_pat + safety_margin < alpha`, prune the node (unless checking).
     *   *Acceptance Criteria:*
-        *   [x] Reads file into memory or seeks correctly.
-        *   [x] Handles big-endian binary format.
-2.  **Accurate Key Calculation (S)**
-    *   *Description:* Ensure Zobrist keys match Polyglot standard exactly.
-    *   *Acceptance Criteria:*
-        *   [x] Correctly handles castling rights and en-passant hashing.
-        *   [x] Verified against known Polyglot positions.
-3.  **Root Probe Logic (S)**
-    *   *Description:* Probe the book at the start of search.
-    *   *Acceptance Criteria:*
-        *   [x] Returns weighted random move from book if available.
-        *   [x] Supports `Book` UCI option (true/false, filename).
+        *   [x] Reduces QSearch nodes.
+        *   [x] No significant tactical regressions.
 
-### Epic 15: Syzygy Tablebases
-**Size:** Medium (3-5 days)
-**Description:** Complete the integration of Syzygy endgame tablebases.
+### Epic 33: Lazy SMP Polish
+**Size:** Medium (3 days)
+**Description:** Refine the parallel search implementation for stability and scaling.
 **User Stories:**
-1.  **TB Probe Implementation (S)**
-    *   *Description:* Implement the low-level probing logic (WDL).
+1.  **Shared TT Optimization (S)**
+    *   *Description:* Ensure lockless or efficient locking TT access across threads.
     *   *Acceptance Criteria:*
-        *   [x] Correctly maps board to TB index.
-        *   [x] Decompresses data to get WDL value.
-2.  **Search Integration (S)**
-    *   *Description:* Query TB in search when pieces <= 6 (or configured limit).
+        *   [x] No race conditions corrupting critical data.
+2.  **Strength Scaling (S)**
+    *   *Description:* Verify NPS scales linearly with threads.
     *   *Acceptance Criteria:*
-        *   [x] Cutoff if position is known win/loss.
-        *   [x] Use TB value for static evaluation.
-3.  **Root Probe (S)**
-    *   *Description:* Check for instant win at root.
-    *   *Acceptance Criteria:*
-        *   [x] Reports "Mate in X" or TB win immediately.
+        *   [ ] Elo gain with 2 vs 1 thread.
 
-### Epic 16: Advanced Search Extensions
-**Size:** Small (2-3 days)
-**Description:** Implement specific extensions to deepen search in critical positions.
+### Epic 34: Chess960 Full Support
+**Size:** Small (2 days)
+**Description:** Ensure 100% compliance with Chess960 castling rules and evaluation.
 **User Stories:**
-1.  **Check Extension (S)**
-    *   *Description:* Extend search depth by 1 if the side to move is in check.
+1.  **Castling Verification (S)**
+    *   *Description:* Audit all castling paths in 960 mode.
     *   *Acceptance Criteria:*
-        *   [x] Checks are searched deeper.
-        *   [x] Does not explode tree size (verified).
-2.  **Singular Extension (S)**
-    *   *Description:* Extend search if the TT move is significantly better than all other moves (one legal good move).
+        *   [x] Passes specialized 960 test suites (e.g. from Stockfish).
+2.  **Eval Adjustments (S)**
+    *   *Description:* Ensure King safety eval handles 960 King positions correctly.
     *   *Acceptance Criteria:*
-        *   [x] Identifies singular moves.
-        *   [x] Extends depth for that branch.
-
-### Epic 17: Advanced Pruning
-**Size:** Small (2-3 days)
-**Description:** Implement aggressive pruning techniques to reduce tree size.
-**User Stories:**
-1.  **Razoring (S)**
-    *   *Description:* If static eval is far below alpha near leaf nodes, drop into QSearch.
-    *   *Acceptance Criteria:*
-        *   [x] Reduces node count.
-        *   [x] Elo gain verified.
-2.  **ProbCut (S)**
-    *   *Description:* Use a shallow search with a rough heuristic to prune non-promising lines early.
-    *   *Acceptance Criteria:*
-        *   [x] Triggered in advanced stages.
-        *   [x] Tunable margins.
-
-### Epic 18: SPSA Tuner
-**Size:** Medium (3-5 days)
-**Description:** Implement Simultaneous Perturbation Stochastic Approximation (SPSA) for tuning.
-**User Stories:**
-1.  **SPSA Algorithm (S)**
-    *   *Description:* Implement the core SPSA update rule.
-    *   *Acceptance Criteria:*
-        *   [x] Perturbs parameters randomly.
-        *   [x] Updates weights based on match results (not just static error).
-2.  **Match Runner Integration (S)**
-    *   *Description:* Integrate with `tools/match.js` to run games for each iteration.
-    *   *Acceptance Criteria:*
-        *   [x] Runs fast games (ultra-bullet) to estimate gradient.
-        *   [x] Converges on better weights than Texel.
-
-### Epic 19: Time Management V2
-**Size:** Small (1-2 days)
-**Description:** Improve time allocation stability and overhead handling.
-**User Stories:**
-1.  **Move Overhead (S)**
-    *   *Description:* Subtract a configurable overhead (default 50ms) from all time calculations to prevent flagging.
-    *   *Acceptance Criteria:*
-        *   [x] `MoveOverhead` UCI option.
-        *   [x] Engine never flags in laggy environments.
-2.  **Stability Detection (S)**
-    *   *Description:* Stop search early if best move has been stable for X iterations and time usage > optimum.
-    *   *Acceptance Criteria:*
-        *   [x] Saves time in easy positions.
-        *   [x] Does not stop if score is volatile.
-
-### Epic 20: Pawn Hash Table
-**Size:** Small (2-3 days)
-**Description:** Implement a hash table specifically for caching expensive pawn structure evaluation scores.
-**User Stories:**
-1.  **Pawn Hash Implementation (S)**
-    *   *Description:* Create a hash table mapping a unique pawn Zobrist key to a structure score.
-    *   *Acceptance Criteria:*
-        *   [x] Correctly handles collisions.
-        *   [x] Persists across searches.
-2.  **Integration into Evaluation (S)**
-    *   *Description:* Query the table before computing isolated/backward/doubled/passed pawn scores.
-    *   *Acceptance Criteria:*
-        *   [x] Speedup in `Evaluation.evaluate()` (benchmarked).
-        *   [x] Identical evaluation output.
-
-### Epic 21: Internal Iterative Deepening (IID)
-**Size:** Small (1-2 days)
-**Description:** Enhance search accuracy in nodes where no TT move is available by running a reduced-depth search first.
-**User Stories:**
-1.  **IID Logic (S)**
-    *   *Description:* If `depth > 3` and no TT move, run a search at `depth - 2`.
-    *   *Acceptance Criteria:*
-        *   [x] Triggers only when appropriate.
-        *   [x] Uses the best move from the reduced search for move ordering.
-2.  **Verification (S)**
-    *   *Description:* Verify that IID finds better moves in complex positions.
-    *   *Acceptance Criteria:*
-        *   [x] Elo gain verified via SPRT.
-
-### Epic 22: Late Move Pruning (LMP)
-**Size:** Small (1-2 days)
-**Description:** Prune quiet moves late in the move list at low depths to reduce branching factor.
-**User Stories:**
-1.  **LMP Implementation (S)**
-    *   *Description:* If `depth` is small (e.g., < 4) and move count > `limit(depth)`, skip remaining quiet moves.
-    *   *Acceptance Criteria:*
-        *   [x] Skips moves correctly.
-        *   [x] Does not prune tactical moves or checks.
-2.  **Tuning Limits (S)**
-    *   *Description:* Determine optimal move count limits per depth.
-    *   *Acceptance Criteria:*
-        *   [x] Formula derived from testing (e.g., `3 + depth * depth`).
-
-### Epic 23: Countermove Heuristic
-**Size:** Small (1-2 days)
-**Description:** Improve move ordering by prioritizing moves that historically refuted the opponent's specific previous move.
-**User Stories:**
-1.  **Countermove Table (S)**
-    *   *Description:* Maintain a table `CounterMoves[side][prevMove]` storing the best response.
-    *   *Acceptance Criteria:*
-        *   [x] Updates when a move causes a beta cutoff.
-        *   [x] Stores valid move indices.
-2.  **Ordering Logic (S)**
-    *   *Description:* Give a bonus to the countermove in the move picker.
-    *   *Acceptance Criteria:*
-        *   [x] Countermove sorted higher than ordinary quiets.
-
-### Epic 24: Multi-Cut Pruning (MCP)
-**Size:** Small (2-3 days)
-**Description:** Aggressively prune nodes where multiple moves fail high at a reduced depth.
-**User Stories:**
-1.  **MCP Logic (S)**
-    *   *Description:* If not in PV, run a reduced depth search on first C moves. If M moves fail high, return beta.
-    *   *Acceptance Criteria:*
-        *   [x] Triggers correctly.
-        *   [x] Returns beta early.
-2.  **Parameter Tuning (S)**
-    *   *Description:* Tune C (cut check count), M (required cutoffs), and R (reduction).
-    *   *Acceptance Criteria:*
-        *   [x] Parameters optimized for strength.
-
-### Epic 25: Advanced King Safety
-**Size:** Medium (3-5 days)
-**Description:** Replace the basic King safety check with a detailed "Attacker vs. Defender" model.
-**User Stories:**
-1.  **King Zone Definition (S)**
-    *   *Description:* Define the squares around the king + extra ring.
-    *   *Acceptance Criteria:*
-        *   [x] Identifies zone correctly for any king square.
-2.  **Attacker Weighting (S)**
-    *   *Description:* Calculate "Attack Units" based on pieces attacking the zone.
-    *   *Acceptance Criteria:*
-        *   [x] Different weights for Queen, Rook, Minor pieces.
-        *   [x] Bonus for multiple attackers.
-3.  **Safety Table Lookup (S)**
-    *   *Description:* Map total attack units to a penalty score using a nonlinear curve.
-    *   *Acceptance Criteria:*
-        *   [x] Higher attack count = exponentially higher penalty.
+        *   [x] King safety terms don't assume E1/E8 start.

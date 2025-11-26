@@ -63,6 +63,7 @@ class Search {
 
   // Iterative Deepening Search
   search(maxDepth = 5, timeLimits = { hardLimit: 1000, softLimit: 1000 }, options = {}) {
+    this.options = options;
     // Backward compatibility: if timeLimits is a number, treat as hardLimit
     if (typeof timeLimits === 'number') {
         timeLimits = { hardLimit: timeLimits, softLimit: timeLimits };
@@ -727,7 +728,9 @@ class Search {
               // Update Killers and History for quiet moves
               if (!move.flags.includes('c')) {
                   this.storeKiller(depth, move);
-                  this.addHistoryScore(this.board.activeColor, move.from, move.to, depth);
+                  if (this.options.UseHistory) {
+                    this.addHistoryScore(this.board.activeColor, move.from, move.to, depth);
+                  }
 
                   // Epic 23: Countermove Heuristic
                   // Store countermove for opponent's previous move
@@ -824,8 +827,10 @@ class Search {
              }
 
              // History
-             const historyScore = this.getHistoryScore(this.board.activeColor, m.from, m.to);
-             return historyScore;
+             if (this.options.UseHistory) {
+                return this.getHistoryScore(this.board.activeColor, m.from, m.to);
+             }
+             return 0;
         };
 
         const scoreA = scoreMove(a);
@@ -844,6 +849,17 @@ class Search {
       const standPat = Evaluation.evaluate(this.board);
       if (standPat >= beta) {
           return beta;
+      }
+      // Delta Pruning: If stand_pat is much worse than alpha, it's unlikely
+      // that a single capture can raise the score above alpha.
+      const safetyMargin = 975; // A bit more than a queen
+      if (standPat < alpha - safetyMargin) {
+         // However, we should not prune if there is a checking move that could lead to mate.
+         // This is expensive to check, so for now we apply a simpler version of delta pruning,
+         // by not pruning at all if the king is in check.
+         if (!this.board.isInCheck()) {
+            return alpha;
+         }
       }
       if (alpha < standPat) {
           alpha = standPat;

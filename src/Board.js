@@ -415,11 +415,9 @@ class Board {
                const kingCol = from0x88 & 7;
                const rookCol = rookIndex & 7;
 
-               const canCastleKingside = this.castling[color === 'white' ? 'w' : 'b'].k && rookCol > kingCol;
-               const canCastleQueenside = this.castling[color === 'white' ? 'w' : 'b'].q && rookCol < kingCol;
-               if (!canCastleKingside && !canCastleQueenside) continue;
-
                const isKingside = rookCol > kingCol;
+               let canCastle = (isKingside && this.castling[color === 'white' ? 'w' : 'b'].k) || (!isKingside && this.castling[color === 'white' ? 'w' : 'b'].q);
+               if (!canCastle) continue;
                const targetFile = isKingside ? 6 : 2;
                const rank = color === 'white' ? 7 : 0;
                const kingTargetIndex = (rank << 4) | targetFile;
@@ -436,23 +434,24 @@ class Board {
                for (let i = kingPath[0]; i <= kingPath[1]; i++) squaresToCheck.add(i);
                for (let i = rookPath[0]; i <= rookPath[1]; i++) squaresToCheck.add(i);
 
-               let canCastle = true;
+               let pathClear = true;
                for (const sq of squaresToCheck) {
                    if (this.squares[sq] && sq !== from0x88 && sq !== rookIndex) {
-                       canCastle = false; // Obstruction
+                       pathClear = false; // Obstruction
                        break;
                    }
                }
-               if (!canCastle) continue;
+               if (!pathClear) continue;
 
                // Check if king passes through an attacked square
+               let kingAttacked = false;
                for (let i = kingPath[0]; i <= kingPath[1]; i++) {
                    if (this.isSquareAttacked(i, opponent)) {
-                       canCastle = false;
+                       kingAttacked = true;
                        break;
                    }
                }
-               if (!canCastle) continue;
+               if (kingAttacked) continue;
 
                if (this.isChess960) {
                     const flag = isKingside ? 'k960' : 'q960';
@@ -728,13 +727,12 @@ class Board {
           } else if (char === 'q') {
               this.castling.b.q = true;
               this.addCastlingRook('black', 0);
-          } else {
+          } else if (/[A-H]/.test(char) || /[a-h]/.test(char)) {
+              this.isChess960 = true;
               const code = char.charCodeAt(0);
               if (code >= 65 && code <= 72) {
-                  this.isChess960 = true;
                   this.addCastlingRook('white', code - 65);
               } else if (code >= 97 && code <= 104) {
-                  this.isChess960 = true;
                   this.addCastlingRook('black', code - 97);
               }
           }
@@ -986,6 +984,36 @@ class Board {
       this.undoApplyMove(move, state);
     }
     return nodes;
+  }
+
+  applyAlgebraicMove(moveStr) {
+    const fromStr = moveStr.slice(0, 2);
+    const toStr = moveStr.slice(2, 4);
+    const promotionChar = moveStr.length > 4 ? moveStr[4] : null;
+
+    const from = this.algebraicToIndex(fromStr);
+    const to = this.algebraicToIndex(toStr);
+
+    const moves = this.generateMoves();
+    const move = moves.find(m => {
+        return m.from === from && m.to === to &&
+            (!promotionChar || m.promotion === promotionChar);
+    });
+
+    if (move) {
+        this.applyMove(move);
+    } else {
+        throw new Error(`Illegal move: ${moveStr}`);
+    }
+  }
+
+  moveToString(move) {
+      const { row: fromRow, col: fromCol } = this.toRowCol(move.from);
+      const { row: toRow, col: toCol } = this.toRowCol(move.to);
+      const fromAlg = `${String.fromCharCode('a'.charCodeAt(0) + fromCol)}${8 - fromRow}`;
+      const toAlg = `${String.fromCharCode('a'.charCodeAt(0) + toCol)}${8 - toRow}`;
+      const promo = move.promotion ? move.promotion : '';
+      return `${fromAlg}${toAlg}${promo}`;
   }
 
   generateFen() {
