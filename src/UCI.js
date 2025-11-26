@@ -188,8 +188,8 @@ class UCI {
         }
     }
     const TimeManager = require('./TimeManager');
-    const tm = new TimeManager();
-    const timeLimits = tm.parseGoCommand(args, this.board.activeColor, this.board);
+    const tm = new TimeManager(this.board);
+    const timeLimits = tm.parseGoCommand(args, this.board.activeColor);
     let depth = 64;
     if (args.includes('depth')) {
         depth = parseInt(args[args.indexOf('depth') + 1], 10);

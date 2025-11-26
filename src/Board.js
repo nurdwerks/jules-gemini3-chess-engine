@@ -987,6 +987,17 @@ class Board {
   }
 
   applyAlgebraicMove(moveStr) {
+    // Try SAN first
+    const moves = this.generateMoves();
+    for (const move of moves) {
+        const san = this.moveToSan(move, moves);
+        if (san === moveStr) {
+            this.applyMove(move);
+            return move;
+        }
+    }
+
+    // Fallback to LAN
     const fromStr = moveStr.slice(0, 2);
     const toStr = moveStr.slice(2, 4);
     const promotionChar = moveStr.length > 4 ? moveStr[4] : null;
@@ -994,7 +1005,6 @@ class Board {
     const from = this.algebraicToIndex(fromStr);
     const to = this.algebraicToIndex(toStr);
 
-    const moves = this.generateMoves();
     const move = moves.find(m => {
         return m.from === from && m.to === to &&
             (!promotionChar || m.promotion === promotionChar);
@@ -1002,9 +1012,64 @@ class Board {
 
     if (move) {
         this.applyMove(move);
-    } else {
-        throw new Error(`Illegal move: ${moveStr}`);
+        return move;
     }
+
+    throw new Error(`Illegal move: ${moveStr}`);
+  }
+
+  moveToSan(move, moves) {
+    if (move.flags === 'k' || move.flags === 'k960') {
+        return 'O-O';
+    }
+    if (move.flags === 'q' || move.flags === 'q960') {
+        return 'O-O-O';
+    }
+    // This is a simplified SAN generator. A full one is more complex.
+    const piece = move.piece;
+    const toAlg = this.moveToString(move).slice(2,4);
+
+    if (piece.type === 'pawn') {
+        if (move.captured) {
+            const fromAlg = this.moveToString(move).slice(0,1);
+            return `${fromAlg}x${toAlg}`;
+        }
+        return toAlg;
+    }
+
+    const pieceChar = piece.type.toUpperCase().replace('KNIGHT', 'N').charAt(0);
+    let san = `${pieceChar}${toAlg}`;
+
+    // Basic disambiguation - if multiple pieces of the same type can move to the same square
+    const ambiguousMoves = moves.filter(m =>
+        m.piece.type === piece.type &&
+        m.to === move.to &&
+        m.from !== move.from
+    );
+
+    if (ambiguousMoves.length > 0) {
+        const fromAlg = this.moveToString(move);
+        const fromFile = fromAlg.charAt(0);
+        const fromRank = fromAlg.charAt(1);
+
+        const fileCollision = ambiguousMoves.some(m => (this.moveToString(m).charAt(0) === fromFile));
+        const rankCollision = ambiguousMoves.some(m => (this.moveToString(m).charAt(1) === fromRank));
+
+        if(fileCollision && rankCollision) {
+            san = `${pieceChar}${fromAlg.slice(0,2)}${toAlg}`;
+        } else if (fileCollision) {
+            san = `${pieceChar}${fromRank}${toAlg}`;
+        } else {
+            san = `${pieceChar}${fromFile}${toAlg}`;
+        }
+    }
+
+     if (move.captured) {
+        san = san.replace(toAlg, `x${toAlg}`);
+    }
+
+    // Check for check/checkmate is omitted for simplicity for now
+    return san;
   }
 
   moveToString(move) {

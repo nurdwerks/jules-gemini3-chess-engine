@@ -1,5 +1,6 @@
 class TimeManager {
-    constructor() {
+    constructor(board) {
+        this.board = board;
         this.wtime = 0;
         this.btime = 0;
         this.winc = 0;
@@ -25,9 +26,8 @@ class TimeManager {
      * Parse UCI 'go' command arguments.
      * @param {string[]} args
      * @param {string} color 'w' or 'b'
-     * @param {Board} board The current board state.
      */
-    parseGoCommand(args, color, board) {
+    parseGoCommand(args, color) {
         this.reset();
         this.startTime = Date.now();
 
@@ -42,10 +42,10 @@ class TimeManager {
             if (arg === 'infinite') this.infinite = true;
         }
 
-        return this.calculateTimeAllocation(color, board);
+        return this.calculateTimeAllocation(color);
     }
 
-    calculateTimeAllocation(color, board) {
+    calculateTimeAllocation(color) {
         if (this.movetime > 0) {
             return { hardLimit: this.movetime, softLimit: this.movetime };
         }
@@ -70,9 +70,9 @@ class TimeManager {
         let movesLeft;
         if (this.movestogo > 0) {
             movesLeft = this.movestogo;
-        } else if (board.moveNumber < 15) { // Opening
+        } else if (this.board.fullMoveNumber < 15) { // Opening
             movesLeft = 50; // Spend less time
-        } else if (board.moveNumber > 40) { // Endgame
+        } else if (this.board.fullMoveNumber > 40) { // Endgame
             movesLeft = 20; // Spend more time
         } else { // Middlegame
             movesLeft = 30;

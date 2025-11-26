@@ -212,6 +212,17 @@ class Polyglot {
       return this.intToMove(moves[0].moveInt);
   }
 
+  moveToInt(move) {
+    const fromFile = move.from & 7;
+    const fromRow = 7 - (move.from >> 4);
+    const toFile = move.to & 7;
+    const toRow = 7 - (move.to >> 4);
+    const promoMap = { 'n': 1, 'b': 2, 'r': 3, 'q': 4 };
+    const promo = move.promotion ? promoMap[move.promotion] : 0;
+
+    return (promo << 12) | (fromRow << 9) | (fromFile << 6) | (toRow << 3) | toFile;
+  }
+
   intToMove(moveInt) {
       // Polyglot Move Encoding:
       // bit 0-2: to file
