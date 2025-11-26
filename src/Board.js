@@ -623,8 +623,6 @@ class Board {
           checkBishops(bishops.black);
       }
 
-      this.checkKingRookPlacement('white');
-      this.checkKingRookPlacement('black');
   }
 
   getSquareColor(index) {
@@ -633,6 +631,7 @@ class Board {
   }
 
   checkKingRookPlacement(color) {
+    if (this.fullMoveNumber === 1 && this.halfMoveClock === 0) {
       const rights = this.castlingRooks[color];
       if (!rights || rights.length === 0) return;
 
@@ -657,6 +656,7 @@ class Board {
                throw new Error('Invalid FEN string: King must be between Rooks.');
           }
       }
+    }
   }
 
   calculateZobristKey() {
@@ -706,33 +706,37 @@ class Board {
               }
           }
       }
+       if (this.isChess960) {
+          this.update960CastlingRights('white');
+          this.update960CastlingRights('black');
+      }
   }
+  update960CastlingRights(color) {
+    const kingRow = color === 'white' ? 7 : 0;
+    let kingCol = -1;
+    for(let c=0; c<8; c++) {
+        const p = this.squares[(kingRow << 4) | c];
+        if (p && p.type === 'king' && p.color === color) {
+            kingCol = c;
+            break;
+        }
+    }
 
+    if (kingCol !== -1) {
+        const rooks = this.castlingRooks[color].map(idx => idx & 7).sort((a,b)=>a-b);
+        const prefix = color === 'white' ? 'w' : 'b';
+
+        const leftRooks = rooks.filter(rCol => rCol < kingCol);
+        const rightRooks = rooks.filter(rCol => rCol > kingCol);
+
+        if (rightRooks.length > 0) this.castling[prefix].k = true;
+        if (leftRooks.length > 0) this.castling[prefix].q = true;
+    }
+  }
   addCastlingRook(color, file) {
       const rank = color === 'white' ? 7 : 0;
       const index = (rank << 4) | file;
       this.castlingRooks[color].push(index);
-
-      const kingRow = color === 'white' ? 7 : 0;
-      let kingCol = -1;
-      for(let c=0; c<8; c++) {
-          const p = this.squares[(kingRow << 4) | c];
-          if (p && p.type === 'king' && p.color === color) {
-              kingCol = c;
-              break;
-          }
-      }
-
-      if (kingCol !== -1) {
-          const rooks = this.castlingRooks[color].map(idx => idx & 7).sort((a,b)=>a-b);
-          const prefix = color === 'white' ? 'w' : 'b';
-
-          const leftRooks = rooks.filter(rCol => rCol < kingCol);
-          const rightRooks = rooks.filter(rCol => rCol > kingCol);
-
-          if (rightRooks.length > 0) this.castling[prefix].k = true;
-          if (leftRooks.length > 0) this.castling[prefix].q = true;
-      }
   }
 
   getCastlingHash(rights) {
