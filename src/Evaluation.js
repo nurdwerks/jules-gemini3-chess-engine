@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const PawnHash = require('./PawnHash');
+const Bitboard = require('./Bitboard');
 
 // Pawn Hash Global Instance (Should be in Search or Board, but Evaluation is static?)
 // Evaluation is static, so we need a singleton or passed instance.
@@ -21,8 +22,11 @@ const PARAMS = {
     DoubledPawnPenalty: 10,
     IsolatedPawnPenalty: 15,
     BackwardPawnPenalty: 10,
-    MobilityBonus: 2,
-    ShieldBonus: 5
+    KnightMobilityBonus: 1,
+    BishopMobilityBonus: 2,
+    RookMobilityBonus: 2,
+    QueenMobilityBonus: 3,
+    ShieldBonus: 5,
 };
 
 // Simplified PSTs (from flipped perspective for black? Or always from white perspective and flip index?)
@@ -146,10 +150,7 @@ class Evaluation {
             let pstValue = 0;
             let mobility = 0;
 
-            // Mobility Bonus
-            // We will count pseudo-legal moves for sliding pieces (Bishop, Rook, Queen).
-            // This is expensive, so we keep it simple.
-            if (['bishop', 'rook', 'queen', 'knight'].includes(piece.type)) {
+            if (board.bitboards && ['knight', 'bishop', 'rook', 'queen'].includes(piece.type)) {
                 mobility = Evaluation.evaluateMobility(board, i, piece.type, piece.color);
             }
 
@@ -403,48 +404,63 @@ class Evaluation {
     }
 
     static evaluateMobility(board, index, type, color) {
-        let count = 0;
+        const r = 7 - (index >> 4);
+        const c = index & 7;
+        const sq = r * 8 + c;
+        if (sq < 0 || sq > 63) return 0;
 
-        const offsets = {
-          'rook': [-16, 16, -1, 1],
-          'bishop': [-17, -15, 15, 17],
-          'queen': [-17, -15, 15, 17, -16, 16, -1, 1],
-          'knight': [-33, -31, -18, -14, 14, 18, 31, 33]
-        };
+        const occupancy = board.bitboards.white | board.bitboards.black;
+        const friendlyPieces = board.bitboards[color];
+        const opponent = color === 'white' ? 'black' : 'white';
 
-        const directions = offsets[type];
-        if (!directions) return 0;
-
-        const isSliding = ['rook', 'bishop', 'queen'].includes(type);
-
-        for (const dir of directions) {
-             if (isSliding) {
-                 let target = index + dir;
-                 while (board.isValidSquare(target)) {
-                     if (!board.squares[target]) {
-                         count++;
-                     } else {
-                         // Capture or blocked. Count if capture?
-                         // Mobility usually counts safe squares.
-                         // Simplified: Just count empty + 1 (capture).
-                         count++;
-                         break;
-                     }
-                     target += dir;
-                 }
-             } else {
-                 const target = index + dir;
-                 if (board.isValidSquare(target)) {
-                     const p = board.squares[target];
-                     if (!p || p.color !== color) {
-                         count++;
-                     }
-                 }
-             }
+        let attack_squares = 0n;
+        switch (type) {
+            case 'knight':
+                attack_squares = Bitboard.getKnightAttacks(sq);
+                break;
+            case 'bishop':
+                attack_squares = Bitboard.getBishopAttacks(sq, occupancy);
+                break;
+            case 'rook':
+                attack_squares = Bitboard.getRookAttacks(sq, occupancy);
+                break;
+            case 'queen':
+                attack_squares = Bitboard.getBishopAttacks(sq, occupancy) | Bitboard.getRookAttacks(sq, occupancy);
+                break;
         }
 
-        return count * PARAMS.MobilityBonus;
+        attack_squares &= ~friendlyPieces;
+
+        let safe_squares_count = 0;
+        while (attack_squares) {
+            const toSq = Bitboard.lsb(attack_squares);
+            const bbRow = Math.floor(toSq / 8);
+            const bbCol = toSq % 8;
+            const boardRow = 7 - bbRow;
+            const to0x88 = (boardRow << 4) | bbCol;
+
+            if (!board.isSquareAttacked(to0x88, opponent)) {
+                safe_squares_count++;
+            }
+
+            attack_squares &= (attack_squares - 1n);
+        }
+
+        const mobility = safe_squares_count;
+        switch (type) {
+            case 'knight':
+                return mobility * PARAMS.KnightMobilityBonus;
+            case 'bishop':
+                return mobility * PARAMS.BishopMobilityBonus;
+            case 'rook':
+                return mobility * PARAMS.RookMobilityBonus;
+            case 'queen':
+                return mobility * PARAMS.QueenMobilityBonus;
+        }
+
+        return 0;
     }
+
 
     static evaluateKingSafety(board, kingIndex, color) {
         // Epic 25: Advanced King Safety

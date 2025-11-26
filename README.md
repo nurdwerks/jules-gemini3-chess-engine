@@ -21,29 +21,6 @@ The following enhancements outline the next phase of development, focusing on co
     *   *Acceptance Criteria:*
         *   [ ] Significant Elo gain (+100 or more).
 
-### Epic 35: Principal Variation Search (PVS) Refinement
-**Size:** Small (2 days)
-**Description:** Audit and refine the PVS logic, specifically PV vs Non-PV node assumptions.
-**User Stories:**
-1.  **Node Type Rigor (S)**
-    *   *Description:* Strictly enforce PV, Cut, and All node definitions.
-    *   *Acceptance Criteria:*
-        *   [ ] Correct reductions applied only to Non-PV nodes.
-2.  **Research-based Reductions (S)**
-    *   *Description:* Tune LMR formula based on recent literature.
-    *   *Acceptance Criteria:*
-        *   [ ] Improved search efficiency.
-
-### Epic 36: Evaluation Tuning Data Pipeline
-**Size:** Medium (3 days)
-**Description:** Automate the end-to-end tuning process.
-**User Stories:**
-1.  **Pipeline Script (S)**
-    *   *Description:* Script to run `SelfPlay` -> `Extract EPD` -> `Run Tuner`.
-    *   *Acceptance Criteria:*
-        *   [ ] Single command execution.
-        *   [ ] Generates updated parameter file.
-
 ### Epic 37: Mobility Evaluation
 **Size:** Small (2 days)
 **Description:** Add piece mobility terms to the evaluation.

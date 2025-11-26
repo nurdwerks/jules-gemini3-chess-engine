@@ -598,3 +598,26 @@ The following Epics were part of the initial development phase and are either co
     *   *Description:* Ensure King safety eval handles 960 King positions correctly.
     *   *Acceptance Criteria:*
         *   [x] King safety terms don't assume E1/E8 start.
+
+### Epic 35: Principal Variation Search (PVS) Refinement
+**Size:** Small (2 days)
+**Description:** Audit and refine the PVS logic, specifically PV vs Non-PV node assumptions.
+**User Stories:**
+1.  **Node Type Rigor (S)**
+    *   *Description:* Strictly enforce PV, Cut, and All node definitions.
+    *   *Acceptance Criteria:*
+        *   [x] Correct reductions applied only to Non-PV nodes.
+2.  **Research-based Reductions (S)**
+    *   *Description:* Tune LMR formula based on recent literature.
+    *   *Acceptance Criteria:*
+        *   [x] Improved search efficiency.
+
+### Epic 36: Evaluation Tuning Data Pipeline
+**Size:** Medium (3 days)
+**Description:** Automate the end-to-end tuning process.
+**User Stories:**
+1.  **Pipeline Script (S)**
+    *   *Description:* Script to run `SelfPlay` -> `Extract EPD` -> `Run Tuner`.
+    *   *Acceptance Criteria:*
+        *   [x] Single command execution.
+        *   [x] Generates updated parameter file.
