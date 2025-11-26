@@ -103,7 +103,7 @@ class EngineProcess {
     }
 }
 
-async function playMatch(engine1Path, engine2Path, games = 10) {
+async function playMatch(engine1Path, engine2Path, games = 10, options = {}) {
     console.log(`Starting match: ${games} games`);
     let results = { p1Wins: 0, p2Wins: 0, draws: 0 };
 
@@ -132,6 +132,7 @@ async function playMatch(engine1Path, engine2Path, games = 10) {
 
             let board = new Board();
             let history = []; // List of algebraic moves
+            let fenHistory = [];
             let gameResult = null;
             let reason = '';
             let movesCount = 0;
@@ -174,6 +175,7 @@ async function playMatch(engine1Path, engine2Path, games = 10) {
 
                 board.applyMove(move);
                 history.push(moveStr);
+                fenHistory.push(board.generateFen());
                 movesCount++;
 
                 // Check game end conditions
@@ -212,6 +214,15 @@ async function playMatch(engine1Path, engine2Path, games = 10) {
                 results.draws++;
             }
 
+            // EPD Generation
+            if (options.epdFile && gameResult) {
+                const resultString = gameResult.replace('1/2-1/2', 'draw');
+                for (let j = 10; j < fenHistory.length -1; j++) { // Skip opening and final position
+                    const fen = fenHistory[j];
+                    fs.appendFileSync(options.epdFile, `${fen} c0 "${resultString}";\n`);
+                }
+            }
+
         } catch (e) {
             console.error(`Game ${i+1} aborted due to error:`, e);
         } finally {
@@ -231,6 +242,7 @@ if (require.main === module) {
     const e1 = args[0] || './src/engine.js';
     const e2 = args[1] || './src/engine.js';
     const games = args[2] ? parseInt(args[2]) : 2;
-    playMatch(e1, e2, games);
+    const epdFile = args[3] || null;
+    playMatch(e1, e2, games, { epdFile });
 }
 module.exports = { playMatch };
