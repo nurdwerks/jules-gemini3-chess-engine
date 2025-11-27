@@ -1,3 +1,0 @@
---- Testing Epics 17-20 ---
-bestmove e2e4
---- Done ---

@@ -1,3 +1,0 @@
---- Testing SEE ---
-bestmove d1d3
---- Done ---

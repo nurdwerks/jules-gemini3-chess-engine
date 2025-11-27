@@ -1,3 +1,0 @@
---- Testing Aspiration Window ---
-bestmove e2e4
---- Done ---
