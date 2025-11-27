@@ -107,10 +107,7 @@ function playGame(gameId, startFen, outputFile, enginePath) {
         const engine2 = spawn(process.execPath, [enginePath]);
 
         let resolved = false;
-        const cleanup = (result) => {
-            if (resolved) return;
-            resolved = true;
-
+        const cleanup = () => {
             engine1.removeAllListeners();
             engine2.removeAllListeners();
             engine1.stdout.removeAllListeners();
@@ -118,22 +115,33 @@ function playGame(gameId, startFen, outputFile, enginePath) {
 
             engine1.kill();
             engine2.kill();
+        };
 
+        const finish = (result) => {
+            if (resolved) return;
+            resolved = true;
+            cleanup();
             resolve(result);
         };
 
-        engine1.on('error', (err) => { cleanup(); reject(err); });
-        engine2.on('error', (err) => { cleanup(); reject(err); });
-        engine1.on('close', (code) => { if(!resolved && code !== 0 && code !== null) { cleanup(); reject(new Error(`E1 exited code ${code}`)); } });
-        engine2.on('close', (code) => { if(!resolved && code !== 0 && code !== null) { cleanup(); reject(new Error(`E2 exited code ${code}`)); } });
+        const fail = (err) => {
+            if (resolved) return;
+            resolved = true;
+            cleanup();
+            reject(err);
+        };
+
+        engine1.on('error', (err) => { console.error('E1 error', err); fail(err); });
+        engine2.on('error', (err) => { console.error('E2 error', err); fail(err); });
+        engine1.on('close', (code) => { if(!resolved && code !== 0 && code !== null) { fail(new Error(`E1 exited code ${code}`)); } });
+        engine2.on('close', (code) => { if(!resolved && code !== 0 && code !== null) { fail(new Error(`E2 exited code ${code}`)); } });
 
         const board = new Board();
         try {
             if (startFen === 'startpos') board.loadFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
             else board.loadFen(startFen);
         } catch(e) {
-            cleanup();
-            reject(e);
+            fail(e);
             return;
         }
 
@@ -211,9 +219,10 @@ function playGame(gameId, startFen, outputFile, enginePath) {
                 if (res === 1.0) resultStr = "1-0";
                 if (res === 0.0) resultStr = "0-1";
                 const data = gamePositions.map(f => `${f}; result ${resultStr};`).join('\n') + '\n';
+                // console.log(`Writing ${gamePositions.length} positions to ${outputFile}`);
                 fs.appendFileSync(outputFile, data);
             }
-            cleanup(res);
+            finish(res);
         };
 
         const setupEngine = (engine, name) => {
@@ -224,6 +233,7 @@ function playGame(gameId, startFen, outputFile, enginePath) {
                 buffer = lines.pop();
 
                 for (const line of lines) {
+                    // console.log(`[${name}] ${line}`);
                     if (line.trim() === 'uciok') {
                         if (name === 'E1') engine1Ready = true;
                         else engine2Ready = true;

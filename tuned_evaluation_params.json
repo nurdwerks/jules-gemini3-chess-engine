@@ -1,0 +1,16 @@
+{
+  "pawn": 105,
+  "knight": 315,
+  "bishop": 325,
+  "rook": 495,
+  "queen": 895,
+  "king": 20000,
+  "DoubledPawnPenalty": 15,
+  "IsolatedPawnPenalty": 10,
+  "BackwardPawnPenalty": 5,
+  "KnightMobilityBonus": -4,
+  "BishopMobilityBonus": -3,
+  "RookMobilityBonus": -3,
+  "QueenMobilityBonus": -2,
+  "ShieldBonus": 5
+}
