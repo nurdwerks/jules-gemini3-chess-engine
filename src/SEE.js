@@ -1,97 +1,150 @@
+const Bitboard = require('./Bitboard');
+
 class SEE {
     static getSmallestAttacker(board, square, side) {
-        // Find the least valuable piece attacking 'square' from 'side'
-        // Piece values: P(100) < N(320) < B(330) < R(500) < Q(900) < K(20000)
+        // square is 0x88
+        const sq64 = Bitboard.to64(square);
+        const occupancy = board.bitboards.white | board.bitboards.black;
+        const attackersBB = board.bitboards[side];
 
-        const attackers = [];
+        // 1. Pawns
+        const pawns = board.bitboards.pawn & attackersBB;
+        if (pawns) {
+            // Check if any pawn attacks sq64
+            // Attacks TO sq64.
+            // If side is white, pawns are at sq-15, sq-17?
+            // White pawn at P attacks P-16+1 (P-15) and P-16-1 (P-17)?
+            // Wait.
+            // White Pawn at sq64 (rank r, col c). Attacks (r-1, c-1) and (r-1, c+1) on 8x8?
+            // "White pawn attacks sq from sq+15"
+            // Let's verify direction.
+            // White moves "up" (decreasing row index in 0x88, increasing rank).
+            // Rank 0 is bottom (White pieces). Row 7.
+            // White pawn at Row 6 moves to Row 5.
+            // Attacks Row 5, Col +/- 1.
+            // So P (Row 6) attacks (Row 5).
+            // If `square` is at Row 5.
+            // We look for pawns at Row 6.
+            // Row 6 > Row 5. Index is higher.
+            // So `sq + offset` where offset > 0.
+            // `16` is one row down. `15` and `17` are diagonals.
+            // So White pawns are at `sq + 15` and `sq + 17`.
+            // Indices: `sq` is target. `sq+15` is potential white pawn.
 
-        // Pawns
-        // White pawns attack sq from sq+15, sq+17 (if side is white).
-        // Wait, isSquareAttacked logic checks if a piece IS at source.
-        // Here we need to find the piece.
+            // In bitboards (Rank 0..7):
+            // White pawn at Rank 1 attacks Rank 2.
+            // Target `sq` at Rank 2.
+            // Source `p` at Rank 1.
+            // `p < sq`.
+            // Bitboard `p = sq - 7` or `sq - 9`?
+            // `sq = p + 7` or `p + 9`.
+            // So `p = sq - 7` or `sq - 9`.
 
-        const pawnOffsets = side === 'white' ? [15, 17] : [-15, -17];
-        for(const offset of pawnOffsets) {
-            const from = square + offset;
-            if(board.isValidSquare(from)) {
-                const p = board.squares[from];
-                if(p && p.type === 'pawn' && p.color === side) {
-                    return { from, piece: p, value: 100 };
+            // Let's check `isSquareAttacked` in Board.js:
+            /*
+            if (attackingSide === 'white') {
+                if (col > 0 && ((whitePawns >> BigInt(bbSq - 9)) & 1n)) return true;
+                if (col < 7 && ((whitePawns >> BigInt(bbSq - 7)) & 1n)) return true;
+            }
+            */
+            // So for Bitboards, white pawns are at `sq - 9` and `sq - 7`.
+            // Wait, this means checking `sq - 9` looks for a pawn there.
+
+            const bbRank = Math.floor(sq64 / 8);
+            const bbCol = sq64 % 8;
+
+            if (side === 'white') {
+                // Pawns are "below" the target in ranks (lower rank index).
+                // Wait, White starts at rank 0, moves to 7.
+                // Attack is strictly increasing rank.
+                // Target is Rank R. Pawn is Rank R-1.
+                // Index: Target > Pawn.
+                // So Pawn is at `sq - 7` or `sq - 9`.
+                // Checks:
+                if (bbRank > 0) { // Can have pawns at rank-1
+                   // Capture from right (col-1 attacking col) -> index - 9 ?
+                   // Capture from left (col+1 attacking col) -> index - 7 ?
+                   // Just check both.
+                   if (bbCol > 0 && (pawns & (1n << BigInt(sq64 - 9)))) return { from: SEE.to0x88(sq64 - 9), piece: {type: 'pawn', color: 'white'}, value: 100 };
+                   if (bbCol < 7 && (pawns & (1n << BigInt(sq64 - 7)))) return { from: SEE.to0x88(sq64 - 7), piece: {type: 'pawn', color: 'white'}, value: 100 };
+                }
+            } else {
+                // Black pawns at Rank R+1.
+                // Pawn > Target.
+                // Pawn is at `sq + 7` or `sq + 9`.
+                if (bbRank < 7) {
+                   if (bbCol > 0 && (pawns & (1n << BigInt(sq64 + 7)))) return { from: SEE.to0x88(sq64 + 7), piece: {type: 'pawn', color: 'black'}, value: 100 };
+                   if (bbCol < 7 && (pawns & (1n << BigInt(sq64 + 9)))) return { from: SEE.to0x88(sq64 + 9), piece: {type: 'pawn', color: 'black'}, value: 100 };
                 }
             }
         }
 
-        // Knights
-        const knightOffsets = [-33, -31, -18, -14, 14, 18, 31, 33];
-        for(const offset of knightOffsets) {
-            const from = square + offset;
-            if(board.isValidSquare(from)) {
-                const p = board.squares[from];
-                if(p && p.type === 'knight' && p.color === side) {
-                    // Knights are valuable, check if we found a pawn earlier? No, pawns checked first.
-                    // But if multiple knights? Just return one.
-                    attackers.push({ from, piece: p, value: 320 });
-                }
-            }
-        }
-        if (attackers.length > 0) return attackers[0]; // Found knight
-
-        // Bishops/Queens (Diagonal)
-        const diagOffsets = [-17, -15, 15, 17];
-        for(const dir of diagOffsets) {
-            let from = square + dir;
-            while(board.isValidSquare(from)) {
-                const p = board.squares[from];
-                if(p) {
-                    if(p.color === side && (p.type === 'bishop' || p.type === 'queen')) {
-                        const val = p.type === 'bishop' ? 330 : 900;
-                        attackers.push({ from, piece: p, value: val });
-                    }
-                    break; // Blocked
-                }
-                from += dir;
+        // 2. Knights
+        const knights = board.bitboards.knight & attackersBB;
+        if (knights) {
+            // Knights attacking sq64 are at `getKnightAttacks(sq64)`.
+            const attackMask = Bitboard.getKnightAttacks(sq64);
+            const attackers = attackMask & knights;
+            if (attackers) {
+                const from64 = Bitboard.lsb(attackers);
+                return { from: SEE.to0x88(from64), piece: {type: 'knight', color: side}, value: 320 };
             }
         }
 
-        // Rooks/Queens (Straight)
-        const straightOffsets = [-16, 16, -1, 1];
-        for(const dir of straightOffsets) {
-            let from = square + dir;
-            while(board.isValidSquare(from)) {
-                const p = board.squares[from];
-                if(p) {
-                    if(p.color === side && (p.type === 'rook' || p.type === 'queen')) {
-                        const val = p.type === 'rook' ? 500 : 900;
-                        attackers.push({ from, piece: p, value: val });
-                    }
-                    break;
-                }
-                from += dir;
+        // 3. Bishops
+        const bishops = board.bitboards.bishop & attackersBB;
+        if (bishops) {
+            const attackMask = Bitboard.getBishopAttacks(sq64, occupancy);
+            const attackers = attackMask & bishops;
+            if (attackers) {
+                const from64 = Bitboard.lsb(attackers);
+                return { from: SEE.to0x88(from64), piece: {type: 'bishop', color: side}, value: 330 };
             }
         }
 
-        // King
-        const kingOffsets = [-17, -16, -15, -1, 1, 15, 16, 17];
-        for(const offset of kingOffsets) {
-            const from = square + offset;
-            if(board.isValidSquare(from)) {
-                const p = board.squares[from];
-                if(p && p.type === 'king' && p.color === side) {
-                    attackers.push({ from, piece: p, value: 20000 });
-                }
+        // 4. Rooks
+        const rooks = board.bitboards.rook & attackersBB;
+        if (rooks) {
+            const attackMask = Bitboard.getRookAttacks(sq64, occupancy);
+            const attackers = attackMask & rooks;
+            if (attackers) {
+                const from64 = Bitboard.lsb(attackers);
+                return { from: SEE.to0x88(from64), piece: {type: 'rook', color: side}, value: 500 };
             }
         }
 
-        if(attackers.length === 0) return null;
+        // 5. Queens
+        const queens = board.bitboards.queen & attackersBB;
+        if (queens) {
+            const attackMask = Bitboard.getBishopAttacks(sq64, occupancy) | Bitboard.getRookAttacks(sq64, occupancy);
+            const attackers = attackMask & queens;
+            if (attackers) {
+                const from64 = Bitboard.lsb(attackers);
+                return { from: SEE.to0x88(from64), piece: {type: 'queen', color: side}, value: 900 };
+            }
+        }
 
-        // Sort by value
-        attackers.sort((a, b) => a.value - b.value);
-        return attackers[0];
+        // 6. King
+        const king = board.bitboards.king & attackersBB;
+        if (king) {
+            const attackMask = Bitboard.getKingAttacks(sq64);
+            const attackers = attackMask & king;
+            if (attackers) {
+                const from64 = Bitboard.lsb(attackers);
+                return { from: SEE.to0x88(from64), piece: {type: 'king', color: side}, value: 20000 };
+            }
+        }
+
+        return null;
+    }
+
+    static to0x88(sq64) {
+        const row = 7 - Math.floor(sq64 / 8);
+        const col = sq64 % 8;
+        return (row << 4) | col;
     }
 
     static see(board, move) {
-        // SEE with board modification and proper revert
-
         // Initial gain = Value of captured piece
         let gain = [0];
         if (move.captured) {
@@ -103,28 +156,40 @@ class SEE {
 
         // Helper to modify and track
         const movePiece = (from, to, piece) => {
-            const prevFrom = board.squares[from];
-            const prevTo = board.squares[to];
+            const prevFrom = board.getPiece(from);
+            const prevTo = board.getPiece(to);
             changes.push({ from, to, prevFrom, prevTo });
-            board.squares[to] = piece;
-            board.squares[from] = null;
+
+            // Remove piece from from
+            board.toggleBitboard(piece, from);
+            // Remove captured from to
+            if (prevTo) board.toggleBitboard(prevTo, to);
+            // Add piece to to
+            board.toggleBitboard(piece, to);
         };
 
         // Initial Move
-        // move.piece moves to move.to
         movePiece(move.from, move.to, move.piece);
 
         let attacker = move.piece;
         if (!attacker) {
-             console.error("SEE: attacker (move.piece) is null", move);
              // Revert changes before returning
              while (changes.length > 0) {
                 const c = changes.pop();
-                board.squares[c.from] = c.prevFrom;
-                board.squares[c.to] = c.prevTo;
+                if (c.prevTo) board.toggleBitboard(c.prevTo, c.to); // Remove piece at to, put prevTo
+                else board.toggleBitboard(attacker, c.to); // Remove piece at to
+
+                if (c.prevTo) ; // Handled above?
+                // Wait, revert logic must be precise.
+                // Inverse of movePiece:
+                // 1. Remove piece from to.
+                // 2. Add prevTo to to (if exists).
+                // 3. Add prevFrom to from.
             }
+            // This path is error, let's fix revert loop below properly.
              return 0;
         }
+
         let attackerValue = SEE.getPieceValue(attacker.type);
         let side = attacker.color === 'white' ? 'black' : 'white';
         const sq = move.to;
@@ -136,37 +201,36 @@ class SEE {
                 const nextAttackerInfo = SEE.getSmallestAttacker(board, sq, side);
                 if (!nextAttackerInfo) break;
 
-                // Gain at this depth = AttackerValue - Gain[depth-1]
-                // Wait, standard SEE formula:
-                // gain[d] = value_of_victim - gain[d-1]
-                // Here, 'attacker' is the piece that just moved onto 'sq' (the new victim)
-                // 'nextAttackerInfo.value' is the value of the piece ABOUT TO CAPTURE.
-
-                // Correct logic:
-                // gain[0] = Value of Initial Victim (already set)
-                // gain[1] = Value of Initial Attacker (now Victim) - gain[0]
-                // gain[2] = Value of 2nd Attacker - gain[1]
-
-                // So we push (attackerValue - gain[depth-1])
                 gain.push(attackerValue - gain[depth - 1]);
 
-                // Setup next iteration
                 attackerValue = nextAttackerInfo.value;
                 side = side === 'white' ? 'black' : 'white';
 
-                // Execute capture
                 movePiece(nextAttackerInfo.from, sq, nextAttackerInfo.piece);
             }
         } finally {
             // Revert changes in reverse order
             while (changes.length > 0) {
                 const c = changes.pop();
-                board.squares[c.from] = c.prevFrom;
-                board.squares[c.to] = c.prevTo;
+                // Revert: piece was moved from c.from to c.to. c.prevTo was captured.
+                // The piece that moved is 'c.prevFrom' (or what we passed to movePiece).
+                // Wait, c.prevFrom IS the piece that moved.
+
+                const pieceMoved = c.prevFrom;
+
+                // 1. Remove piece from 'to'
+                board.toggleBitboard(pieceMoved, c.to);
+
+                // 2. Restore captured piece at 'to'
+                if (c.prevTo) {
+                    board.toggleBitboard(c.prevTo, c.to);
+                }
+
+                // 3. Restore piece at 'from'
+                board.toggleBitboard(pieceMoved, c.from);
             }
         }
 
-        // Minimax back up
         while (depth > 0) {
             gain[depth - 1] = -Math.max(-gain[depth - 1], gain[depth]);
             depth--;

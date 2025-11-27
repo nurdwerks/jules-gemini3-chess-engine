@@ -15,8 +15,8 @@ describe('Evaluation', () => {
 
   test('Material Advantage', () => {
     // Remove black pawn
-    board.squares[16] = null; // a7 is index 16. Wait, index 16 is a7 (row 1).
-    // a8=0. a7=16. Yes.
+    const piece = board.getPiece(16);
+    if (piece) board.toggleBitboard(piece, 16);
 
     // Evaluate for White
     const score = Evaluation.evaluate(board);

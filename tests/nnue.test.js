@@ -99,7 +99,7 @@ describe('NNUE', () => {
         const moves = board.generateMoves();
         const move = moves.find(m => m.from === board.algebraicToIndex('e4') && m.to === board.algebraicToIndex('d5'));
 
-        const changes = nnue.getChangedIndices(board, move, board.squares[board.algebraicToIndex('d5')]);
+        const changes = nnue.getChangedIndices(board, move, board.getPiece(board.algebraicToIndex('d5')));
         const incrementalAccumulator = accumulator.clone();
         nnue.updateAccumulator(incrementalAccumulator, changes);
 
