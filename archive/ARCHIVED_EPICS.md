@@ -662,3 +662,23 @@ The following Epics were part of the initial development phase and are either co
     *   *Acceptance Criteria:*
         *   [x] Uses less time when the opponent is in severe time trouble.
         *   [x] Avoids risky lines when having a large time advantage.
+
+### Epic 44: Opening Book Enhancements
+**Size:** Medium (3 days)
+**Description:** Improve the opening book functionality to support more formats, weighted move selection, and easier management.
+**User Stories:**
+1.  **Polyglot Book Support (M)**
+    *   *Description:* Add support for the widely-used Polyglot opening book format.
+    *   *Acceptance Criteria:*
+        *   [x] Can load and read `.bin` Polyglot book files.
+        *   [x] Correctly plays moves from the book according to the current position's hash.
+2.  **Weighted Move Selection (S)**
+    *   *Description:* Implement weighted random selection of moves from the opening book to increase opening variety.
+    *   *Acceptance Criteria:*
+        *   [x] Selects moves based on weights/probabilities defined in the book.
+        *   [x] Avoids playing the same opening line deterministically.
+3.  **Book Management Tool (S)**
+    *   *Description:* Create a simple command-line tool to create, merge, or filter opening books from PGN files.
+    *   *Acceptance Criteria:*
+        *   [x] Tool can convert a PGN file into a custom opening book format.
+        *   [x] Allows for basic book manipulation without external software.
