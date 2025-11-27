@@ -2,7 +2,6 @@ const Piece = require('./Piece');
 const Zobrist = require('./Zobrist');
 const Bitboard = require('./Bitboard');
 const trace = require('./trace');
-
 class Board {
   constructor() {
     this.activeColor = 'w';
@@ -53,30 +52,6 @@ class Board {
     return (index & 0x88) === 0;
   }
 
-  // Helper to get piece from bitboards
-  getPiece(index, col) {
-    if (col !== undefined) {
-        index = this.toIndex(index, col);
-    }
-    if (!this.isValidSquare(index)) return null;
-    const sq64 = Bitboard.to64(index);
-    const mask = 1n << BigInt(sq64);
-
-    // Check occupancy first
-    if (!((this.bitboards.white | this.bitboards.black) & mask)) return null;
-
-    const color = (this.bitboards.white & mask) ? 'white' : 'black';
-
-    if (this.bitboards.pawn & mask) return new Piece(color, 'pawn');
-    if (this.bitboards.knight & mask) return new Piece(color, 'knight');
-    if (this.bitboards.bishop & mask) return new Piece(color, 'bishop');
-    if (this.bitboards.rook & mask) return new Piece(color, 'rook');
-    if (this.bitboards.queen & mask) return new Piece(color, 'queen');
-    if (this.bitboards.king & mask) return new Piece(color, 'king');
-
-    return null;
-  }
-
   placePiece(row, col, piece) {
     const index = this.toIndex(row, col);
     if (this.isValidSquare(index)) {
@@ -100,17 +75,15 @@ class Board {
   }
 
   makeMove(move) {
-      // Determine captured piece
+      // Deduce captured piece if not provided
       let captured = move.captured;
-      if (!captured && move.flags !== 'e' && move.flags !== 'ep') {
-          // Fallback if not provided in move object (e.g. manual tests)
-           captured = this.getPiece(move.to);
+      if (captured === undefined) {
+          // If move.captured is undefined, check the board.
+          captured = this.getPiece(move.to);
       }
 
-      // Update Bitboards for moving piece
+      // Update Bitboards
       this.toggleBitboard(move.piece, move.from);
-
-      // Handle capture (remove captured piece from bitboards)
       if (captured) {
           this.toggleBitboard(captured, move.to);
       }
@@ -128,25 +101,23 @@ class Board {
       const bbSq = bbRank * 8 + toCol;
       const toBit = 1n << BigInt(bbSq);
 
-      // Place piece at destination
       this.bitboards[color] |= toBit;
       this.bitboards[pieceType] |= toBit;
 
-      // Handle En Passant
       if (move.flags === 'e' || move.flags === 'ep') {
         const isWhite = move.piece.color === 'white';
         const captureSq = isWhite ? move.to + 16 : move.to - 16;
-        // Logic to remove the captured pawn
-        // We know it's a pawn of opposite color
-        const capturedPawn = new Piece(isWhite ? 'black' : 'white', 'pawn');
-        this.toggleBitboard(capturedPawn, captureSq);
-        captured = capturedPawn; // Return it as captured
+        const capPawn = this.getPiece(captureSq); // Must lookup en-passant capture
+        if (capPawn) {
+            this.toggleBitboard(capPawn, captureSq);
+        }
       }
 
-      // Handle Castling
       if (move.flags === 'k' || move.flags === 'q' || move.flags === 'k960' || move.flags === 'q960') {
           if (move.flags === 'k960' || move.flags === 'q960') {
+              const kingSource = move.from;
               const rookSource = move.rookSource;
+              const kingTarget = move.to;
               const isKingside = move.flags === 'k960';
               const rank = move.piece.color === 'white' ? 7 : 0;
               const rookTargetFile = isKingside ? 5 : 3;
@@ -158,20 +129,22 @@ class Board {
               this.toggleBitboard(rook, rookTarget);
           } else {
               if (move.piece.color === 'white') {
-                  const rook = new Piece('white', 'rook');
                   if (move.flags === 'k') {
+                      const rook = new Piece('white', 'rook');
                       this.toggleBitboard(rook, 119);
                       this.toggleBitboard(rook, 117);
                   } else {
+                      const rook = new Piece('white', 'rook');
                       this.toggleBitboard(rook, 112);
                       this.toggleBitboard(rook, 115);
                   }
               } else {
-                  const rook = new Piece('black', 'rook');
                   if (move.flags === 'k') {
+                      const rook = new Piece('black', 'rook');
                       this.toggleBitboard(rook, 7);
                       this.toggleBitboard(rook, 5);
                   } else {
+                      const rook = new Piece('black', 'rook');
                       this.toggleBitboard(rook, 0);
                       this.toggleBitboard(rook, 3);
                   }
@@ -195,27 +168,22 @@ class Board {
       const bbSq = bbRank * 8 + toCol;
       const toBit = 1n << BigInt(bbSq);
 
-      // Remove piece from destination
       this.bitboards[color] ^= toBit;
       this.bitboards[pieceType] ^= toBit;
 
-      // Put piece back at source
       this.toggleBitboard(move.piece, move.from);
 
-      // Restore captured piece
-      if (captured && move.flags !== 'e' && move.flags !== 'ep') {
+      if (captured) {
           this.toggleBitboard(captured, move.to);
       }
 
-      // Handle En Passant
-      if (move.flags === 'e' || move.flags === 'ep') {
+      if (move.flags === 'e') {
           const isWhite = move.piece.color === 'white';
           const captureSq = isWhite ? move.to + 16 : move.to - 16;
-          // captured is passed in as the pawn
-          this.toggleBitboard(captured, captureSq);
+          const capturedPawn = new Piece(isWhite ? 'black' : 'white', 'pawn');
+          this.toggleBitboard(capturedPawn, captureSq);
       }
 
-      // Handle Castling
       if (move.flags === 'k' || move.flags === 'q' || move.flags === 'k960' || move.flags === 'q960') {
           if (move.flags === 'k960' || move.flags === 'q960') {
               const rookSource = move.rookSource;
@@ -225,25 +193,26 @@ class Board {
               const rookTarget = (rank << 4) | rookTargetFile;
 
               const rook = new Piece(move.piece.color, 'rook');
-
               this.toggleBitboard(rook, rookTarget);
               this.toggleBitboard(rook, rookSource);
           } else {
               if (move.piece.color === 'white') {
-                  const rook = new Piece('white', 'rook');
                   if (move.flags === 'k') {
+                      const rook = new Piece('white', 'rook');
                       this.toggleBitboard(rook, 117);
                       this.toggleBitboard(rook, 119);
                   } else {
+                      const rook = new Piece('white', 'rook');
                       this.toggleBitboard(rook, 115);
                       this.toggleBitboard(rook, 112);
                   }
               } else {
-                  const rook = new Piece('black', 'rook');
                   if (move.flags === 'k') {
+                      const rook = new Piece('black', 'rook');
                       this.toggleBitboard(rook, 5);
                       this.toggleBitboard(rook, 7);
                   } else {
+                      const rook = new Piece('black', 'rook');
                       this.toggleBitboard(rook, 3);
                       this.toggleBitboard(rook, 0);
                   }
@@ -257,8 +226,33 @@ class Board {
     this.loadFen(START_FEN);
   }
 
+  getPiece(row, col) {
+    let index;
+    if (typeof col !== 'undefined') {
+        index = this.toIndex(row, col);
+    } else {
+        index = row;
+    }
+    if (!this.isValidSquare(index)) return null;
+
+    const sq64 = Bitboard.to64(index);
+    const bit = 1n << BigInt(sq64);
+
+    if (!((this.bitboards.white | this.bitboards.black) & bit)) return null;
+
+    const color = (this.bitboards.white & bit) ? 'white' : 'black';
+    let type = 'pawn';
+    if (this.bitboards.pawn & bit) type = 'pawn';
+    else if (this.bitboards.knight & bit) type = 'knight';
+    else if (this.bitboards.bishop & bit) type = 'bishop';
+    else if (this.bitboards.rook & bit) type = 'rook';
+    else if (this.bitboards.queen & bit) type = 'queen';
+    else if (this.bitboards.king & bit) type = 'king';
+
+    return new Piece(color, type);
+  }
+
   getKingIndex(kingColor) {
-    // Optimized using bitboards
     const kingBB = this.bitboards.king & this.bitboards[kingColor];
     if (kingBB === 0n) return -1;
     const sq64 = Bitboard.lsb(kingBB);
@@ -334,7 +328,7 @@ class Board {
         const fromRow = 7 - Math.floor(fromSq / 8);
         const fromCol = fromSq % 8;
         const from0x88 = (fromRow << 4) | fromCol;
-        const piece = new Piece(color, pieceType); // Create piece on fly
+        const piece = new Piece(color, pieceType);
 
         let targets = attacks & ~us;
         while (targets) {
@@ -345,10 +339,19 @@ class Board {
 
             const isCapture = (them & (1n << BigInt(toSq))) !== 0n;
             if (isCapture) {
-                const captured = this.getPiece(to0x88);
-                moves.push({ from: from0x88, to: to0x88, flags: 'c', piece: piece, captured: captured });
+                // Find captured piece type
+                const toBit = 1n << BigInt(toSq);
+                let capturedPiece = null;
+                if (this.bitboards.pawn & toBit) capturedPiece = new Piece(opponent, 'pawn');
+                else if (this.bitboards.knight & toBit) capturedPiece = new Piece(opponent, 'knight');
+                else if (this.bitboards.bishop & toBit) capturedPiece = new Piece(opponent, 'bishop');
+                else if (this.bitboards.rook & toBit) capturedPiece = new Piece(opponent, 'rook');
+                else if (this.bitboards.queen & toBit) capturedPiece = new Piece(opponent, 'queen');
+                else if (this.bitboards.king & toBit) capturedPiece = new Piece(opponent, 'king');
+
+                moves.push({ from: from0x88, to: to0x88, flags: 'c', piece: piece, captured: capturedPiece });
             } else {
-                moves.push({ from: from0x88, to: to0x88, flags: 'n', piece: piece });
+                moves.push({ from: from0x88, to: to0x88, flags: 'n', piece: piece, captured: null });
             }
 
             targets &= (targets - 1n);
@@ -377,7 +380,6 @@ class Board {
           if (this.isChess960) {
            const rooks = this.castlingRooks[color];
            for (const rookIndex of rooks) {
-               // Use getPiece for rooks as they are specific instances we need to verify
                const rookPiece = this.getPiece(rookIndex);
                if (!rookPiece || rookPiece.type !== 'rook' || rookPiece.color !== color) continue;
 
@@ -403,10 +405,8 @@ class Board {
                let pathClear = true;
                for (const sq of squaresToCheck) {
                    if (sq !== from0x88 && sq !== rookIndex) {
-                       // Check occupancy using bitboards
-                       const sq64 = Bitboard.to64(sq);
-                       if ((occupancy & (1n << BigInt(sq64))) !== 0n) {
-                           pathClear = false;
+                       if (this.getPiece(sq)) {
+                           pathClear = false; // Obstruction
                            break;
                        }
                    }
@@ -437,24 +437,16 @@ class Board {
             const kingIndex = from0x88;
             const kingPiece = piece;
 
-            // Check if king exists (redundant in generation but safe)
             if (this.castling[color === 'white' ? 'w' : 'b'].k) {
                 const rook = this.getPiece(kingIndex + 3);
-                const occ1 = this.getPiece(kingIndex+1);
-                const occ2 = this.getPiece(kingIndex+2);
-
-                if (rook && rook.type === 'rook' && !occ1 && !occ2 &&
+                if (rook && rook.type === 'rook' && !this.getPiece(kingIndex+1) && !this.getPiece(kingIndex+2) &&
                     !this.isSquareAttacked(kingIndex, opponent) && !this.isSquareAttacked(kingIndex+1, opponent) && !this.isSquareAttacked(kingIndex+2, opponent)) {
                     moves.push({ from: kingIndex, to: kingIndex + 2, flags: 'k', piece: kingPiece });
                 }
             }
             if (this.castling[color === 'white' ? 'w' : 'b'].q) {
                 const rook = this.getPiece(kingIndex - 4);
-                const occ1 = this.getPiece(kingIndex-1);
-                const occ2 = this.getPiece(kingIndex-2);
-                const occ3 = this.getPiece(kingIndex-3);
-
-                if (rook && rook.type === 'rook' && !occ1 && !occ2 && !occ3 &&
+                if (rook && rook.type === 'rook' && !this.getPiece(kingIndex-1) && !this.getPiece(kingIndex-2) && !this.getPiece(kingIndex-3) &&
                     !this.isSquareAttacked(kingIndex, opponent) && !this.isSquareAttacked(kingIndex-1, opponent) && !this.isSquareAttacked(kingIndex-2, opponent)) {
                     moves.push({ from: kingIndex, to: kingIndex - 2, flags: 'q', piece: kingPiece });
                 }
@@ -497,15 +489,7 @@ class Board {
 
         const forward = color === 'white' ? -16 : 16;
         const targetSingle = from0x88 + forward;
-
-        // Check emptiness of single push
-        let emptySingle = false;
-        if (this.isValidSquare(targetSingle)) {
-             const t64 = Bitboard.to64(targetSingle);
-             if ((occupancy & (1n << BigInt(t64))) === 0n) emptySingle = true;
-        }
-
-        if (emptySingle) {
+        if (this.isValidSquare(targetSingle) && !this.getPiece(targetSingle)) {
             const targetRow = targetSingle >> 4;
             const promotionRank = color === 'white' ? 0 : 7;
             if (targetRow === promotionRank) {
@@ -517,11 +501,8 @@ class Board {
                  const startRank = color === 'white' ? 6 : 1;
                  const currentRow = from0x88 >> 4;
                  const targetDouble = from0x88 + (forward * 2);
-                 if (currentRow === startRank && this.isValidSquare(targetDouble)) {
-                     const t64Double = Bitboard.to64(targetDouble);
-                     if ((occupancy & (1n << BigInt(t64Double))) === 0n) {
-                         moves.push({ from: from0x88, to: targetDouble, flags: 'n', piece: piece });
-                     }
+                 if (currentRow === startRank && this.isValidSquare(targetDouble) && !this.getPiece(targetDouble)) {
+                   moves.push({ from: from0x88, to: targetDouble, flags: 'n', piece: piece });
                  }
             }
         }
@@ -530,13 +511,8 @@ class Board {
         for (const capOffset of captureOffsets) {
           const targetCap = from0x88 + capOffset;
           if (this.isValidSquare(targetCap)) {
-            const t64 = Bitboard.to64(targetCap);
-            const isOcc = (occupancy & (1n << BigInt(t64))) !== 0n;
-            const isThem = (them & (1n << BigInt(t64))) !== 0n;
-
-            if (isThem) {
-               // Capture
-               const targetPiece = this.getPiece(targetCap);
+            const targetPiece = this.getPiece(targetCap);
+            if (targetPiece && targetPiece.color === opponent) {
                const targetRow = targetCap >> 4;
                const promotionRank = color === 'white' ? 0 : 7;
                if (targetRow === promotionRank) {
@@ -546,7 +522,7 @@ class Board {
                } else {
                    moves.push({ from: from0x88, to: targetCap, flags: 'c', piece: piece, captured: targetPiece });
                }
-            } else if (!isOcc && this.enPassantTarget !== '-') {
+            } else if (!targetPiece && this.enPassantTarget !== '-') {
                const epIndex = this.algebraicToIndex(this.enPassantTarget);
                if (targetCap === epIndex) {
                    moves.push({ from: from0x88, to: targetCap, flags: 'e', piece: piece });
@@ -578,8 +554,7 @@ class Board {
     const halfMove = parts.length > 4 ? parts[4] : '0';
     const fullMove = parts.length > 5 ? parts[5] : '1';
 
-    // Remove squares clearing
-    // this.squares.fill(null);
+    // No more squares array
     this.isChess960 = false;
     // Reset Bitboards
     this.bitboards = { white: 0n, black: 0n, pawn: 0n, knight: 0n, bishop: 0n, rook: 0n, queen: 0n, king: 0n };
@@ -634,36 +609,52 @@ class Board {
   }
 
   validatePosition() {
-      // Validate bishops on opposite colors
-      const bishops = { white: [], black: [] };
-
-      const bishopBB = this.bitboards.bishop;
-      let bb = bishopBB;
-      while(bb) {
-          const sq64 = Bitboard.lsb(bb);
-          const color = (this.bitboards.white & (1n << BigInt(sq64))) ? 'white' : 'black';
-          const r = 7 - Math.floor(sq64/8);
-          const c = sq64%8;
-          bishops[color].push((r<<4)|c);
-          bb &= (bb - 1n);
-      }
+      const lightSq = 0x55AA55AA55AA55AAn;
+      const darkSq = ~lightSq;
 
       if (this.fullMoveNumber === 1 && this.halfMoveClock === 0) {
-          const checkBishops = (list) => {
-              const light = list.filter(idx => this.getSquareColor(idx) === 0).length;
-              const dark = list.filter(idx => this.getSquareColor(idx) === 1).length;
-              if (light > 1 || dark > 1) {
-                   throw new Error('Invalid FEN string: Bishops must be on opposite colors.');
-              }
-          };
-          checkBishops(bishops.white);
-          checkBishops(bishops.black);
+         const check = (color) => {
+             const bishops = this.bitboards.bishop & this.bitboards[color];
+             const lightCount = Bitboard.popcnt(bishops & lightSq);
+             const darkCount = Bitboard.popcnt(bishops & darkSq);
+             if (lightCount > 1 || darkCount > 1) {
+                  throw new Error('Invalid FEN string: Bishops must be on opposite colors.');
+             }
+         }
+         check('white');
+         check('black');
       }
   }
 
   getSquareColor(index) {
       const { row, col } = this.toRowCol(index);
       return (row + col) % 2;
+  }
+
+  getPiece(indexOrRow, col) {
+    let index;
+    if (typeof col !== 'undefined') {
+        index = this.toIndex(indexOrRow, col);
+    } else {
+        index = indexOrRow;
+    }
+
+    if (!this.isValidSquare(index)) return null;
+    const sq64 = Bitboard.to64(index);
+    const bit = 1n << BigInt(sq64);
+
+    if (!((this.bitboards.white | this.bitboards.black) & bit)) return null;
+
+    const color = (this.bitboards.white & bit) ? 'white' : 'black';
+    let type = 'pawn';
+    if (this.bitboards.pawn & bit) type = 'pawn';
+    else if (this.bitboards.knight & bit) type = 'knight';
+    else if (this.bitboards.bishop & bit) type = 'bishop';
+    else if (this.bitboards.rook & bit) type = 'rook';
+    else if (this.bitboards.queen & bit) type = 'queen';
+    else if (this.bitboards.king & bit) type = 'king';
+
+    return new Piece(color, type);
   }
 
   checkKingRookPlacement(color) {
@@ -689,24 +680,24 @@ class Board {
 
   calculateZobristKey() {
       let key = 0n;
-      // Iterate pieces using bitboards instead of squares array
-      // colors
-      ['white', 'black'].forEach(c => {
-          ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king'].forEach(t => {
-              let bb = this.bitboards[c] & this.bitboards[t];
-              while(bb) {
+      // Iterate all pieces efficiently
+      for (const color of ['white', 'black']) {
+          for (const type of ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king']) {
+              let bb = this.bitboards[type] & this.bitboards[color];
+              while (bb) {
                   const sq64 = Bitboard.lsb(bb);
-                  const row = 7 - Math.floor(sq64/8);
-                  const col = sq64%8;
-                  const idx = (row<<4)|col;
+                  // Convert to 0x88 index
+                  const row = 7 - Math.floor(sq64 / 8);
+                  const col = sq64 % 8;
+                  const idx = (row << 4) | col;
 
-                  const { c: cIdx, t: tIdx } = Zobrist.getPieceIndex(c, t);
-                  key ^= Zobrist.pieces[cIdx][tIdx][idx];
+                  const { c, t } = Zobrist.getPieceIndex(color, type);
+                  key ^= Zobrist.pieces[c][t][idx];
 
                   bb &= (bb - 1n);
               }
-          });
-      });
+          }
+      }
 
       if (this.activeColor === 'b') key ^= Zobrist.sideToMove;
       key ^= this.getCastlingHash(this.castlingRights);
@@ -748,13 +739,12 @@ class Board {
           this.update960CastlingRights('black');
       }
   }
-
   update960CastlingRights(color) {
-    const kingIndex = this.getKingIndex(color);
-    let kingCol = -1;
-    if (kingIndex !== -1) {
-        kingCol = kingIndex & 7;
-    }
+    const kingRow = color === 'white' ? 7 : 0;
+    const kingBB = this.bitboards.king & this.bitboards[color];
+    if (kingBB === 0n) return;
+    const kingSq = Bitboard.lsb(kingBB);
+    const kingCol = kingSq % 8;
 
     if (kingCol !== -1) {
         const rooks = this.castlingRooks[color].map(idx => idx & 7).sort((a,b)=>a-b);
@@ -767,7 +757,6 @@ class Board {
         if (leftRooks.length > 0) this.castling[prefix].q = true;
     }
   }
-
   addCastlingRook(color, file) {
       const rank = color === 'white' ? 7 : 0;
       const index = (rank << 4) | file;
@@ -803,18 +792,14 @@ class Board {
     };
 
     if (!move.piece) {
-         console.error("Board.applyMove: move.piece is null!", move);
          throw new Error("Board.applyMove: move.piece is null");
     }
 
     let { c, t } = Zobrist.getPieceIndex(move.piece.color, move.piece.type);
     this.zobristKey ^= Zobrist.pieces[c][t][move.from];
 
-    // Determine captured piece before making move
-    // Either from move object or lookup
-    const capturedPiece = move.captured || ( (move.flags !== 'e' && move.flags !== 'ep') ? this.getPiece(move.to) : null);
-
-    // Note: If EP, we handle Zobrist below
+    // Get captured piece using getPiece
+    const capturedPiece = this.getPiece(move.to);
 
     if (capturedPiece) {
         const capIdx = Zobrist.getPieceIndex(capturedPiece.color, capturedPiece.type);
@@ -1086,14 +1071,14 @@ class Board {
       const toAlg = `${String.fromCharCode('a'.charCodeAt(0) + toCol)}${8 - toRow}`;
       const promo = move.promotion ? move.promotion : '';
       return `${fromAlg}${toAlg}${promo}`;
-    }
+  }
 
   generateFen() {
     let placement = '';
     for (let r = 0; r < 8; r++) {
       let emptyCount = 0;
       for (let c = 0; c < 8; c++) {
-        const piece = this.getPiece(this.toIndex(r, c));
+        const piece = this.getPiece(r, c);
         if (piece) {
           if (emptyCount > 0) {
             placement += emptyCount;
@@ -1122,7 +1107,7 @@ class Board {
 
   clone() {
     const newBoard = new Board();
-    // No squares to clone
+    // No squares to copy
     newBoard.activeColor = this.activeColor;
     newBoard.castlingRights = this.castlingRights;
     newBoard.enPassantTarget = this.enPassantTarget;

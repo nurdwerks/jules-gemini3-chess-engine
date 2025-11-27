@@ -11,6 +11,7 @@
 // For now, let's create `src/Polyglot.js` structure.
 
 const fs = require('fs');
+const Bitboard = require('./Bitboard');
 
 class Polyglot {
   constructor() {
@@ -27,84 +28,44 @@ class Polyglot {
 
   // Compute Polyglot Key for the board
   computeKey(board) {
-      // We need the Polyglot Random Numbers.
-      // Since we don't have them yet, we can't compute the standard key.
-      // But we can implement the logic.
       const constants = require('./PolyglotConstants');
 
       let key = 0n; // BigInt
 
       // Pieces
-      for (let i = 0; i < 128; i++) {
-          if (!board.isValidSquare(i)) continue;
-          const piece = board.getPiece(i);
-          if (piece) {
-              const file = i & 7;
-              const row = i >> 4;
-              // Polyglot uses 0-7 for rows 0-7.
-              // My board: Row 0 is Rank 8. Row 7 is Rank 1.
-              // Polyglot: Row 0 is Rank 1? Need to check.
-              // "square a1, file 0, row 0".
-              // My board: a1 is index 112 (row 7, col 0).
-              // So Polyglot Row = 7 - MyRow.
-              const polyRow = 7 - row;
-              const polyFile = file;
+      for (const color of ['white', 'black']) {
+          for (const type of ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king']) {
+              let bb = board.bitboards[type] & board.bitboards[color];
+              while (bb) {
+                  const sq64 = Bitboard.lsb(bb);
+                  const row = 7 - Math.floor(sq64 / 8);
+                  const file = sq64 % 8;
+                  const polyRow = 7 - row;
+                  const polyFile = file;
 
-              const pieceTypeMap = {
-                  'pawn': 0, 'knight': 1, 'bishop': 2, 'rook': 3, 'queen': 4, 'king': 5
-              };
-              let kind = pieceTypeMap[piece.type];
-              // Black pieces are offset by ? Polyglot:
-              // Black Pawn 0, White Pawn 1...
-              // Wait. Website says:
-              // bp 0, wp 1, bn 2, wn 3 ...
-              // So Kind = type * 2 + (color == white ? 1 : 0).
+                  const pieceTypeMap = { 'pawn': 0, 'knight': 1, 'bishop': 2, 'rook': 3, 'queen': 4, 'king': 5 };
+                  let kind = pieceTypeMap[type];
+                  kind = kind * 2 + (color === 'white' ? 1 : 0);
 
-              kind = kind * 2 + (piece.color === 'white' ? 1 : 0);
+                  const offset = 64 * kind + 8 * polyRow + polyFile;
+                  key ^= constants.Random64[offset];
 
-              // Offset = 64 * kind + 8 * row + file
-              const offset = 64 * kind + 8 * polyRow + polyFile;
-              key ^= constants.Random64[offset];
+                  bb &= (bb - 1n);
+              }
           }
       }
 
       // Castling
-      // "castle" is XOR of entries.
-      // 0: White Short (K side)
-      // 1: White Long (Q side)
-      // 2: Black Short
-      // 3: Black Long
-      // Offset 768 + index
-      // My board stores castlingRights as string "KQkq".
       if (board.castlingRights.includes('K')) key ^= constants.Random64[768 + 0];
       if (board.castlingRights.includes('Q')) key ^= constants.Random64[768 + 1];
       if (board.castlingRights.includes('k')) key ^= constants.Random64[768 + 2];
       if (board.castlingRights.includes('q')) key ^= constants.Random64[768 + 3];
 
       // En Passant
-      // If EP square exists.
-      // Polyglot: "If the opponent has performed a double pawn push and there is now a pawn next to it belonging to the player to move"
-      // My board stores `enPassantTarget` as string or '-'.
       if (board.enPassantTarget !== '-') {
           const epIndex = board.algebraicToIndex(board.enPassantTarget);
           const epCol = epIndex & 7;
-
-          // My board.enPassantTarget is the square *behind* the pawn.
-          // e.g. e2-e4 -> enPassantTarget is e3.
-          // The pawn is at e4.
-          // We need to check if friendly pawns are at d4 or f4.
-
           const epRow = epIndex >> 4;
-          // If activeColor is white (attacking), it means black pawn moved.
-          // Black moves e7->e5 (row 1->3). EP square e6 (row 2).
-          // Pawn is at e5 (row 3).
-          // White pawns at d5/f5 (row 3) can capture.
-          // So row to check is epRow + 1.
-          // If activeColor is black, white pawn moved e2->e4 (row 6->4). EP e3 (row 5).
-          // Pawn at e4 (row 4).
-          // Black pawns at d4/f4 (row 4) can capture.
-          // So row to check is epRow - 1.
-
           const epPawnRow = board.activeColor === 'w' ? epRow + 1 : epRow - 1;
 
           let hasPawn = false;

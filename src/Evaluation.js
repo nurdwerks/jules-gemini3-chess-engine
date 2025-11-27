@@ -3,7 +3,9 @@ const path = require('path');
 const PawnHash = require('./PawnHash');
 const Bitboard = require('./Bitboard');
 
-// Pawn Hash Global Instance
+// Pawn Hash Global Instance (Should be in Search or Board, but Evaluation is static?)
+// Evaluation is static, so we need a singleton or passed instance.
+// For now, singleton here.
 const pawnHash = new PawnHash(16); // 16MB default
 
 // Piece values (centi-pawns)
@@ -27,7 +29,15 @@ const PARAMS = {
     ShieldBonus: 5,
 };
 
-// PSTs (same as before)
+// Simplified PSTs (from flipped perspective for black? Or always from white perspective and flip index?)
+// Commonly, PSTs are defined for White. For Black, we mirror the rank and file (index ^ 56 for vertical flip, but 0x88 is different).
+// 0x88 Board: 0-7 (Rank 8), ..., 112-119 (Rank 1).
+// Let's define tables for White (Rank 1 at bottom indices 112-119).
+// Wait, 0x88 index 0 is a8.
+// If I define the table as an array of 64, I need to map it.
+// Let's just use 128-sized arrays for simplicity, filling invalid squares with 0.
+
+// White Pawn PST (Encourages pushing, center control)
 const PAWN_PST = [
     0,  0,  0,  0,  0,  0,  0,  0,    0,0,0,0,0,0,0,0, // Rank 8 (Promoted)
    50, 50, 50, 50, 50, 50, 50, 50,    0,0,0,0,0,0,0,0, // Rank 7
@@ -172,23 +182,15 @@ class Evaluation {
         let whiteKingIndex = -1;
         let blackKingIndex = -1;
 
-        const to0x88 = (sq64) => {
-             const r = 7 - Math.floor(sq64/8);
-             const c = sq64 % 8;
-             return (r << 4) | c;
-        };
-
-        const colors = ['white', 'black'];
-        const types = ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
-
-        for (const color of colors) {
-            for (const type of types) {
+        for (const color of ['white', 'black']) {
+            for (const type of ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king']) {
                 let bb = board.bitboards[type] & board.bitboards[color];
-                while(bb) {
+                while (bb) {
                     const sq64 = Bitboard.lsb(bb);
-                    const i = to0x88(sq64);
+                    const row = 7 - Math.floor(sq64 / 8);
+                    const col = sq64 % 8;
+                    const i = (row << 4) | col;
 
-                    // Track kings for safety check
                     if (type === 'king') {
                         if (color === 'white') whiteKingIndex = i;
                         else blackKingIndex = i;
@@ -211,8 +213,6 @@ class Evaluation {
                         pstValue = PSTS[type][i];
                         score += (value + pstValue + pawnStructure + mobility);
                     } else {
-                        const row = i >> 4;
-                        const col = i & 7;
                         const flippedIndex = ((7 - row) << 4) | col;
                         pstValue = PSTS[type][flippedIndex];
                         score -= (value + pstValue + pawnStructure + mobility);
@@ -223,6 +223,11 @@ class Evaluation {
             }
         }
 
+        // Safety
+        // Check if King is exposed (basic).
+        // Or distance to enemy pieces?
+        // Let's do a simple "King Shield" check if King is castled or in corner.
+        // Checking king safety properly requires knowing pawn shield.
         if (whiteKingIndex !== -1) {
             score += Evaluation.evaluateKingSafety(board, whiteKingIndex, 'white');
         }
@@ -234,6 +239,7 @@ class Evaluation {
     }
 
     static updateParam(name, value) {
+        // Handle piece values mapping (e.g. 'PawnValue' -> 'pawn')
         const map = {
             'PawnValue': 'pawn',
             'KnightValue': 'knight',
@@ -260,25 +266,33 @@ class Evaluation {
         return { ...PIECE_VALUES, ...PARAMS };
     }
 
+    static getParams() {
+        return { ...PIECE_VALUES, ...PARAMS };
+    }
+
     static evaluatePawnStructure(board, index, color) {
         let score = 0;
         const col = index & 7;
         const row = index >> 4;
 
-        // Doubled Pawns
+        // Doubled Pawns (Penalty)
+        // Check file for other pawns of same color
+        // Just check if there's a pawn in front/behind (simple)
         const forward = color === 'white' ? -16 : 16;
-        const frontSq = index + forward;
-        // Check piece in front
-        const frontPiece = board.getPiece(frontSq);
+        const frontPiece = board.getPiece(index + forward);
         if (frontPiece && frontPiece.type === 'pawn' && frontPiece.color === color) {
-            score -= PARAMS.DoubledPawnPenalty;
+            score -= PARAMS.DoubledPawnPenalty; // Penalty for doubled
         }
 
-        // Isolated Pawns
+        // Isolated Pawns (Penalty)
+        // Check adjacent files for friendly pawns
         let hasNeighbor = false;
         const files = [col - 1, col + 1];
         for (const f of files) {
              if (f >= 0 && f <= 7) {
+                 // Check entire file? Or just approximate.
+                 // Iterating files is slow.
+                 // Let's assume standard eval is fast enough.
                  for (let r = 0; r < 8; r++) {
                       const idx = (r << 4) | f;
                       const p = board.getPiece(idx);
@@ -291,8 +305,8 @@ class Evaluation {
         }
         if (!hasNeighbor) score -= PARAMS.IsolatedPawnPenalty;
 
-        // Backward Pawns
-        if (hasNeighbor) {
+        // Backward Pawns (Penalty)
+        if (hasNeighbor) { // Only relevant if neighbors exist (otherwise isolated)
             let isBehindAllNeighbors = true;
             for (const f of files) {
                 if (f >= 0 && f <= 7) {
@@ -300,9 +314,14 @@ class Evaluation {
                         const idx = (r << 4) | f;
                         const p = board.getPiece(idx);
                         if (p && p.type === 'pawn' && p.color === color) {
+                             // Check rank.
+                             // White: Moves up (decreasing row).
+                             // If neighbor row > current row (neighbor is behind), then we are NOT backward.
                              if (color === 'white') {
                                  if (r > row) isBehindAllNeighbors = false;
                              } else {
+                                 // Black: Moves down (increasing row).
+                                 // If neighbor row < current row (neighbor is behind), then we are NOT backward.
                                  if (r < row) isBehindAllNeighbors = false;
                              }
                         }
@@ -314,18 +333,34 @@ class Evaluation {
             }
         }
 
-        // Passed Pawn
+        // Passed Pawn (Bonus)
+        // A pawn is passed if there are no enemy pawns on the same file or adjacent files
+        // that are "ahead" of the pawn.
         const enemyColor = color === 'white' ? 'black' : 'white';
         let isPassed = true;
         const checkFiles = [col - 1, col, col + 1];
 
+        // Define "ahead" rows
+        // White: rows 0 to row-1
+        // Black: rows row+1 to 7
         const startRow = color === 'white' ? 0 : row + 1;
         const endRow = color === 'white' ? row - 1 : 7;
+
+        // Optimized: Break early if loop range is invalid (though loop condition handles it)
+        // Note: For White at row 0 (promotion), loop doesn't run, implicitly passed (but pawns promote).
+        // Pawns only exist rows 1-6 normally.
 
         outerLoop:
         for (const f of checkFiles) {
              if (f < 0 || f > 7) continue;
 
+             // Iterate rows ahead
+             // We can just loop from startRow to endRow (inclusive if start <= end)
+             // Careful with direction if start > end, but here startRow/endRow are computed correctly:
+             // White: 0 to row-1. (Ascending ok)
+             // Black: row+1 to 7. (Ascending ok)
+
+             // Ensure loop runs correctly
              if (startRow <= endRow) {
                  for (let r = startRow; r <= endRow; r++) {
                      const idx = (r << 4) | f;
@@ -339,13 +374,39 @@ class Evaluation {
         }
 
         if (isPassed) {
+            // Rank-based bonus
+            // White: Rank 2 (row 6) is start. Rank 7 (row 1) is high.
+            // Ranks 0-7.
+            // visual Rank = 8 - row.
+            // White visual Ranks: 2, 3, 4, 5, 6, 7.
+            // Bonuses: [0, 0, 10, 20, 40, 80, 160, 0] (Index by visual rank)
             const PASSED_BONUS = [0, 0, 10, 20, 40, 80, 160, 0];
+
+            const visualRank = 8 - row - 1; // 0-7 index (Row 7->Rank 1->Idx 0).
+            // Wait. Row 0 is Rank 8. Row 7 is Rank 1.
+            // White moves Row 6 -> Row 1.
+            // Rank index for bonus:
+            // Row 6 (Rank 2) -> Low bonus.
+            // Row 1 (Rank 7) -> High bonus.
+
             let rankIdx = 0;
             if (color === 'white') {
+                // Row 6 -> Rank 2. We want index 1 or 2?
+                // Let's say index = Rank - 1.
+                // Row 6 is Rank 2. Idx 1.
+                // Row 1 is Rank 7. Idx 6.
                 rankIdx = 7 - row;
             } else {
+                // Black moves Row 1 -> Row 6.
+                // Row 1 (Rank 7) -> Base.
+                // Row 6 (Rank 2) -> Advanced.
+                // Wait, Black advances Row 1 -> Row 6.
+                // Row 1 is starting position for black pawns.
+                // Row 6 is close to promotion.
                 rankIdx = row;
             }
+
+            // Safety clamp
             if (rankIdx < 0) rankIdx = 0;
             if (rankIdx > 7) rankIdx = 7;
 
@@ -415,18 +476,36 @@ class Evaluation {
 
 
     static evaluateKingSafety(board, kingIndex, color) {
+        // Epic 25: Advanced King Safety
+        // Attack Units Model
         let score = 0;
         let attackUnits = 0;
         let attackerCount = 0;
         const opponent = color === 'white' ? 'black' : 'white';
+
+        // Define King Zone: 3x3 area around King (including King sq, handled by logic?)
+        // Usually surrounding 8 squares + squares in front.
+        // We iterate surrounding 8 squares.
         const zoneOffsets = [-17, -16, -15, -1, 1, 15, 16, 17];
 
+        // Iterate opponent pieces to see if they attack the zone.
+        // This is expensive if we loop all pieces.
+        // But checking "isSquareAttacked" for 8 squares is also expensive (8 calls * check all).
+        // Better: Iterate opponent pieces (sliding mainly) and see if they hit zone.
+        // But we don't have piece lists easily accessible in Board 0x88 (we have `bitboards` now!).
+        // Board has bitboards.
+
+        // Use Bitboards for King Safety (Fast)
+        // 0x88 to 64:
         const r = 7 - (kingIndex >> 4);
         const c = kingIndex & 7;
         const kSq = r * 8 + c;
 
+        // Zone Mask (Precomputed ideally, but dynamic here)
+        // King attacks from kSq.
         const zone = Bitboard.getKingAttacks(kSq); // Surrounding 8
 
+        // Check attackers
         const enemyKnights = board.bitboards.knight & board.bitboards[opponent];
         const enemyBishops = board.bitboards.bishop & board.bitboards[opponent];
         const enemyRooks = board.bitboards.rook & board.bitboards[opponent];
@@ -469,11 +548,33 @@ class Evaluation {
             bq &= (bq - 1n);
         }
 
+        const shieldOffsets = color === 'white' ? [-17, -16, -15] : [15, 16, 17];
+        let shieldCount = 0;
+        for (const offset of shieldOffsets) {
+             const shieldSq = kingIndex + offset;
+             if (board.isValidSquare(shieldSq)) {
+                 const p = board.getPiece(shieldSq);
+                 if (p && p.type === 'pawn' && p.color === color) {
+                     shieldCount++;
+                 }
+             }
+        }
+        score += shieldCount * PARAMS.ShieldBonus;
+
+        // Safety Table (Non-linear)
+        // AttackerCount must be > 1 to matter usually?
         if (attackerCount > 1) {
-            const safetyTable = [0, 0, 10, 30, 60, 100, 150, 210, 280, 360, 450];
+            // Formula: weight * attackUnits^2 / 100?
+            // Or simple table:
+            const safetyTable = [0, 0, 10, 30, 60, 100, 150, 210, 280, 360, 450]; // Index by attack units / 2 approx?
             const idx = Math.min(attackUnits, 10);
             score -= safetyTable[idx];
         }
+
+        // Still add shield bonus
+        // Pawn Shield (Re-using logic efficiently?)
+        // We can check pawns on bitboard zone?
+        // Let's keep it simple.
 
         return score;
     }

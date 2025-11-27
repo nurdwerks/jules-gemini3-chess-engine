@@ -656,7 +656,10 @@ class Search {
 
       // Check for Mate/Stalemate
       if (moves.length === 0) {
-          if (this.board.isInCheck()) {
+          const kingColor = this.board.activeColor === 'w' ? 'white' : 'black';
+          const kingIndex = this.board.getKingIndex(kingColor);
+          const opponent = this.board.activeColor === 'w' ? 'black' : 'white';
+          if (kingIndex !== -1 && this.board.isSquareAttacked(kingIndex, opponent)) {
               return -20000 + (100 - depth); // Prefer faster mates
           } else {
               return 0; // Stalemate

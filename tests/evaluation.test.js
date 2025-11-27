@@ -14,9 +14,11 @@ describe('Evaluation', () => {
   });
 
   test('Material Advantage', () => {
-    // Remove black pawn
-    const piece = board.getPiece(16);
-    if (piece) board.toggleBitboard(piece, 16);
+    // Remove black pawn at a7 (index 16)
+    const p = board.getPiece(16);
+    if (p) {
+        board.toggleBitboard(p, 16);
+    }
 
     // Evaluate for White
     const score = Evaluation.evaluate(board);
