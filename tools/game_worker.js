@@ -30,21 +30,30 @@ parentPort.on('message', async (msg) => {
             console.log(`Worker starting batch of ${fens.length} games`);
 
             for (let i = 0; i < fens.length; i++) {
-                const fen = fens[i];
-                if (!fen) continue;
+                try {
+                    const fen = fens[i];
+                    if (!fen) continue;
 
-                console.log(`Worker playing game ${startIndex + i}`);
-                // playGame handles FEN parsing and game execution
-                const gameData = playGame(fen, tt, nnue);
-                console.log(`Worker finished game ${startIndex + i}`);
+                    console.log(`Worker playing game ${startIndex + i}`);
+                    // playGame handles FEN parsing and game execution
+                    const gameData = playGame(fen, tt, nnue);
+                    console.log(`Worker finished game ${startIndex + i}`);
 
-                if (gameData) {
-                    const { result, positions } = gameData;
+                    if (gameData) {
+                        const { result, positions } = gameData;
+                        parentPort.postMessage({
+                            type: 'result',
+                            index: startIndex + i,
+                            result,
+                            positions
+                        });
+                    }
+                } catch (gameErr) {
+                    console.error(`Error processing game ${startIndex + i}:`, gameErr);
                     parentPort.postMessage({
-                        type: 'result',
+                        type: 'error',
                         index: startIndex + i,
-                        result,
-                        positions
+                        message: gameErr.message
                     });
                 }
             }
@@ -53,5 +62,12 @@ parentPort.on('message', async (msg) => {
         }
     } catch (err) {
         console.error('Worker error:', err);
+        parentPort.postMessage({
+            type: 'error',
+            index: -1,
+            message: `Fatal worker error: ${err.message}`
+        });
+        // Ensure the main thread is notified to terminate the worker
+        parentPort.postMessage({ type: 'batch_complete' });
     }
 });
