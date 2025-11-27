@@ -4,8 +4,10 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const { spawn } = require('child_process');
+const EpdLoader = require('./EpdLoader');
 
 const EPD_JSON_PATH = path.join(__dirname, '..', 'epd.json');
+const CUMULATIVE_DATA_FILE = path.join(process.cwd(), 'tuning_data_cumulative.epd');
 
 function downloadFile(url, dest) {
     return new Promise((resolve, reject) => {
@@ -78,12 +80,12 @@ async function main() {
     console.log(`URL: ${url}`);
 
     if (fs.existsSync(destPath)) {
-        console.log(`File '${filename}' already exists locally. Skipping download.`);
+        console.log(`File '${filename}' already exists locally. Processing incremental step.`);
     } else {
         console.log(`Downloading...`);
         try {
             await downloadFile(url, destPath);
-            console.log('Download complete.');
+            console.log('Download complete. Processing incremental step.');
         } catch (err) {
             console.error(`Download failed: ${err.message}`);
             // Clean up partial file if it exists and failed
@@ -94,23 +96,92 @@ async function main() {
         }
     }
 
-    // Run the tuner
-    const tunerScript = path.join(__dirname, 'tune_from_epd.js');
-    console.log(`Running: node ${tunerScript} ${filename}`);
+    // Incremental Processing Logic (Primary Flow)
+    const content = fs.readFileSync(destPath, 'utf8');
+    const lines = content.split('\n').filter(l => l.trim().length > 0);
 
-    const child = spawn('node', [tunerScript, destPath], {
-        stdio: 'inherit'
-    });
+    if (lines.length === 0) {
+        console.log("File is empty. Nothing to process.");
+        // If file is empty, do nothing.
+        process.exit(0);
+    }
 
-    child.on('close', (code) => {
-        console.log(`Tuner process exited with code ${code}`);
-        process.exit(code);
-    });
+    const firstLine = lines[0];
+    const remainingLines = lines.slice(1);
 
-    child.on('error', (err) => {
-        console.error('Failed to start tuner process:', err);
+    console.log(`Processing first line...`);
+
+    // Process first line (Generate result if needed)
+    const tempFile = path.join(process.cwd(), 'temp_single_line.epd');
+    const tempOut = path.join(process.cwd(), 'temp_single_result.epd');
+    fs.writeFileSync(tempFile, firstLine);
+
+    let processedLine = null;
+
+    // Check if line has result?
+    const parsed = EpdLoader.parseLine(firstLine);
+    if (parsed && parsed.result !== null) {
+        console.log("Line has result.");
+        processedLine = firstLine;
+    } else {
+        console.log("Line needs result. Running match...");
+        // Run match on this single line
+         const matchScript = path.join(__dirname, 'match.js');
+         const match = spawn('node', [
+            matchScript,
+            '--epd', tempFile,
+            '--output', tempOut,
+            '--games', '1',
+            '--concurrency', '1',
+            '--silent'
+        ], { stdio: 'inherit' });
+
+        await new Promise((resolve, reject) => {
+            match.on('close', (code) => {
+                if (code === 0) resolve();
+                else reject(new Error(`Match failed code ${code}`));
+            });
+            match.on('error', reject);
+        });
+
+        if (fs.existsSync(tempOut)) {
+            const res = fs.readFileSync(tempOut, 'utf8').trim();
+            if (res.length > 0) {
+                processedLine = res;
+                console.log("Result generated.");
+                fs.unlinkSync(tempOut);
+            }
+        }
+    }
+
+    fs.unlinkSync(tempFile);
+
+    if (processedLine) {
+        // Append to cumulative data
+        fs.appendFileSync(CUMULATIVE_DATA_FILE, processedLine + '\n');
+
+        // Rewrite file without first line
+        fs.writeFileSync(destPath, remainingLines.join('\n') + (remainingLines.length > 0 ? '\n' : ''));
+        console.log(`Processed successfully. Removed first line. Remaining: ${remainingLines.length}`);
+    } else {
+        console.error("Failed to process line. Aborting.");
         process.exit(1);
-    });
+    }
+
+
+    // Tune on cumulative
+    if (fs.existsSync(CUMULATIVE_DATA_FILE)) {
+         const tunerScript = path.join(__dirname, 'tune_from_epd.js');
+         console.log(`Running tuner on ${CUMULATIVE_DATA_FILE}...`);
+         const child = spawn('node', [tunerScript, CUMULATIVE_DATA_FILE], { stdio: 'inherit' });
+
+         child.on('close', (code) => {
+            console.log(`Tuner finished with code ${code}`);
+            process.exit(code);
+        });
+    } else {
+        console.log("No cumulative data to tune yet.");
+    }
 }
 
 if (require.main === module) {
