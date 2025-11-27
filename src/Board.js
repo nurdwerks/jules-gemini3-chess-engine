@@ -465,9 +465,12 @@ class Board {
                }
            }
          } else { // Standard chess
-            const kingIndex = this.getKingIndex(color);
-            if (kingIndex === -1) return;
-            const kingPiece = this.squares[kingIndex];
+            const kingIndex = from0x88;
+            const kingPiece = piece;
+
+            // Sanity check: if board is desynchronized, skip castling
+            if (!kingPiece || kingPiece.type !== 'king' || kingPiece.color !== color) continue;
+
             if (this.castling[color === 'white' ? 'w' : 'b'].k) {
                 const rook = this.squares[kingIndex + 3];
                 if (rook && rook.type === 'rook' && !this.squares[kingIndex+1] && !this.squares[kingIndex+2] &&
