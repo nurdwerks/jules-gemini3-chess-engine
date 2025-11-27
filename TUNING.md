@@ -1,63 +1,100 @@
 # Engine Tuning Guide
 
-This document explains how to tune the engine's evaluation parameters using the Texel tuning method. The engine supports two main workflows: generating self-play data from scratch or tuning from an existing dataset (EPD file).
+This document explains how to tune the engine's evaluation parameters using the Texel tuning method. The engine supports workflows for self-play data generation, tuning from existing datasets, and rescoring positions.
 
 ## Prerequisites
 
 *   Node.js (v14 or later recommended)
 *   Dependencies installed (`npm install`)
 
-## Evaluation Parameters
+## Process Flows
 
-The engine's evaluation parameters are defined in `src/Evaluation.js`. This includes piece values, mobility bonuses, and pawn structure penalties.
+The tuning process involves a cyclical workflow of data generation, evaluation, and optimization.
+
+```mermaid
+graph TD
+    A[Start] --> B{Data Source?};
+    B -- "Self-Play (npm run tune)" --> C[Generate Games vs Self];
+    B -- "External EPD (download_and_tune.js)" --> D[Load EPD Positions];
+    C -- "Parallel Workers" --> W1[Worker Threads];
+    D -- "Parallel Workers" --> W1;
+    W1 --> E[Game Results (FEN + Score)];
+    E --> F[Accumulate Data];
+    F --> G[Texel Tuner];
+    G -- "Coordinate Descent" --> H[Update tuned_evaluation_params.json];
+    H --> I[End / Restart];
+```
+
+## What is Being Tuned
+
+The engine's static evaluation function uses a set of configurable parameters to assess position quality. The tuner optimizes these values to minimize the error between the engine's static evaluation and the actual game outcomes.
+
+The following parameters are tuned (defined in `src/Evaluation.js`):
+
+*   **Piece Values**: Base centi-pawn value for Pawn, Knight, Bishop, Rook, Queen.
+*   **Pawn Structure**:
+    *   `DoubledPawnPenalty`: Penalty for having two pawns on the same file.
+    *   `IsolatedPawnPenalty`: Penalty for a pawn with no friendly pawns on adjacent files.
+    *   `BackwardPawnPenalty`: Penalty for a pawn that cannot safely advance.
+*   **Mobility**:
+    *   `KnightMobilityBonus`: Bonus per safe square available to a Knight.
+    *   `BishopMobilityBonus`: Bonus per safe square available to a Bishop.
+    *   `RookMobilityBonus`: Bonus per safe square available to a Rook.
+    *   `QueenMobilityBonus`: Bonus per safe square available to a Queen.
+*   **King Safety**:
+    *   `ShieldBonus`: Bonus for pawns shielding the king.
 
 When the engine starts, it checks for a `tuned_evaluation_params.json` file in the root directory. If found, it overrides the default values with these parameters.
 
 ## Option A: Full Pipeline (Self-Play + Tune)
 
-To generate new training data and tune the engine in one go, use the provided npm script:
+To generate new training data from scratch (starting from `startpos`) and tune the engine:
 
 ```bash
 npm run tune
 ```
 
-This command executes `tools/pipeline.js`, which performs the following steps:
-1.  **Self-Play**: Runs a match between two instances of the engine to generate game positions.
-2.  **Data Collection**: Saves positions and game results to `tuning_data.epd`.
-3.  **Tuning**: Runs the coordinate descent tuner to minimize the evaluation error on the generated positions.
-4.  **Save**: Writes the optimized parameters to `tuned_evaluation_params.json`.
+This executes `tools/pipeline.js`, which runs self-play matches in parallel, collects data, and runs the tuner.
 
-*Note: You can adjust the number of games in `tools/pipeline.js` by modifying the `SELFPLAY_GAMES` constant.*
+## Option B: Tuning from Opening Book / Rescoring
 
-## Option B: Tuning with Existing EPD Files
+To generate games starting from specific positions (e.g., an opening book or test suite), use the `tools/download_and_tune.js` script. You can specify an index from `epd.json` OR a local file path.
 
-If you already have a dataset of positions (e.g., from previous runs or external sources), you can tune the engine directly without generating new games.
+**Using a Local EPD File:**
+To tune using a local EPD file (e.g., `my_openings.epd`), pass the file path as an argument:
 
-### 1. Prepare your EPD file
-The file should be in Extended Position Description (EPD) format. Each line must contain a FEN string and a game result (`1-0`, `0-1`, or `1/2-1/2`).
-
-Example `data.epd`:
-```
-rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1; result 1/2-1/2;
-rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2; result 1-0;
+```bash
+node tools/download_and_tune.js my_openings.epd
 ```
 
-### 2. Run the Tuner
-Use the `tools/tune_from_epd.js` script:
+The script will:
+1.  Verify the file exists.
+2.  Use parallel worker threads to play games starting from the positions in the file.
+3.  Accumulate the results.
+4.  Run the tuner to optimize parameters.
 
+*Note: User-provided local files are NOT deleted after processing.*
+
+**Using a Standard Dataset:**
+To use a known dataset (indexed in `epd.json`), pass the index:
+
+```bash
+node tools/download_and_tune.js 0
+```
+(See `node tools/download_and_tune.js` for list of available datasets).
+
+## Option C: Tuning with Existing Data (No Game Generation)
+
+If you already have a dataset of positions *with results* (e.g., from previous runs), you can tune the engine directly without generating new games.
+
+**1. Prepare your EPD file**
+Format: `FEN; result <1-0|0-1|1/2-1/2>;`
+
+**2. Run the Tuner**
 ```bash
 node tools/tune_from_epd.js <path_to_epd> [iterations]
 ```
-
-*   `<path_to_epd>`: Path to your .epd file.
-*   `[iterations]`: (Optional) Number of tuning iterations. Defaults to 5.
-
-**Example:**
-```bash
-node tools/tune_from_epd.js my_games.epd 10
-```
-
-This will load the positions, run the optimization, and update `tuned_evaluation_params.json`.
+Example: `node tools/tune_from_epd.js data.epd 10`
 
 ## Technical Details
 
@@ -65,4 +102,4 @@ The tuning algorithm is a local coordinate descent (similar to Texel tuning). It
 
 *   **Tuner Logic**: `tools/Tuner.js`
 *   **EPD Parsing**: `tools/EpdLoader.js`
-*   **Pipeline Orchestration**: `tools/pipeline.js`
+*   **Pipeline Orchestration**: `tools/pipeline.js` & `tools/download_and_tune.js`
