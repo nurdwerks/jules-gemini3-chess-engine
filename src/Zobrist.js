@@ -66,7 +66,11 @@ const Zobrist = {
   // Returns 0-7 or -1 if none
   getEpIndex(epTarget) {
     if (epTarget === '-') return -1;
-    return epTarget.charCodeAt(0) - 'a'.charCodeAt(0);
+    const code = epTarget.charCodeAt(0);
+    if (code >= 97 && code <= 104) {
+        return code - 97;
+    }
+    return -1;
   }
 };
 
