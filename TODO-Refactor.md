@@ -47,3 +47,25 @@ The following test files currently depend on bitboards:
     *   Delete `tests/bitboard.test.js` (if class is removed).
     *   Update `tests/regression_generate_moves_crash.test.js`.
 4.  **Remove code**: Remove `src/Bitboard.js` and bitboard logic from `src/Board.js` (if decided).
+
+## Bitboard Usage in Source Code
+
+### `src/Board.js`
+*   **Line 3**: `require('./Bitboard')` (Top-level)
+*   **Line 70**: `toggleBitboard`
+*   **Line 84, 86, 117, 137, 138, 145, 146, 151, 152, 159, 160, 165, 166**: `makeMove`
+*   **Line 191, 194, 206, 225, 226, 232, 233, 238, 239, 246, 247, 252, 253**: `unmakeMove`
+*   **Line 318, 335, 338, 341**: `isSquareAttacked`
+*   **Line 364, 383, 384, 391, 392, 485, 486, 493, 494, 501, 502, 509**: `generateMoves`
+
+### `src/Evaluation.js`
+*   **Line 4**: `require('./Bitboard')` (Top-level)
+*   **Line 151**: `isPassedPawn`
+*   **Line 466, 469, 472, 475, 483**: `evaluateMobility`
+*   **Line 542**: `require('./Bitboard')` (Inside `evaluateKingSafety`)
+*   **Line 543, 555, 556, 567, 568, 579, 580**: `evaluateKingSafety`
+
+### `src/NNUE.js`
+*   **Line 3**: `require('./Bitboard')` (Top-level)
+*   **Line 143, 149**: `getHalfKPIndices`
+*   **Line 175, 187, 188, 199**: `getChangedIndices`
