@@ -15,14 +15,19 @@ class Tuner {
         return 1.0 / (1.0 + Math.pow(10, - (K * score) / 400.0));
     }
 
-    calculateError(positions) {
+    calculateError(positions, nnue = null) {
         let totalError = 0.0;
         const board = new Board();
 
         for (const pos of positions) {
             board.loadFen(pos.fen);
             // Static Eval
-            const score = Evaluation.evaluate(board);
+            let score;
+            if (nnue && nnue.network) {
+                score = nnue.evaluate(board);
+            } else {
+                score = Evaluation.evaluate(board);
+            }
             // Result: 1.0, 0.5, 0.0
             const result = pos.result;
 
@@ -34,25 +39,29 @@ class Tuner {
         return totalError / positions.length;
     }
 
-    minimize(positions, iterations = 10, learningRate = 10.0) {
-        const params = Evaluation.getParams();
+    minimize(positions, iterations = 10, learningRate = 10.0, nnue = null) {
+        let params;
+        let updateParam;
+
+        if (nnue && nnue.network) {
+             params = nnue.getParams();
+             updateParam = (key, val) => nnue.updateParam(key, val);
+        } else {
+             params = Evaluation.getParams();
+             updateParam = (key, val) => Evaluation.updateParam(key, val);
+        }
+
         const keys = Object.keys(params);
 
         for (let iter = 0; iter < iterations; iter++) {
-            // Compute gradient for each parameter
-            // Numerical gradient: (E(p+h) - E(p)) / h ?
-            // Or better: Try incrementing. If error drops, keep it.
-            // Texel method often uses local search.
-
-            // Let's use simple coordinate descent / local search for stability (integers).
             let improved = false;
             for (const key of keys) {
                 const originalValue = params[key];
-                const initialError = this.calculateError(positions);
+                const initialError = this.calculateError(positions, nnue);
 
                 // Try +1
-                Evaluation.updateParam(key, originalValue + 1);
-                const errorPlus = this.calculateError(positions);
+                updateParam(key, originalValue + 1);
+                const errorPlus = this.calculateError(positions, nnue);
 
                 if (errorPlus < initialError) {
                     // Keep +1
@@ -62,8 +71,8 @@ class Tuner {
                 }
 
                 // Try -1
-                Evaluation.updateParam(key, originalValue - 1);
-                const errorMinus = this.calculateError(positions);
+                updateParam(key, originalValue - 1);
+                const errorMinus = this.calculateError(positions, nnue);
 
                 if (errorMinus < initialError) {
                     // Keep -1
@@ -71,7 +80,7 @@ class Tuner {
                     improved = true;
                 } else {
                     // Restore
-                    Evaluation.updateParam(key, originalValue);
+                    updateParam(key, originalValue);
                 }
             }
 
