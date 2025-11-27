@@ -12,38 +12,52 @@ class TranspositionTable {
 
         this.size = count;
 
+        const totalBytes = count * 16;
+        this.externallyManaged = false;
         if (sharedBuffer) {
             // Use shared buffer
             // Layout: Keys (8*count), Data (4*count), Scores (4*count)
-            const totalBytes = count * 16;
             if (sharedBuffer.byteLength < totalBytes) {
                 throw new Error('SharedBuffer too small');
             }
-            this.keys = new BigUint64Array(sharedBuffer, 0, count);
-            this.data = new Uint32Array(sharedBuffer, count * 8, count);
-            this.scores = new Int32Array(sharedBuffer, count * 12, count);
+            this.buffer = sharedBuffer;
+            this.externallyManaged = true;
             this.shared = true;
         } else {
-            this.keys = new BigUint64Array(count);
-            this.data = new Uint32Array(count);
-            this.scores = new Int32Array(count);
-            this.shared = false;
+            try {
+                this.buffer = new SharedArrayBuffer(totalBytes);
+                this.shared = true;
+            } catch (e) {
+                this.buffer = new ArrayBuffer(totalBytes);
+                this.shared = false;
+            }
         }
+
+        this.keys = new BigUint64Array(this.buffer, 0, count);
+        this.data = new Uint32Array(this.buffer, count * 8, count);
+        this.scores = new Int32Array(this.buffer, count * 12, count);
     }
 
     resize(sizeInMB) {
-        if (this.shared) {
-            // Cannot resize shared buffer easily without re-init from UCI
-            // For now, ignore or throw.
+        if (this.externallyManaged) {
+            // Cannot resize externally managed buffer
             return;
         }
         const entrySize = 16;
         const count = Math.floor((sizeInMB * 1024 * 1024) / entrySize);
 
         this.size = count;
-        this.keys = new BigUint64Array(count);
-        this.data = new Uint32Array(count);
-        this.scores = new Int32Array(count);
+        const totalBytes = count * 16;
+
+        if (this.shared) {
+            this.buffer = new SharedArrayBuffer(totalBytes);
+        } else {
+            this.buffer = new ArrayBuffer(totalBytes);
+        }
+
+        this.keys = new BigUint64Array(this.buffer, 0, count);
+        this.data = new Uint32Array(this.buffer, count * 8, count);
+        this.scores = new Int32Array(this.buffer, count * 12, count);
     }
 
     clear() {
