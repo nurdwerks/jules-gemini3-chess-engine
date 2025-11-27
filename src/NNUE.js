@@ -302,6 +302,36 @@ function NNUE() {
         return finalOutput[0] / 400;
     };
 
+    self.getParams = () => {
+        if (!self.network) return {};
+        // Tune the output layer (last layer)
+        const layer = self.network.layers[self.network.layers.length - 1];
+        const params = {};
+        for(let i=0; i<layer.inputSize; i++) {
+             params[`OutputLayer_Weight_${i}`] = layer.weights[i];
+        }
+        for(let i=0; i<layer.outputSize; i++) {
+             params[`OutputLayer_Bias_${i}`] = layer.biases[i];
+        }
+        return params;
+    };
+
+    self.updateParam = (key, value) => {
+        if (!self.network) return;
+        const layer = self.network.layers[self.network.layers.length - 1];
+        if (key.startsWith('OutputLayer_Weight_')) {
+            const idx = parseInt(key.split('_')[2], 10);
+            if (!isNaN(idx) && idx < layer.weights.length) {
+                layer.weights[idx] = value;
+            }
+        } else if (key.startsWith('OutputLayer_Bias_')) {
+            const idx = parseInt(key.split('_')[2], 10);
+             if (!isNaN(idx) && idx < layer.biases.length) {
+                layer.biases[idx] = value;
+            }
+        }
+    };
+
     return self;
 }
 
