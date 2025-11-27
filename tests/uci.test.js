@@ -39,14 +39,14 @@ describe('UCI Protocol', () => {
 
   test('Command: position startpos moves e2e4', () => {
     uci.processCommand('position startpos moves e2e4');
-    expect(uci.board.squares[uci.board.algebraicToIndex('e4')]).not.toBeNull();
+    expect(uci.board.getPiece(uci.board.algebraicToIndex('e4'))).not.toBeNull();
     expect(uci.board.activeColor).toBe('b');
   });
 
   test('Command: position startpos moves e2e4 e7e5', () => {
     uci.processCommand('position startpos moves e2e4 e7e5');
-    expect(uci.board.squares[uci.board.algebraicToIndex('e4')]).not.toBeNull(); // White
-    expect(uci.board.squares[uci.board.algebraicToIndex('e5')]).not.toBeNull(); // Black
+    expect(uci.board.getPiece(uci.board.algebraicToIndex('e4'))).not.toBeNull(); // White
+    expect(uci.board.getPiece(uci.board.algebraicToIndex('e5'))).not.toBeNull(); // Black
     expect(uci.board.activeColor).toBe('w');
   });
 
@@ -61,7 +61,7 @@ describe('UCI Protocol', () => {
       const fen = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
       // Black moves e7e5
       uci.processCommand(`position fen ${fen} moves e7e5`);
-      expect(uci.board.squares[uci.board.algebraicToIndex('e5')]).not.toBeNull();
+      expect(uci.board.getPiece(uci.board.algebraicToIndex('e5'))).not.toBeNull();
       expect(uci.board.activeColor).toBe('w');
   });
 

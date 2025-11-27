@@ -37,7 +37,7 @@ class Polyglot {
       // Pieces
       for (let i = 0; i < 128; i++) {
           if (!board.isValidSquare(i)) continue;
-          const piece = board.squares[i];
+          const piece = board.getPiece(i);
           if (piece) {
               const file = i & 7;
               const row = i >> 4;
@@ -112,7 +112,7 @@ class Polyglot {
           for (const c of cols) {
               if (c >= 0 && c <= 7) {
                   const idx = (epPawnRow << 4) | c;
-                  const p = board.squares[idx];
+                  const p = board.getPiece(idx);
                   if (p && p.type === 'pawn' && (p.color === 'white' ? 'w' : 'b') === board.activeColor) {
                       hasPawn = true;
                       break;
