@@ -18,6 +18,7 @@ class UCI {
         Contempt: 0,
         UCI_UseNNUE: true,
         UCI_NNUE_File: 'https://tests.stockfishchess.org/api/nn/nn-46832cfbead3.nnue',
+        BookFile: 'polyglot/gm2001.bin',
     };
 
     // Initialize TT
@@ -33,7 +34,7 @@ class UCI {
     // Initialize Book
     const Polyglot = require('./Polyglot');
     this.book = new Polyglot();
-    this.book.loadBook('book.bin');
+    this.book.loadBook(this.options.BookFile);
     this.workers = [];
     this.startWorkers();
   }
@@ -82,6 +83,7 @@ class UCI {
         this.output(`option name UseHistory type check default true`);
         this.output(`option name UCI_UseNNUE type check default ${this.options.UCI_UseNNUE}`);
         this.output(`option name UCI_NNUE_File type string default ${this.options.UCI_NNUE_File}`);
+        this.output(`option name BookFile type string default ${this.options.BookFile}`);
         this.output('uciok');
         break;
       case 'isready':
@@ -254,6 +256,8 @@ class UCI {
             if (this.options.UCI_UseNNUE) {
                 this.nnue.loadNetwork(this.options.UCI_NNUE_File);
             }
+        } else if (name === 'BookFile') {
+            this.book.loadBook(value);
         }
     } else {
         require('./Evaluation').updateParam(name, value);
