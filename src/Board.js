@@ -129,16 +129,11 @@ class Board {
               const rookTargetFile = isKingside ? 5 : 3;
               const rookTarget = (rank << 4) | rookTargetFile;
 
-              const rook = this.squares[rookSource];
+              const rook = new Piece(move.piece.color, 'rook');
 
-              this.squares[kingSource] = null;
               this.squares[rookSource] = null;
-
-              this.squares[kingTarget] = move.piece;
               this.squares[rookTarget] = rook;
 
-              this.toggleBitboard(move.piece, kingSource);
-              this.toggleBitboard(move.piece, kingTarget);
               this.toggleBitboard(rook, rookSource);
               this.toggleBitboard(rook, rookTarget);
           } else {
@@ -221,16 +216,12 @@ class Board {
               const rookTargetFile = isKingside ? 5 : 3;
               const rookTarget = (rank << 4) | rookTargetFile;
 
-              const rook = this.squares[rookTarget];
+              const rook = new Piece(move.piece.color, 'rook');
 
-              this.squares[kingTarget] = null;
               this.squares[rookTarget] = null;
-
               this.squares[kingSource] = move.piece;
               this.squares[rookSource] = rook;
 
-              this.toggleBitboard(move.piece, kingTarget);
-              this.toggleBitboard(move.piece, kingSource);
               this.toggleBitboard(rook, rookTarget);
               this.toggleBitboard(rook, rookSource);
           } else {
