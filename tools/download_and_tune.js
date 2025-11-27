@@ -34,7 +34,7 @@ function downloadFile(url, dest) {
             });
 
             file.on('error', (err) => {
-                fs.unlink(dest, () => {}); // Delete the file async. (But we don't check result)
+                fs.unlink(dest, () => {});
                 reject(err);
             });
         });
@@ -104,15 +104,14 @@ async function main() {
     console.log(`URL: ${url}`);
 
     if (fs.existsSync(destPath)) {
-        console.log(`File '${filename}' already exists locally. Processing incremental step.`);
+        console.log(`File '${filename}' already exists locally.`);
     } else {
         console.log(`Downloading...`);
         try {
             await downloadFile(url, destPath);
-            console.log('Download complete. Processing incremental step.');
+            console.log('Download complete.');
         } catch (err) {
             console.error(`Download failed: ${err.message}`);
-            // Clean up partial file if it exists and failed
             if (fs.existsSync(destPath)) {
                 fs.unlinkSync(destPath);
             }
@@ -120,47 +119,35 @@ async function main() {
         }
     }
 
-    // Incremental Processing Logic (Primary Flow)
+    // Batch Processing Logic
     const content = fs.readFileSync(destPath, 'utf8');
     const lines = content.split('\n').filter(l => l.trim().length > 0);
 
-    // If file is already empty (should catch this if download created empty file, or previously emptied)
     if (lines.length === 0) {
-        console.log("File is empty. Running final tuning...");
+        console.log("File is empty. Checking for cumulative data...");
         await runTunerAndCleanup(destPath);
         process.exit(0);
     }
 
-    const firstLine = lines[0];
-    const remainingLines = lines.slice(1);
+    console.log(`File has ${lines.length} positions. Running match to generate tuning data...`);
 
-    console.log(`Processing first line...`);
+    const tempOut = path.join(process.cwd(), 'temp_batch_results.epd');
+    const matchScript = path.join(__dirname, 'match.js');
 
-    // Process first line (Generate result if needed)
-    const tempFile = path.join(process.cwd(), 'temp_single_line.epd');
-    const tempOut = path.join(process.cwd(), 'temp_single_result.epd');
-    fs.writeFileSync(tempFile, firstLine);
+    // Run match for ALL lines
+    // match.js usage: --epd <file> --output <file> --games <count>
+    // It will cycle through startFens. If games == lines.length, it plays 1 game from each position.
 
-    let processedLine = null;
+    const match = spawn('node', [
+        matchScript,
+        '--epd', destPath,
+        '--output', tempOut,
+        '--games', lines.length.toString(),
+        '--concurrency', '1',
+        '--silent'
+    ], { stdio: 'inherit' });
 
-    // Check if line has result?
-    const parsed = EpdLoader.parseLine(firstLine);
-    if (parsed && parsed.result !== null) {
-        console.log("Line has result.");
-        processedLine = firstLine;
-    } else {
-        console.log("Line needs result. Running match...");
-        // Run match on this single line
-         const matchScript = path.join(__dirname, 'match.js');
-         const match = spawn('node', [
-            matchScript,
-            '--epd', tempFile,
-            '--output', tempOut,
-            '--games', '1',
-            '--concurrency', '1',
-            '--silent'
-        ], { stdio: 'inherit' });
-
+    try {
         await new Promise((resolve, reject) => {
             match.on('close', (code) => {
                 if (code === 0) resolve();
@@ -168,38 +155,29 @@ async function main() {
             });
             match.on('error', reject);
         });
-
-        if (fs.existsSync(tempOut)) {
-            const res = fs.readFileSync(tempOut, 'utf8').trim();
-            if (res.length > 0) {
-                processedLine = res;
-                console.log("Result generated.");
-                fs.unlinkSync(tempOut);
-            }
-        }
-    }
-
-    fs.unlinkSync(tempFile);
-
-    if (processedLine) {
-        // Append to cumulative data
-        fs.appendFileSync(CUMULATIVE_DATA_FILE, processedLine + '\n');
-
-        // Rewrite file without first line
-        fs.writeFileSync(destPath, remainingLines.join('\n') + (remainingLines.length > 0 ? '\n' : ''));
-        console.log(`Processed successfully. Removed first line. Remaining: ${remainingLines.length}`);
-
-        // Check if we just emptied the file
-        if (remainingLines.length === 0) {
-            console.log("File is now empty. Running final tuning...");
-            await runTunerAndCleanup(destPath);
-        } else {
-            console.log("Skipping tuning (lines remaining).");
-        }
-    } else {
-        console.error("Failed to process line. Aborting.");
+    } catch (e) {
+        console.error("Match process encountered an error:", e);
+        // Do not delete destPath so we can retry
         process.exit(1);
     }
+
+    if (fs.existsSync(tempOut)) {
+         const data = fs.readFileSync(tempOut, 'utf8');
+         const resultLines = data.split('\n').filter(l => l.trim().length > 0);
+         console.log(`Match finished. Generated ${resultLines.length} positions.`);
+
+         fs.appendFileSync(CUMULATIVE_DATA_FILE, data);
+         fs.unlinkSync(tempOut);
+
+         // Clear source file to indicate completion (and avoid re-processing)
+         fs.writeFileSync(destPath, '');
+         console.log("Source file cleared.");
+    } else {
+        console.warn("No output file from match. Maybe no games were played?");
+    }
+
+    // Run tuner
+    await runTunerAndCleanup(destPath);
 }
 
 if (require.main === module) {

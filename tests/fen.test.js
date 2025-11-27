@@ -49,14 +49,20 @@ describe('FEN Parsing and Generation', () => {
   });
 
   test('loadFen should throw error for invalid FEN string', () => {
-      // Not enough fields
-      expect(() => board.loadFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -')).toThrow();
+      // Not enough fields (less than 4)
+      expect(() => board.loadFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq')).toThrow();
 
       // Invalid rank count
       expect(() => board.loadFen('8/8/8/8/8/8/8/8/8 w - - 0 1')).toThrow();
 
       // Invalid piece char
       expect(() => board.loadFen('8/8/8/8/8/8/8/X7 w - - 0 1')).toThrow();
+  });
+
+  test('loadFen should accept 4 fields (EPD)', () => {
+    board.loadFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -');
+    expect(board.halfMoveClock).toBe(0);
+    expect(board.fullMoveNumber).toBe(1);
   });
 
   test('generateFen should return correct FEN for starting position', () => {

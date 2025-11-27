@@ -576,9 +576,14 @@ class Board {
 
   loadFen(fen) {
     const parts = fen.split(' ');
-    if (parts.length !== 6) throw new Error('Invalid FEN string: Must have 6 fields.');
+    if (parts.length < 4) throw new Error('Invalid FEN string: Must have at least 4 fields.');
 
-    const [placement, activeColor, castling, enPassant, halfMove, fullMove] = parts;
+    const placement = parts[0];
+    const activeColor = parts[1];
+    const castling = parts[2];
+    const enPassant = parts[3];
+    const halfMove = parts.length > 4 ? parts[4] : '0';
+    const fullMove = parts.length > 5 ? parts[5] : '1';
     this.squares.fill(null);
     this.isChess960 = false;
     // Reset Bitboards
