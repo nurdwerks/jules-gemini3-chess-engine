@@ -32,6 +32,17 @@ function NNUE() {
     };
 
     self.loadNetwork = async (url) => {
+        // Check if it's a local file
+        if (fs.existsSync(url)) {
+            try {
+                const buffer = fs.readFileSync(url);
+                self.parseNetwork(buffer);
+                return Promise.resolve();
+            } catch (e) {
+                return Promise.reject(e);
+            }
+        }
+
         return new Promise((resolve, reject) => {
             const request = https.get(url, (res) => {
                 if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
@@ -61,24 +72,25 @@ function NNUE() {
 
     self.parseNetwork = (buffer) => {
         let offset = 0;
-        self.network = {};
-        self.network.version = buffer.readUInt32LE(offset); offset += 4;
-        self.network.hash = buffer.readUInt32LE(offset); offset += 4;
+        const network = {};
+        network.version = buffer.readUInt32LE(offset); offset += 4;
+        network.hash = buffer.readUInt32LE(offset); offset += 4;
         const descriptionSize = buffer.readUInt32LE(offset); offset += 4;
-        self.network.description = buffer.toString('utf8', offset, offset + descriptionSize); offset += descriptionSize;
+        network.description = buffer.toString('utf8', offset, offset + descriptionSize); offset += descriptionSize;
 
         let res;
         res = self.parseFeatureTransformer(buffer, offset);
-        self.network.featureTransformer = res.layer;
+        network.featureTransformer = res.layer;
         offset = res.newOffset;
 
-        self.network.layers = [];
+        network.layers = [];
         const layerSizes = [[L1_SIZE, L2_SIZE], [L2_SIZE, L3_SIZE], [L3_SIZE, 1]];
         for(const [inSize, outSize] of layerSizes) {
             res = self.parseDenseLayer(buffer, offset, inSize, outSize);
-            self.network.layers.push(res.layer);
+            network.layers.push(res.layer);
             offset = res.newOffset;
         }
+        self.network = network;
     };
 
     self.parseFeatureTransformer = (buffer, offset) => {
