@@ -8,43 +8,6 @@ Benchmarking functions can be written and verified, but performance-critical ben
 
 ## Active Roadmap
 
-### Epic 50: Singular Extensions
-**Size:** Medium (3 days)
-**Description:** Extend the search depth for moves that are significantly better than all other alternatives (singular moves) to avoid missing tactical refutations.
-**User Stories:**
-1.  **Singular Detection (S)**
-    *   *Description:* At PV nodes, perform a reduced-depth search with a modified alpha to check if other moves fail low.
-    *   *Acceptance Criteria:*
-        *   [ ] Identifies when the TT move is "singular".
-2.  **Apply Extension (S)**
-    *   *Description:* Extend the search depth by 1 (or more) for confirmed singular moves.
-    *   *Acceptance Criteria:*
-        *   [ ] Increases node count but improves Elo.
-
-### Epic 51: Mate Distance Pruning
-**Size:** Small (1 day)
-**Description:** Prune branches that cannot possibly lead to a faster mate than one already found.
-**User Stories:**
-1.  **Pruning Logic (S)**
-    *   *Description:* If the current ply plus the distance to mate exceeds the best known mate score, return the mate score immediately.
-    *   *Acceptance Criteria:*
-        *   [ ] Prunes unnecessary branches in mating lines.
-        *   [ ] Finds mates slightly faster.
-
-### Epic 52: Evaluation - Pawn Shield & Storm
-**Size:** Medium (3 days)
-**Description:** Implement evaluation terms for King Safety based on friendly pawn shields and enemy pawn storms.
-**User Stories:**
-1.  **Pawn Shield (S)**
-    *   *Description:* Implement the logic to detect and score friendly pawns in front of the King (utilizing the existing `ShieldBonus` param).
-    *   *Acceptance Criteria:*
-        *   [ ] Kings without pawn cover are penalized.
-2.  **Pawn Storm (S)**
-    *   *Description:* Penalize the King if enemy pawns are advancing on the King's flank.
-    *   *Acceptance Criteria:*
-        *   [ ] Detects open/semi-open files and advancing enemy pawns.
-        *   [ ] Evaluates storm danger based on distance to King.
-
 ### Epic 53: Perft Optimization
 **Size:** Small (2 days)
 **Description:** Optimize the `perft` function to allow for faster regression testing and debugging.

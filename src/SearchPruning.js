@@ -1,9 +1,9 @@
 class SearchPruning {
-  static tryNullMovePruning(search, depth, beta, inCheck) {
+  static tryNullMovePruning(search, depth, beta, inCheck, ply) {
     if (depth >= 3 && !inCheck) {
       const state = search.board.makeNullMove();
       const R = 2; // Reduction
-      const score = -search.alphaBeta(depth - 1 - R, -beta, -beta + 1);
+      const score = -search.alphaBeta(depth - 1 - R, -beta, -beta + 1, null, ply + 1, null);
       search.board.undoNullMove(state);
 
       if (search.stopFlag) return 'STOP';
@@ -37,7 +37,7 @@ class SearchPruning {
     return null;
   }
 
-  static tryProbCut(search, depth, beta, inCheck, prevMove) {
+  static tryProbCut(search, depth, beta, inCheck, prevMove, ply) {
     if (depth >= 5 && !inCheck && Math.abs(beta) < 20000) {
       const PROBCUT_MARGIN = 200;
       const PROBCUT_REDUCTION = 4;
@@ -45,7 +45,7 @@ class SearchPruning {
       // Shallow search with a widened window
       const probCutBeta = beta + PROBCUT_MARGIN;
 
-      const score = search.alphaBeta(depth - PROBCUT_REDUCTION, probCutBeta - 1, probCutBeta, prevMove);
+      const score = search.alphaBeta(depth - PROBCUT_REDUCTION, probCutBeta - 1, probCutBeta, prevMove, ply, null);
 
       if (score >= probCutBeta) {
         search.stats.pruning.probCut++;

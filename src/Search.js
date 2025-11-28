@@ -467,7 +467,7 @@ class Search {
           if (this.board.isInCheck()) {
               extension = Math.max(extension, 1);
           }
-          const score = -this.alphaBeta(depth - 1 + extension, -beta, -alpha, move);
+          const score = -this.alphaBeta(depth - 1 + extension, -beta, -alpha, move, 1, null);
           this.board.undoApplyMove(move, state);
 
           if (this.debugMode) {
@@ -517,10 +517,16 @@ class Search {
    * @param {Object} [prevMove=null] - The move that led to this position (for heuristics).
    * @returns {number} The score of the position from the perspective of the side to move.
    */
-  alphaBeta(depth, alpha, beta, prevMove = null) {
+  alphaBeta(depth, alpha, beta, prevMove = null, ply = 0, excludedMove = null) {
       this.nodes++;
 
       if (this.stopFlag) return alpha;
+
+      // Epic 51: Mate Distance Pruning
+      const MATE_SCORE = 20000;
+      alpha = Math.max(alpha, -MATE_SCORE + ply);
+      beta = Math.min(beta, MATE_SCORE - ply - 1);
+      if (alpha >= beta) return alpha;
 
       // Check limits (frequency handled inside)
       if (this.checkLimits && this.checkLimits()) return alpha;
@@ -554,7 +560,7 @@ class Search {
       // But recursion calls with newDepth.
 
       // Null Move Pruning
-      const nmResult = SearchPruning.tryNullMovePruning(this, depth, beta, inCheck);
+      const nmResult = SearchPruning.tryNullMovePruning(this, depth, beta, inCheck, ply);
       if (nmResult === 'STOP') return alpha;
       if (nmResult !== null) return nmResult;
 
@@ -571,7 +577,7 @@ class Search {
       // If no TT move and depth is significant, search shallower to populate TT.
       if (depth > 3 && (!ttEntry || !ttEntry.move)) {
           const iidDepth = depth - 2;
-          this.alphaBeta(iidDepth, alpha, beta, prevMove);
+          this.alphaBeta(iidDepth, alpha, beta, prevMove, ply, excludedMove);
           // After this call, TT might be populated for current key
       }
       const ttEntryAfterIID = this.tt.probe(this.board.zobristKey);
@@ -592,7 +598,7 @@ class Search {
       if (futilityResult !== null) return futilityResult;
 
       // Epic 46: ProbCut Pruning
-      const probCutResult = SearchPruning.tryProbCut(this, depth, beta, inCheck, prevMove);
+      const probCutResult = SearchPruning.tryProbCut(this, depth, beta, inCheck, prevMove, ply);
       if (probCutResult !== null) return probCutResult;
 
       // Epic 24: Multi-Cut Pruning (MCP)
@@ -605,12 +611,26 @@ class Search {
 
       // Internal Iterative Deepening was moved up (Epic 21).
 
+      // Epic 50: Singular Extensions
+      let singularExtension = 0;
+      if (!excludedMove && depth >= 8 && ttMove && ttEntry && ttEntry.depth >= depth - 3 && ttEntry.flag !== TT_FLAG.UPPERBOUND && Math.abs(ttEntry.score) < 10000) {
+          const SE_MARGIN = 2 * depth;
+          const singularBeta = ttEntry.score - SE_MARGIN;
+          const reducedDepth = (depth - 1) >> 1;
+
+          const singularScore = this.alphaBeta(reducedDepth, singularBeta - 1, singularBeta, prevMove, ply, ttMove);
+
+          if (singularScore < singularBeta) {
+              singularExtension = 1;
+          }
+      }
+
       const moves = this.board.generateMoves();
 
       // Check for Mate/Stalemate
       if (moves.length === 0) {
           if (this.board.isInCheck()) {
-              return -20000 + (100 - depth); // Prefer faster mates
+              return -20000 + ply; // Prefer faster mates
           } else {
               return 0; // Stalemate
           }
@@ -632,6 +652,10 @@ class Search {
       for (const move of moves) {
           // Epic 22: Late Move Pruning (LMP)
           // If depth is low and we searched enough moves, skip quiet ones.
+          if (excludedMove && move.from === excludedMove.from && move.to === excludedMove.to && move.promotion === excludedMove.promotion) {
+              continue;
+          }
+
           if (depth <= 3 && movesSearched >= (3 + depth * depth) && !inCheck) {
               // Ensure we don't prune captures or promotions or checks
               // 'move.flags' includes 'c', 'p', 'cp'. 'k', 'q' castling are quiets usually?
@@ -702,29 +726,33 @@ class Search {
           let currentExtension = extension; // Base extension from check
           currentExtension = Math.max(currentExtension, this._getPassedPawnExtension(move));
 
+          if (ttMove && move.from === ttMove.from && move.to === ttMove.to && move.promotion === ttMove.promotion) {
+              currentExtension += singularExtension;
+          }
+
           const nextDepth = depth + currentExtension - 1;
 
           if (movesSearched === 0) {
               // Full window search for the first move
-              score = -this.alphaBeta(nextDepth, -beta, -alpha, move);
+              score = -this.alphaBeta(nextDepth, -beta, -alpha, move, ply + 1, null);
           } else {
               // Null window search with LMR
               // Reduce from nextDepth (which includes extension)
               let lmrDepth = nextDepth - reduction;
               if (lmrDepth < 0) lmrDepth = 0;
 
-              score = -this.alphaBeta(lmrDepth, -alpha - 1, -alpha, move);
+              score = -this.alphaBeta(lmrDepth, -alpha - 1, -alpha, move, ply + 1, null);
 
               // Re-search if LMR failed (score > alpha)
               if (reduction > 0 && score > alpha) {
-                  score = -this.alphaBeta(nextDepth, -alpha - 1, -alpha, move);
+                  score = -this.alphaBeta(nextDepth, -alpha - 1, -alpha, move, ply + 1, null);
               }
 
               // If the null-window search failed high (score > alpha), it's possible
               // this move is better than we thought. We must re-search with the full window.
               if (score > alpha && score < beta) {
                   // Re-search with full depth and full window
-                  score = -this.alphaBeta(nextDepth, -beta, -alpha, move);
+                  score = -this.alphaBeta(nextDepth, -beta, -alpha, move, ply + 1, null);
               }
           }
 
