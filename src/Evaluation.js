@@ -558,6 +558,65 @@ class Evaluation {
             score -= safetyTable[idx];
         }
 
+        // Epic 52: Pawn Shield & Storm
+        const kFile = c;
+        const rankIndex = r;
+        const forward = color === 'white' ? 1 : -1;
+
+        let shieldScore = 0;
+        let stormScore = 0;
+
+        for (let f = kFile - 1; f <= kFile + 1; f++) {
+            if (f < 0 || f > 7) continue;
+
+            const fileMask = FILE_MASKS[f];
+
+            // Shield: Friendly pawns at rank + 1, rank + 2
+            const r1 = rankIndex + forward;
+            let shieldFound = false;
+            if (r1 >= 0 && r1 <= 7) {
+                const idx = r1 * 8 + f;
+                if (board.bitboards.pawn & board.bitboards[color] & (1n << BigInt(idx))) {
+                    shieldScore += PARAMS.ShieldBonus;
+                    shieldFound = true;
+                }
+            }
+            if (!shieldFound) {
+                 const r2 = rankIndex + forward * 2;
+                 if (r2 >= 0 && r2 <= 7) {
+                     const idx = r2 * 8 + f;
+                     if (board.bitboards.pawn & board.bitboards[color] & (1n << BigInt(idx))) {
+                         shieldScore += (PARAMS.ShieldBonus / 2);
+                     }
+                 }
+            }
+
+            // Storm: Nearest enemy pawn
+            const enemyPawns = board.bitboards.pawn & board.bitboards[opponent] & fileMask;
+            if (enemyPawns) {
+                let pSq;
+                if (color === 'white') {
+                     // White King at low rank. Enemy at high rank.
+                     // Closest enemy is Lowest Rank -> Smallest Index.
+                     pSq = Bitboard.lsb(enemyPawns);
+                } else {
+                     // Black King at high rank. Enemy at low rank.
+                     // Closest enemy is Highest Rank -> Largest Index.
+                     pSq = Bitboard.msb(enemyPawns);
+                }
+
+                const pRank = Math.floor(pSq / 8);
+                const dist = Math.abs(pRank - rankIndex);
+
+                if (dist > 0) {
+                     stormScore -= (60 / dist);
+                }
+            }
+        }
+
+        score += shieldScore;
+        score += stormScore;
+
         return score;
     }
 }

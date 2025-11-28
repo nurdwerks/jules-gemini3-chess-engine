@@ -19,6 +19,18 @@ const Bitboard = {
         return idx;
     },
 
+    msb(bb) {
+        if (bb === 0n) return -1;
+        // Using string conversion is slow but easy, or just loop down
+        let idx = 63;
+        const one = 1n;
+        while (idx >= 0) {
+            if ((bb & (one << BigInt(idx))) !== 0n) return idx;
+            idx--;
+        }
+        return -1;
+    },
+
     setBit(bb, square) {
         return bb | (1n << BigInt(square));
     },
