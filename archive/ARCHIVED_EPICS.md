@@ -852,3 +852,16 @@ The following Epics were part of the initial development phase and are either co
     *   *Description:* Allow clicking on past moves to view the board state at that point.
     *   *Acceptance Criteria:*
         *   [x] Clicking a previous move updates the board to that position (read-only view).
+
+### Epic 58: Clock and Time Management UI
+**Size:** Small (1-2 days)
+**Description:** Add visible chess clocks for both players.
+**User Stories:**
+1.  **Clock UI (S)**
+    *   *Description:* Display digital clocks for White and Black.
+    *   *Acceptance Criteria:*
+        *   [x] Clocks are visible near the board.
+2.  **Countdown Logic (S)**
+    *   *Description:* Implement countdown logic that syncs with the engine's time usage.
+    *   *Acceptance Criteria:*
+        *   [x] Clocks count down while the respective side is thinking.

@@ -12,19 +12,6 @@ Benchmarking functions can be written and verified, but performance-critical ben
 
 ## Active Roadmap
 
-### Epic 58: Clock and Time Management UI
-**Size:** Small (1-2 days)
-**Description:** Add visible chess clocks for both players.
-**User Stories:**
-1.  **Clock UI (S)**
-    *   *Description:* Display digital clocks for White and Black.
-    *   *Acceptance Criteria:*
-        *   [ ] Clocks are visible near the board.
-2.  **Countdown Logic (S)**
-    *   *Description:* Implement countdown logic that syncs with the engine's time usage.
-    *   *Acceptance Criteria:*
-        *   [ ] Clocks count down while the respective side is thinking.
-
 ### Epic 59: Interactive Board Customization
 **Size:** Small (1-2 days)
 **Description:** Allow users to personalize the board's appearance.
