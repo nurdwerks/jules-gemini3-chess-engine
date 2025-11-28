@@ -47,360 +47,261 @@ class Search {
    * @returns {Object|null} The best move found, or null if none.
    */
   search (maxDepth = 5, timeLimits = { hardLimit: 1000, softLimit: 1000 }, options = {}, timeManager = null) {
-    this.options = options
-    this.isStable = false
+    this._initSearch(options, timeLimits)
 
-    if (this.options.UCI_UseNNUE && this.nnue && this.nnue.network) {
-      this.accumulatorStack = [new Accumulator()]
-      this.nnue.refreshAccumulator(this.accumulatorStack[0], this.board)
-    }
-    // Backward compatibility: if timeLimits is a number, treat as hardLimit
-    if (typeof timeLimits === 'number') {
-      timeLimits = { hardLimit: timeLimits, softLimit: timeLimits }
-    }
-
-    // Handle Limit Strength and Node Limits
-    let maxNodes = Infinity
-    if (options.nodes) {
-      maxNodes = options.nodes
-    } else if (options.UCI_LimitStrength && options.UCI_Elo) {
-      maxNodes = StrengthLimiter.getNodesForElo(options.UCI_Elo)
-    }
-
-    // Debug Tree Initialization
-    this.debugMode = options.debug || false
-    this.debugTree = { depth: maxDepth, nodes: [] }
-    this.debugFile = options.debugFile || 'search_tree.json'
-    this.currentDebugNode = this.debugTree // Pointer to current node parent
-
-    this.nodes = 0
-    this.stats = {
-      nodes: 0,
-      pruning: {
-        nullMove: 0,
-        futility: 0,
-        probCut: 0
-      }
-    }
-    this.stopFlag = false
-    // Reset Heuristics?
-    // Killers should be reset. History can persist or age.
-    this.heuristics.clearKillers()
-    // Age history
-    this.heuristics.ageHistory()
-
-    // this.tt.clear(); // Preserve TT across searches for efficiency
-
-    const startTime = Date.now()
     let bestMove = null
     let bestScore = -Infinity
-    let persistentBestMove = null // Keep track across ID iterations
+    let persistentBestMove = null
     let lastBestMove = null
     let stableMoveCount = 0
 
-    // Timer/Node check function attached to instance
-    // checkMask controls frequency of TIME checks.
-    const checkMask = 2047
-
-    this.checkLimits = () => {
-      // Node limit check (Exact)
-      if (this.nodes >= maxNodes) {
-        this.stopFlag = true
-        return true
-      }
-
-      if ((this.nodes & checkMask) !== 0) return false
-
-      // We only check hard limit here to force stop
-      if (timeLimits.hardLimit !== Infinity) {
-        if (Date.now() - startTime >= timeLimits.hardLimit) {
-          this.stopFlag = true
-          return true
-        }
-      }
-      return false
-    }
-
-    // Main Iterative Deepening Loop
     const multiPV = options.MultiPV || 1
 
     for (let depth = 1; depth <= maxDepth; depth++) {
-      const entry = this.tt.probe(this.board.zobristKey)
-      // Note: With MultiPV, existing TT entry might be from a previous PV line or previous depth.
-      // We use it for move ordering (handled in rootAlphaBeta).
-
       if (this.debugMode) {
         this.debugTree.nodes = []
         this.debugTree.iteration = depth
       }
 
-      const excludedMoves = []
+      const { move: currentBestMove, score: currentBestScore } = this._searchDepth(depth, multiPV, bestScore)
 
-      for (let pvIdx = 0; pvIdx < multiPV; pvIdx++) {
-        // Aspiration Windows
-        // We only use aspiration windows for the first PV line to keep things simple for now.
-        let alpha = -Infinity
-        let beta = Infinity
-        const windowSize = options.AspirationWindow || 50
+      if (this.stopFlag && !currentBestMove) break
 
-        if (depth > 1 && pvIdx === 0) {
-          alpha = bestScore - windowSize
-          beta = bestScore + windowSize
-        }
-
-        let move = null
-        let result = null
-        let val = -Infinity
-
-        while (true) {
-          // Root has no prevMove
-          result = this.rootAlphaBeta(depth, alpha, beta, excludedMoves)
-          move = result.move
-          val = result.score
-
-          // Check if stopped during root search
-          if (this.stopFlag) {
-            if (pvIdx === 0 && move) bestMove = move // Only update global bestMove if it's the main line
-            break
-          }
-
-          // Safety check: if val is null/undefined (e.g. no moves?), break
-          if (val === undefined || val === null) {
-            // No more moves available (e.g. we excluded all legal moves)
-            break
-          }
-
-          // Fail Low
-          if (val <= alpha) {
-            if (alpha === -Infinity) {
-              break
-            }
-            alpha = -Infinity
-            continue
-          }
-          // Fail High
-          if (val >= beta) {
-            if (beta === Infinity) {
-              break
-            }
-            beta = Infinity
-            continue
-          }
-
-          // Exact
-          break
-        }
-
-        if (this.stopFlag) break
-
-        if (!result || result.move === null) {
-          // No more moves found (e.g. fewer legal moves than MultiPV)
-          break
-        }
-
-        const currentBestMove = result.move
-        const currentBestScore = result.score
-
-        // Update global bestMove/bestScore only for the first PV line
-        if (pvIdx === 0) {
-          bestMove = currentBestMove
-          bestScore = currentBestScore
-        }
-
-        // Report info string for this PV
-        if (options.onInfo) {
-          const elapsed = Date.now() - startTime
-          const nps = elapsed > 0 ? Math.floor(this.nodes / (elapsed / 1000)) : 0
-          const pvLine = this.getPVLine(this.board, depth, currentBestMove)
-          const pvString = pvLine.map(m => this.moveToString(m)).join(' ')
-
-          let scoreString = `cp ${currentBestScore}`
-          if (Math.abs(currentBestScore) > 10000) {
-            const mateIn = Math.ceil((20000 - Math.abs(currentBestScore)) / 2) * (currentBestScore > 0 ? 1 : -1)
-            scoreString = `mate ${mateIn}`
-          }
-
-          options.onInfo(`depth ${depth} multipv ${pvIdx + 1} score ${scoreString} nodes ${this.nodes} nps ${nps} time ${elapsed} pv ${pvString}`)
-        }
-
-        excludedMoves.push(currentBestMove)
+      if (currentBestMove) {
+        bestMove = currentBestMove
+        bestScore = currentBestScore
+        persistentBestMove = bestMove
       }
 
-      // Safety fallback if bestMove is STILL null (e.g. interrupted before any move found in depth 1?)
-      // If depth > 1, we should have bestMove from previous depth.
-      // But Search resets bestMove to null at start of search.
-      // In ID loop, bestMove persists? No, let bestMove = null inside search() scope.
-      // Wait, bestMove is local to search().
-      // In ID loop: `if (move) bestMove = move;`
-      // `move` comes from `rootAlphaBeta`.
-      // If `rootAlphaBeta` failed immediately (stopFlag), it returns whatever it found.
-      // If it found nothing, it returns null.
-      // If we have NO move, we can't output bestmove 0000.
-      // We should use previous iteration bestMove if available.
-      // But `bestMove` variable accumulates across depths?
-      // Yes: `let bestMove = null;` outside loop.
-      // Inside loop: `bestMove = move;`
-      // But wait, `move` is result of `rootAlphaBeta`.
-      // If `rootAlphaBeta` returns valid result, update.
+      if (this.stopFlag) break
 
-      // If depth 1 fails to find ANY move (e.g. mate/stalemate), bestMove remains null.
-      // If no legal moves, it returns { move: null, score: -Inf }.
-      // Then we return null.
-      // UCI expects 'bestmove (none)' or similar if mate?
-      // Or 'bestmove 0000' if no moves?
-      // But `position startpos` has moves.
-      // If `test_aspiration.js` outputs `bestmove 0000`, it means `bestMove` is null.
-      // This means `rootAlphaBeta` returned null move even at depth 1.
-      // Why?
-      // `rootAlphaBeta`: `const moves = this.board.generateMoves();`
-      // If moves.length > 0, it loops.
-      // `bestMove` starts null.
-      // Loop finds `bestScore` and `bestMove`.
-      // `score > bestScore` (-Inf).
-      // First move will update bestMove.
-      // UNLESS `stopFlag` is set immediately.
-      // `test_aspiration.js` runs `go depth 4`. No stop.
-      // So it should run.
-      // Did `checkLimits` return true immediately?
-      // `this.nodes` starts at 0. `checkMask` depends on `maxNodes`.
-      // `UCI_LimitStrength` is false by default. `maxNodes` = Infinity.
-      // `checkMask` = 2047.
-      // `this.nodes & checkMask`.
-      // `timeLimits`: hard/soft Infinity?
-      // `test_aspiration.js`: `go depth 4`.
-      // `UCI.js`: if no wtime/movetime, `timeLimits` = Infinity.
-      // So `checkLimits` should return false.
-
-      // Maybe `AspirationWindow` logic failed?
-      // Depth 1: `alpha = -Inf, beta = Inf`.
-      // Loop runs.
-      // `val` returned.
-      // `if (val <= alpha)` -> `if (val <= -Inf)` -> False (unless -Inf).
-      // `if (val >= beta)` -> `if (val >= Inf)` -> False.
-      // Break.
-      // `bestMove = move`.
-      // So depth 1 should work.
-
-      // Depth 2: `alpha = score - 25`.
-      // If `rootAlphaBeta` returns null move?
-      // `rootAlphaBeta` ALWAYS returns a move if it found one better than -Inf.
-      // Wait, `bestScore` starts at -Inf.
-      // If all moves are -Inf (illegal?? No, legal moves).
-      // Score should be > -Inf.
-      // So `bestMove` should be set.
-
-      // Is it possible `rootAlphaBeta` returned `move: null`?
-      // Only if `moves` is empty.
-      // Startpos has moves.
-
-      // Maybe `options.AspirationWindow` is undefined?
-      // I added it to UCI options.
-      // Default 50.
-      // Passed to search.
-      // `const windowSize = options.AspirationWindow || 50;`
-      // Should be 25.
-
-      // Let's add console.log in Search.js to debug.
-
-      // After depth complete (or aborted)
       this.checkLimits()
-
-      // Soft limit check
-      if (timeLimits.softLimit !== Infinity && !this.stopFlag) {
-        const elapsed = Date.now() - startTime
-        let limit = timeLimits.softLimit
-
-        // Track search stability
-        if (lastBestMove && bestMove && lastBestMove.from === bestMove.from && lastBestMove.to === bestMove.to) {
-          stableMoveCount++
-        } else {
-          stableMoveCount = 0
+      if (this.timeLimits.softLimit !== Infinity && !this.stopFlag) {
+        const result = this._checkSoftTimeLimit(timeManager, depth, bestScore, bestMove, lastBestMove, stableMoveCount)
+        if (result.stop) {
+          this.stopFlag = true
+          break
         }
-        lastBestMove = bestMove
-
-        this.isStable = stableMoveCount >= 2
-
-        // Panic logic:
-        const newEntry = this.tt.probe(this.board.zobristKey)
-        const currentScore = newEntry && newEntry.depth === depth ? newEntry.score : -Infinity
-
-        if (depth > 1 && bestScore > -10000 && currentScore > -10000) {
-          if (bestScore - currentScore > 60) {
-            limit = Math.min(timeLimits.hardLimit, limit * 2)
-            this.isStable = false // Score is unstable
-          }
-        }
-
-        if (timeManager) {
-          if (timeManager.shouldStop(elapsed, limit, this.isStable)) {
-            this.stopFlag = true
-          }
-        } else { // Fallback for bench or tests
-          if (elapsed >= limit && this.isStable) {
-            this.stopFlag = true
-          }
-          if (elapsed >= timeLimits.hardLimit) {
-            this.stopFlag = true
-          }
-        }
-
-        // Update bestScore for next depth comparison
-        if (newEntry && newEntry.flag === TT_FLAG.EXACT) {
-          bestScore = newEntry.score
-        }
+        lastBestMove = result.lastBestMove
+        stableMoveCount = result.stableMoveCount
       }
 
-      if (bestMove) persistentBestMove = bestMove
-
-      if (this.stopFlag) {
-        break
-      }
-      // Error Injection (Blunder Logic)
-      if (options.UCI_LimitStrength && options.UCI_Elo && bestMove) {
-        // Simple blunder chance: (2000 - Elo) / 10000
-        // At 1000 Elo -> 10% chance to pick a random suboptimal move
-        // At 2000 Elo -> 0% chance
-        const elo = options.UCI_Elo
-        if (elo < 2500) {
-          const blunderChance = Math.max(0, (2500 - elo) / 5000) // 1000 Elo = 0.3 (30%)
-          if (Math.random() < blunderChance) {
-            // Pick a random legal move that is NOT the best move
-            const moves = this.board.generateMoves()
-            if (moves.length > 1) {
-              const otherMoves = moves.filter(m => !(m.from === bestMove.from && m.to === bestMove.to))
-              if (otherMoves.length > 0) {
-                const randomIdx = Math.floor(Math.random() * otherMoves.length)
-                bestMove = otherMoves[randomIdx]
-                // console.log('Blunder injected!');
-              }
-            }
-          }
-        }
-      }
-
-      if (this.debugMode) {
-        try {
-          fs.writeFileSync(this.debugFile, JSON.stringify(this.debugTree, null, 2))
-        } catch (e) {
-          console.error('Failed to write debug tree:', e)
-        }
-      }
-      // Update bestScore if not stopped (redundant with above but safe)
-      const endEntry = this.tt.probe(this.board.zobristKey)
-      if (endEntry) bestScore = endEntry.score
-
-      // PV Verification (Debug)
-      if (this.debugMode) {
-        const pv = this.getPV(this.board, depth)
-        this.checkPV(pv)
-      }
+      this._handleDebugSave()
     }
+
+    bestMove = this._applyErrorInjection(bestMove)
 
     if (this.debugMode) {
       console.log(`Search Stats: Nodes=${this.nodes} NullMove=${this.stats.pruning.nullMove} Futility=${this.stats.pruning.futility}`)
     }
 
     return persistentBestMove || bestMove
+  }
+
+  _initSearch (options, timeLimits) {
+    this.options = options
+    this.isStable = false
+    if (this.options.UCI_UseNNUE && this.nnue && this.nnue.network) {
+      this.accumulatorStack = [new Accumulator()]
+      this.nnue.refreshAccumulator(this.accumulatorStack[0], this.board)
+    }
+
+    if (typeof timeLimits === 'number') {
+      this.timeLimits = { hardLimit: timeLimits, softLimit: timeLimits }
+    } else {
+      this.timeLimits = timeLimits
+    }
+
+    this.maxNodes = Infinity
+    if (options.nodes) {
+      this.maxNodes = options.nodes
+    } else if (options.UCI_LimitStrength && options.UCI_Elo) {
+      this.maxNodes = StrengthLimiter.getNodesForElo(options.UCI_Elo)
+    }
+
+    this.debugMode = options.debug || false
+    this.debugTree = { depth: 0, nodes: [] }
+    this.debugFile = options.debugFile || 'search_tree.json'
+    this.currentDebugNode = this.debugTree
+
+    this.nodes = 0
+    this.stats = { nodes: 0, pruning: { nullMove: 0, futility: 0, probCut: 0 } }
+    this.stopFlag = false
+
+    this.heuristics.clearKillers()
+    this.heuristics.ageHistory()
+
+    this.startTime = Date.now()
+    this.checkMask = 2047
+  }
+
+  checkLimits () {
+    if (this.nodes >= this.maxNodes) {
+      this.stopFlag = true
+      return true
+    }
+    if ((this.nodes & this.checkMask) !== 0) return false
+
+    if (this.timeLimits.hardLimit !== Infinity) {
+      if (Date.now() - this.startTime >= this.timeLimits.hardLimit) {
+        this.stopFlag = true
+        return true
+      }
+    }
+    return false
+  }
+
+  _searchDepth (depth, multiPV, bestScore) {
+    const excludedMoves = []
+    let depthBestMove = null
+    let depthBestScore = bestScore
+
+    for (let pvIdx = 0; pvIdx < multiPV; pvIdx++) {
+      const { move, score } = this._searchPVLine(depth, pvIdx, depthBestScore, excludedMoves)
+
+      if (this.stopFlag) break
+      if (!move) break
+
+      if (pvIdx === 0) {
+        depthBestMove = move
+        depthBestScore = score
+      }
+
+      this._reportInfo(depth, pvIdx, score, move)
+
+      excludedMoves.push(move)
+    }
+    return { move: depthBestMove, score: depthBestScore }
+  }
+
+  _searchPVLine (depth, pvIdx, bestScore, excludedMoves) {
+    let alpha = -Infinity
+    let beta = Infinity
+    const windowSize = this.options.AspirationWindow || 50
+
+    if (depth > 1 && pvIdx === 0) {
+      alpha = bestScore - windowSize
+      beta = bestScore + windowSize
+    }
+
+    while (true) {
+      const { move, score } = this.rootAlphaBeta(depth, alpha, beta, excludedMoves)
+
+      if (this.stopFlag) return { move, score }
+      if (score === undefined || score === null) return { move: null, score }
+
+      if (score <= alpha) {
+        if (alpha === -Infinity) break
+        alpha = -Infinity
+        continue
+      }
+      if (score >= beta) {
+        if (beta === Infinity) break
+        beta = Infinity
+        continue
+      }
+      return { move, score }
+    }
+    return { move: null, score: -Infinity }
+  }
+
+  _reportInfo (depth, pvIdx, score, move) {
+    if (this.options.onInfo) {
+      const elapsed = Date.now() - this.startTime
+      const nps = elapsed > 0 ? Math.floor(this.nodes / (elapsed / 1000)) : 0
+      const pvLine = this.getPVLine(this.board, depth, move)
+      const pvString = pvLine.map(m => this.moveToString(m)).join(' ')
+
+      let scoreString = `cp ${score}`
+      if (Math.abs(score) > 10000) {
+        const mateIn = Math.ceil((20000 - Math.abs(score)) / 2) * (score > 0 ? 1 : -1)
+        scoreString = `mate ${mateIn}`
+      }
+
+      this.options.onInfo(`depth ${depth} multipv ${pvIdx + 1} score ${scoreString} nodes ${this.nodes} nps ${nps} time ${elapsed} pv ${pvString}`)
+    }
+  }
+
+  _checkSoftTimeLimit (timeManager, depth, bestScore, bestMove, lastBestMove, stableMoveCount) {
+    const elapsed = Date.now() - this.startTime
+    let limit = this.timeLimits.softLimit
+
+    const stability = this._updateStability(bestMove, lastBestMove, stableMoveCount)
+    lastBestMove = stability.lastBestMove
+    stableMoveCount = stability.stableMoveCount
+    this.isStable = stability.isStable
+
+    limit = this._adjustLimitForInstability(depth, bestScore, limit)
+
+    const stop = this._shouldStop(timeManager, elapsed, limit)
+
+    return { stop, lastBestMove, stableMoveCount }
+  }
+
+  _updateStability (bestMove, lastBestMove, stableMoveCount) {
+    if (lastBestMove && bestMove && lastBestMove.from === bestMove.from && lastBestMove.to === bestMove.to) {
+      stableMoveCount++
+    } else {
+      stableMoveCount = 0
+    }
+    return { lastBestMove: bestMove, stableMoveCount, isStable: stableMoveCount >= 2 }
+  }
+
+  _adjustLimitForInstability (depth, bestScore, limit) {
+    const newEntry = this.tt.probe(this.board.zobristKey)
+    const currentScore = newEntry && newEntry.depth === depth ? newEntry.score : -Infinity
+
+    if (depth > 1 && bestScore > -10000 && currentScore > -10000) {
+      if (bestScore - currentScore > 60) {
+        this.isStable = false
+        return Math.min(this.timeLimits.hardLimit, limit * 2)
+      }
+    }
+    return limit
+  }
+
+  _shouldStop (timeManager, elapsed, limit) {
+    if (timeManager) {
+      return timeManager.shouldStop(elapsed, limit, this.isStable)
+    } else {
+      if (elapsed >= limit && this.isStable) return true
+      if (elapsed >= this.timeLimits.hardLimit) return true
+    }
+    return false
+  }
+
+  _handleDebugSave () {
+    if (this.debugMode) {
+      try {
+        fs.writeFileSync(this.debugFile, JSON.stringify(this.debugTree, null, 2))
+      } catch (e) {
+        console.error('Failed to write debug tree:', e)
+      }
+    }
+    if (this.debugMode) {
+      const pv = this.getPV(this.board, this.debugTree.iteration || 1)
+      this.checkPV(pv)
+    }
+  }
+
+  _applyErrorInjection (bestMove) {
+    if (this.options.UCI_LimitStrength && this.options.UCI_Elo && bestMove) {
+      const elo = this.options.UCI_Elo
+      if (elo < 2500) {
+        const blunderChance = Math.max(0, (2500 - elo) / 5000)
+        if (Math.random() < blunderChance) {
+          const moves = this.board.generateMoves()
+          if (moves.length > 1) {
+            const otherMoves = moves.filter(m => !(m.from === bestMove.from && m.to === bestMove.to))
+            if (otherMoves.length > 0) {
+              const randomIdx = Math.floor(Math.random() * otherMoves.length)
+              return otherMoves[randomIdx]
+            }
+          }
+        }
+      }
+    }
+    return bestMove
   }
 
   rootAlphaBeta (depth, alpha, beta, excludedMoves = []) {
@@ -518,45 +419,22 @@ class Search {
    */
   alphaBeta (depth, alpha, beta, prevMove = null, ply = 0, excludedMove = null) {
     this.nodes++
-
     if (this.stopFlag) return alpha
 
-    // Epic 51: Mate Distance Pruning
+    // Mate Distance Pruning
     const MATE_SCORE = 20000
     alpha = Math.max(alpha, -MATE_SCORE + ply)
     beta = Math.min(beta, MATE_SCORE - ply - 1)
     if (alpha >= beta) return alpha
 
-    // Check limits (frequency handled inside)
     if (this.checkLimits && this.checkLimits()) return alpha
 
-    // Check 50-move and repetition
     if (this.board.isDrawBy50Moves() || this.board.isDrawByRepetition()) {
-      // Epic 26: Contempt Factor
-      // If Contempt is set, return -Contempt (from perspective of side to move).
-      // "I avoid draws because I think I am better".
-      // If I play a draw, score is -Contempt.
-      // options must be available. `search` method has `options`.
-      // But `alphaBeta` doesn't have `options` passed to it.
-      // I need to store options in `this`.
-      // `search` method calls `this.options = options`?
-      // Let's assume `this.options` exists or default to 0.
-      const contempt = (this.options && this.options.Contempt) ? this.options.Contempt : 0
-      return -contempt
+      return this.options && this.options.Contempt ? -this.options.Contempt : 0
     }
 
-    // Epic 16: Check Extension
-    // If in check, extend depth
-    let extension = 0
     const inCheck = this.board.isInCheck()
-    if (inCheck) {
-      extension = 1
-    }
-
-    // Effective Depth for Pruning decisions (use raw depth or extended?)
-    // Usually pruning is based on remaining depth.
-    // If we extend, we have MORE remaining depth.
-    // But recursion calls with newDepth.
+    const extension = inCheck ? 1 : 0
 
     // Null Move Pruning
     const nmResult = SearchPruning.tryNullMovePruning(this, depth, beta, inCheck, ply)
@@ -564,111 +442,83 @@ class Search {
     if (nmResult !== null) return nmResult
 
     // TT Probe
-    const ttEntry = this.tt.probe(this.board.zobristKey)
+    let ttEntry = this.tt.probe(this.board.zobristKey)
     if (ttEntry && ttEntry.depth >= depth) {
-      const score = ttEntry.score
-      if (ttEntry.flag === TT_FLAG.EXACT) return score
-      if (ttEntry.flag === TT_FLAG.LOWERBOUND && score >= beta) return score
-      if (ttEntry.flag === TT_FLAG.UPPERBOUND && score <= alpha) return score
+      if (ttEntry.flag === TT_FLAG.EXACT) return ttEntry.score
+      if (ttEntry.flag === TT_FLAG.LOWERBOUND && ttEntry.score >= beta) return ttEntry.score
+      if (ttEntry.flag === TT_FLAG.UPPERBOUND && ttEntry.score <= alpha) return ttEntry.score
     }
 
-    // Epic 21: Internal Iterative Deepening (IID)
-    // If no TT move and depth is significant, search shallower to populate TT.
+    // IID
     if (depth > 3 && (!ttEntry || !ttEntry.move)) {
-      const iidDepth = depth - 2
-      this.alphaBeta(iidDepth, alpha, beta, prevMove, ply, excludedMove)
-      // After this call, TT might be populated for current key
+      this.alphaBeta(depth - 2, alpha, beta, prevMove, ply, excludedMove)
+      ttEntry = this.tt.probe(this.board.zobristKey)
     }
-    const ttEntryAfterIID = this.tt.probe(this.board.zobristKey)
-    const ttMove = (ttEntryAfterIID && ttEntryAfterIID.move) ? ttEntryAfterIID.move : (ttEntry ? ttEntry.move : null)
+    const ttMove = (ttEntry && ttEntry.move) ? ttEntry.move : null
 
-    // Epic 17: Advanced Pruning
+    // Pruning (Razoring, Futility, ProbCut)
+    const pruningResult = this._performPruning(depth, alpha, beta, inCheck, prevMove, ply)
+    if (pruningResult !== null) return pruningResult
+
+    // Singular Extensions
+    const singularExtension = this._getSingularExtension(depth, ttEntry, ttMove, prevMove, ply, excludedMove)
+
+    const moves = this.board.generateMoves()
+
+    if (moves.length === 0) {
+      if (inCheck) return -20000 + ply
+      return 0
+    }
+
+    if (depth === 0) return this.quiescence(alpha, beta)
+
+    return this._searchMoves(moves, depth, alpha, beta, ply, prevMove, excludedMove, ttMove, inCheck, extension, singularExtension)
+  }
+
+  _performPruning (depth, alpha, beta, inCheck, prevMove, ply) {
     const currentAccumulator = this.accumulatorStack[this.accumulatorStack.length - 1]
     const staticEval = (this.options && this.options.UCI_UseNNUE && this.nnue && this.nnue.network)
       ? this.nnue.evaluate(this.board, currentAccumulator)
       : Evaluation.evaluate(this.board)
 
-    // Razoring
     const razoringResult = SearchPruning.tryRazoring(this, depth, alpha, beta, staticEval, inCheck)
     if (razoringResult !== null) return razoringResult
 
-    // Futility Pruning
     const futilityResult = SearchPruning.tryFutilityPruning(this, depth, alpha, staticEval, inCheck)
     if (futilityResult !== null) return futilityResult
 
-    // Epic 46: ProbCut Pruning
     const probCutResult = SearchPruning.tryProbCut(this, depth, beta, inCheck, prevMove, ply)
     if (probCutResult !== null) return probCutResult
 
-    // Epic 24: Multi-Cut Pruning (MCP)
-    // If not PV (alpha == beta - 1 implied by window check usually, or explicitly passed isPV),
-    // and depth is sufficient.
-    // We don't track isPV explicitly here (alpha/beta window only).
-    // If not in check and depth >= 4:
-    // Generate M moves. If C of them fail high at depth-R, return beta.
-    // This requires generating moves.
+    return null
+  }
 
-    // Internal Iterative Deepening was moved up (Epic 21).
-
-    // Epic 50: Singular Extensions
-    let singularExtension = 0
+  _getSingularExtension (depth, ttEntry, ttMove, prevMove, ply, excludedMove) {
     if (!excludedMove && depth >= 8 && ttMove && ttEntry && ttEntry.depth >= depth - 3 && ttEntry.flag !== TT_FLAG.UPPERBOUND && Math.abs(ttEntry.score) < 10000) {
       const SE_MARGIN = 2 * depth
       const singularBeta = ttEntry.score - SE_MARGIN
       const reducedDepth = (depth - 1) >> 1
-
       const singularScore = this.alphaBeta(reducedDepth, singularBeta - 1, singularBeta, prevMove, ply, ttMove)
-
-      if (singularScore < singularBeta) {
-        singularExtension = 1
-      }
+      if (singularScore < singularBeta) return 1
     }
+    return 0
+  }
 
-    const moves = this.board.generateMoves()
-
-    // Check for Mate/Stalemate
-    if (moves.length === 0) {
-      if (this.board.isInCheck()) {
-        return -20000 + ply // Prefer faster mates
-      } else {
-        return 0 // Stalemate
-      }
-    }
-
-    if (depth === 0) {
-      return this.quiescence(alpha, beta)
-    }
-
-    // Move ordering
-    // Used ttMove retrieved after potential IID
+  _searchMoves (moves, depth, alpha, beta, ply, prevMove, excludedMove, ttMove, inCheck, extension, singularExtension) {
     this.orderMoves(moves, ttMove, depth, prevMove)
 
-    let flag = TT_FLAG.UPPERBOUND // Default: we fail low (all moves < alpha)
+    let flag = TT_FLAG.UPPERBOUND
     let bestScore = -Infinity
     let bestMove = null
     let movesSearched = 0
 
     for (const move of moves) {
-      // Epic 22: Late Move Pruning (LMP)
-      // If depth is low and we searched enough moves, skip quiet ones.
-      if (excludedMove && move.from === excludedMove.from && move.to === excludedMove.to && move.promotion === excludedMove.promotion) {
-        continue
-      }
+      if (excludedMove && this._isSameMove(move, excludedMove)) continue
+      if (this._shouldPruneMove(move, depth, movesSearched, inCheck)) continue
 
-      if (depth <= 3 && movesSearched >= (3 + depth * depth) && !inCheck) {
-        // Ensure we don't prune captures or promotions or checks
-        // 'move.flags' includes 'c', 'p', 'cp'. 'k', 'q' castling are quiets usually?
-        // Castling is important.
-        // Check if move gives check?
-        // We don't have easy givesCheck() without making it.
-        // Safe LMP: Prune only simple quiet moves.
-        if (!move.flags.includes('c') && !move.flags.includes('p') && !move.flags.includes('k') && !move.flags.includes('q')) {
-          continue
-        }
-      }
-      // Debug Logging
       let debugNode = null
-      if (this.debugMode && depth > 0) {
+      let prevDebugNode = null
+      if (this.debugMode) {
         debugNode = {
           move: this.moveToString(move),
           score: null,
@@ -678,87 +528,13 @@ class Search {
           depth
         }
         this.currentDebugNode.children.push(debugNode)
+        prevDebugNode = this.currentDebugNode
+        this.currentDebugNode = debugNode
       }
 
-      const prevDebugNode = this.currentDebugNode
-      if (this.debugMode) this.currentDebugNode = debugNode || this.currentDebugNode
-
-      const state = this.board.applyMove(move)
-      let score
-
-      if (this.options.UCI_UseNNUE && this.nnue && this.nnue.network) {
-        const newAccumulator = this.accumulatorStack[this.accumulatorStack.length - 1].clone()
-        const changes = this.nnue.getChangedIndices(this.board, move, state.capturedPiece)
-        if (changes[move.piece.color].refresh) {
-          const tempBoard = this.board.clone() // Assumes clone
-          tempBoard.applyMove(move)
-          this.nnue.refreshAccumulator(newAccumulator, tempBoard)
-        } else {
-          this.nnue.updateAccumulator(newAccumulator, changes)
-        }
-        this.accumulatorStack.push(newAccumulator)
-      }
-
-      // LMR (Late Move Reduction)
-      let reduction = 0
-      const isQuiet = !move.flags.includes('c') && !move.flags.includes('p')
-      if (depth >= 3 && movesSearched > 1 && isQuiet && !inCheck) {
-        // Formula inspired by common LMR implementations, using natural logs.
-        // R = c1 + ln(depth) * ln(movesSearched) / c2
-        const R = Math.floor(0.75 + (Math.log(depth) * Math.log(movesSearched)) / 2.25)
-
-        // Apply the reduction, but don't reduce too much.
-        reduction = Math.max(0, R)
-
-        // Don't reduce the search to less than 2 ply.
-        // nextDepth = depth - 1 + extension. lmrDepth = nextDepth - reduction.
-        // We need lmrDepth >= 1.
-        // So, depth - 1 + extension - reduction >= 1
-        // reduction <= depth - 2 + extension
-        const maxReduction = depth - 2 + extension
-        reduction = Math.min(reduction, maxReduction)
-      }
-
-      // Principal Variation Search (PVS)
-
-      // Apply Extensions
-      let currentExtension = extension // Base extension from check
-      currentExtension = Math.max(currentExtension, this._getPassedPawnExtension(move))
-
-      if (ttMove && move.from === ttMove.from && move.to === ttMove.to && move.promotion === ttMove.promotion) {
-        currentExtension += singularExtension
-      }
-
-      const nextDepth = depth + currentExtension - 1
-
-      if (movesSearched === 0) {
-        // Full window search for the first move
-        score = -this.alphaBeta(nextDepth, -beta, -alpha, move, ply + 1, null)
-      } else {
-        // Null window search with LMR
-        // Reduce from nextDepth (which includes extension)
-        let lmrDepth = nextDepth - reduction
-        if (lmrDepth < 0) lmrDepth = 0
-
-        score = -this.alphaBeta(lmrDepth, -alpha - 1, -alpha, move, ply + 1, null)
-
-        // Re-search if LMR failed (score > alpha)
-        if (reduction > 0 && score > alpha) {
-          score = -this.alphaBeta(nextDepth, -alpha - 1, -alpha, move, ply + 1, null)
-        }
-
-        // If the null-window search failed high (score > alpha), it's possible
-        // this move is better than we thought. We must re-search with the full window.
-        if (score > alpha && score < beta) {
-          // Re-search with full depth and full window
-          score = -this.alphaBeta(nextDepth, -beta, -alpha, move, ply + 1, null)
-        }
-      }
-
-      this.board.undoApplyMove(move, state)
-      if (this.options.UCI_UseNNUE && this.nnue && this.nnue.network) {
-        this.accumulatorStack.pop()
-      }
+      this._pushAccumulator(move)
+      const score = this._pvs(move, depth, alpha, beta, ply, movesSearched, inCheck, extension, singularExtension, ttMove)
+      this._popAccumulator()
 
       if (this.debugMode && debugNode) {
         debugNode.score = score
@@ -770,28 +546,8 @@ class Search {
       if (this.stopFlag) return alpha
 
       if (score >= beta) {
-        // Fail high (Lowerbound)
         this.tt.save(this.board.zobristKey, score, depth, TT_FLAG.LOWERBOUND, move)
-
-        // Update Killers and History for quiet moves
-        if (!move.flags.includes('c')) {
-          this.heuristics.storeKiller(depth, move)
-          if (this.options.UseHistory) {
-            this.heuristics.addHistoryScore(this.board.activeColor, move.from, move.to, depth)
-          }
-
-          // Epic 23: Countermove Heuristic
-          // Store countermove for opponent's previous move
-          if (prevMove) {
-            this.heuristics.storeCounterMove(this.board.activeColor, prevMove.from, prevMove.to, move)
-          }
-        } else {
-          // Epic 49: Capture History Heuristic
-          if (this.options.UseCaptureHistory && state.capturedPiece) {
-            this.heuristics.addCaptureHistory(move.piece.type, move.to, state.capturedPiece.type, depth)
-          }
-        }
-
+        this._updateHeuristics(move, prevMove, depth)
         return beta
       }
       if (score > bestScore) {
@@ -806,6 +562,113 @@ class Search {
 
     this.tt.save(this.board.zobristKey, bestScore, depth, flag, bestMove)
     return alpha
+  }
+
+  _isSameMove (m1, m2) {
+    return m1.from === m2.from && m1.to === m2.to && m1.promotion === m2.promotion
+  }
+
+  _shouldPruneMove (move, depth, movesSearched, inCheck) {
+    if (depth <= 3 && movesSearched >= (3 + depth * depth) && !inCheck) {
+      if (!move.flags.includes('c') && !move.flags.includes('p') && !move.flags.includes('k') && !move.flags.includes('q')) {
+        return true
+      }
+    }
+    return false
+  }
+
+  _pvs (move, depth, alpha, beta, ply, movesSearched, inCheck, extension, singularExtension, ttMove) {
+    const state = this.board.applyMove(move)
+
+    let currentExtension = extension
+    currentExtension = Math.max(currentExtension, this._getPassedPawnExtension(move))
+    if (ttMove && this._isSameMove(move, ttMove)) {
+      currentExtension += singularExtension
+    }
+
+    const nextDepth = depth + currentExtension - 1
+    let score
+
+    if (movesSearched === 0) {
+      score = -this.alphaBeta(nextDepth, -beta, -alpha, move, ply + 1, null)
+    } else {
+      const reduction = this._calculateLMR(depth, movesSearched, move, inCheck, extension)
+      let lmrDepth = nextDepth - reduction
+      if (lmrDepth < 0) lmrDepth = 0
+
+      score = -this.alphaBeta(lmrDepth, -alpha - 1, -alpha, move, ply + 1, null)
+
+      if (reduction > 0 && score > alpha) {
+        score = -this.alphaBeta(nextDepth, -alpha - 1, -alpha, move, ply + 1, null)
+      }
+
+      if (score > alpha && score < beta) {
+        score = -this.alphaBeta(nextDepth, -beta, -alpha, move, ply + 1, null)
+      }
+    }
+
+    this.board.undoApplyMove(move, state)
+    return score
+  }
+
+  _calculateLMR (depth, movesSearched, move, inCheck, extension) {
+    const isQuiet = !move.flags.includes('c') && !move.flags.includes('p')
+    if (depth >= 3 && movesSearched > 1 && isQuiet && !inCheck) {
+      const R = Math.floor(0.75 + (Math.log(depth) * Math.log(movesSearched)) / 2.25)
+      let reduction = Math.max(0, R)
+      const maxReduction = depth - 2 + extension
+      return Math.min(reduction, maxReduction)
+    }
+    return 0
+  }
+
+  _pushAccumulator (move) {
+    if (this.options.UCI_UseNNUE && this.nnue && this.nnue.network) {
+      const newAccumulator = this.accumulatorStack[this.accumulatorStack.length - 1].clone()
+      const capturedPiece = this._getCapturedPiece(move)
+      const changes = this.nnue.getChangedIndices(this.board, move, capturedPiece)
+      if (changes[move.piece.color].refresh) {
+        const tempBoard = this.board.clone()
+        tempBoard.applyMove(move)
+        this.nnue.refreshAccumulator(newAccumulator, tempBoard)
+      } else {
+        this.nnue.updateAccumulator(newAccumulator, changes)
+      }
+      this.accumulatorStack.push(newAccumulator)
+    }
+  }
+
+  _popAccumulator () {
+    if (this.options.UCI_UseNNUE && this.nnue && this.nnue.network) {
+      this.accumulatorStack.pop()
+    }
+  }
+
+  _updateHeuristics (move, prevMove, depth) {
+    if (!move.flags.includes('c')) {
+      this.heuristics.storeKiller(depth, move)
+      if (this.options.UseHistory) {
+        this.heuristics.addHistoryScore(this.board.activeColor, move.from, move.to, depth)
+      }
+      if (prevMove) {
+        this.heuristics.storeCounterMove(this.board.activeColor, prevMove.from, prevMove.to, move)
+      }
+    } else {
+      if (this.options.UseCaptureHistory) {
+        const cap = this._getCapturedPiece(move)
+        if (cap) {
+          this.heuristics.addCaptureHistory(move.piece.type, move.to, cap.type, depth)
+        }
+      }
+    }
+  }
+
+  _getCapturedPiece (move) {
+    if (move.flags.includes('e')) {
+      const captureSq = move.to + (move.piece.color === 'white' ? 16 : -16)
+      return this.board.getPiece(captureSq)
+    }
+    return this.board.getPiece(move.to)
   }
 
   orderMoves (moves, ttMove, depth = 0, prevMove = null) {
