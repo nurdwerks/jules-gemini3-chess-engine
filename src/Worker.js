@@ -20,7 +20,8 @@ parentPort.on('message', (msg) => {
 
         currentSearch = new Search(board, tt);
 
-        currentSearch.search(msg.depth || 64, msg.limits, options);
+        const searchOptions = { ...options, ...(msg.options || {}) };
+        currentSearch.search(msg.depth || 64, msg.limits, searchOptions);
 
         parentPort.postMessage({ type: 'done' });
     } else if (msg.type === 'stop') {

@@ -204,9 +204,13 @@ class UCI {
     }
     const Search = require('./Search');
     this.currentSearch = new Search(this.board, this.tt, this.nnue);
-    const searchOptions = { ...this.options, searchMoves };
+    const searchOptions = {
+        ...this.options,
+        searchMoves,
+        onInfo: (info) => this.output(`info ${info}`)
+    };
     for (const worker of this.workers) {
-        worker.postMessage({ type: 'search', fen: this.board.generateFen(), depth: depth, limits: timeLimits });
+        worker.postMessage({ type: 'search', fen: this.board.generateFen(), depth: depth, limits: timeLimits, options: this.options });
     }
     const bestMove = this.currentSearch.search(depth, timeLimits, searchOptions, tm);
     this.currentSearch = null;
