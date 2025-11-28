@@ -122,7 +122,8 @@ class Evaluation {
         // Static initializer block to load tuned parameters
         try {
             const paramsPath = path.join(__dirname, '..', 'tuned_evaluation_params.json');
-            if (fs.existsSync(paramsPath)) {
+            const isTestMode = process.env.TEST_MODE === 'true' || process.env.NODE_ENV === 'test';
+            if (!isTestMode && fs.existsSync(paramsPath)) {
                 console.log("Loading tuned evaluation parameters...");
                 const tunedParams = JSON.parse(fs.readFileSync(paramsPath, 'utf8'));
                 for (const key in tunedParams) {
