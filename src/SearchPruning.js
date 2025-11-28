@@ -1,59 +1,59 @@
 class SearchPruning {
-  static tryNullMovePruning(search, depth, beta, inCheck, ply) {
+  static tryNullMovePruning (search, depth, beta, inCheck, ply) {
     if (depth >= 3 && !inCheck) {
-      const state = search.board.makeNullMove();
-      const R = 2; // Reduction
-      const score = -search.alphaBeta(depth - 1 - R, -beta, -beta + 1, null, ply + 1, null);
-      search.board.undoNullMove(state);
+      const state = search.board.makeNullMove()
+      const R = 2 // Reduction
+      const score = -search.alphaBeta(depth - 1 - R, -beta, -beta + 1, null, ply + 1, null)
+      search.board.undoNullMove(state)
 
-      if (search.stopFlag) return 'STOP';
+      if (search.stopFlag) return 'STOP'
 
       if (score >= beta) {
-        search.stats.pruning.nullMove++;
-        return beta; // Cutoff
+        search.stats.pruning.nullMove++
+        return beta // Cutoff
       }
     }
-    return null;
+    return null
   }
 
-  static tryRazoring(search, depth, alpha, beta, staticEval, inCheck) {
+  static tryRazoring (search, depth, alpha, beta, staticEval, inCheck) {
     if (depth <= 3 && !inCheck && staticEval + 300 + 100 * depth <= alpha) {
-      const qScore = search.quiescence(alpha, beta);
+      const qScore = search.quiescence(alpha, beta)
       if (qScore <= alpha) {
-        return alpha;
+        return alpha
       }
     }
-    return null;
+    return null
   }
 
-  static tryFutilityPruning(search, depth, alpha, staticEval, inCheck) {
+  static tryFutilityPruning (search, depth, alpha, staticEval, inCheck) {
     if (depth <= 3 && !inCheck) {
-      const margin = 100 * depth;
+      const margin = 100 * depth
       if (staticEval + margin <= alpha) {
-        search.stats.pruning.futility++;
-        return alpha;
+        search.stats.pruning.futility++
+        return alpha
       }
     }
-    return null;
+    return null
   }
 
-  static tryProbCut(search, depth, beta, inCheck, prevMove, ply) {
+  static tryProbCut (search, depth, beta, inCheck, prevMove, ply) {
     if (depth >= 5 && !inCheck && Math.abs(beta) < 20000) {
-      const PROBCUT_MARGIN = 200;
-      const PROBCUT_REDUCTION = 4;
+      const PROBCUT_MARGIN = 200
+      const PROBCUT_REDUCTION = 4
 
       // Shallow search with a widened window
-      const probCutBeta = beta + PROBCUT_MARGIN;
+      const probCutBeta = beta + PROBCUT_MARGIN
 
-      const score = search.alphaBeta(depth - PROBCUT_REDUCTION, probCutBeta - 1, probCutBeta, prevMove, ply, null);
+      const score = search.alphaBeta(depth - PROBCUT_REDUCTION, probCutBeta - 1, probCutBeta, prevMove, ply, null)
 
       if (score >= probCutBeta) {
-        search.stats.pruning.probCut++;
-        return beta;
+        search.stats.pruning.probCut++
+        return beta
       }
     }
-    return null;
+    return null
   }
 }
 
-module.exports = SearchPruning;
+module.exports = SearchPruning

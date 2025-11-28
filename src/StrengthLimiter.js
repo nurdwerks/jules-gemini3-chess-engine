@@ -1,5 +1,5 @@
 class StrengthLimiter {
-    /**
+  /**
      * Calculates the maximum nodes per move for a given Elo rating.
      * Formula: nodes = 10 ^ ((Elo - 1200) / 600 + 3)
      *
@@ -11,24 +11,24 @@ class StrengthLimiter {
      * @param {number} elo - Target Elo rating (e.g., 100-3000)
      * @returns {number} - Maximum nodes to search
      */
-    static getNodesForElo(elo) {
-        if (elo >= 3000) return Infinity; // Unlimited strength at max
+  static getNodesForElo (elo) {
+    if (elo >= 3000) return Infinity // Unlimited strength at max
 
-        // Ensure minimum elo to avoid tiny node counts
-        const clampedElo = Math.max(100, elo);
+    // Ensure minimum elo to avoid tiny node counts
+    const clampedElo = Math.max(100, elo)
 
-        // Linear interpolation for exponent
-        const exponent = (clampedElo - 1200) / 600 + 3;
+    // Linear interpolation for exponent
+    const exponent = (clampedElo - 1200) / 600 + 3
 
-        // Calculate nodes
-        let nodes = Math.pow(10, exponent);
+    // Calculate nodes
+    let nodes = Math.pow(10, exponent)
 
-        // Round to integer
-        nodes = Math.round(nodes);
+    // Round to integer
+    nodes = Math.round(nodes)
 
-        // Ensure at least 1 node
-        return Math.max(1, nodes);
-    }
+    // Ensure at least 1 node
+    return Math.max(1, nodes)
+  }
 }
 
-module.exports = StrengthLimiter;
+module.exports = StrengthLimiter

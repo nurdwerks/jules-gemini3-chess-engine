@@ -1,7 +1,7 @@
-function trace(message) {
+function trace (message) {
   if (process.env.TRACE === 'true') {
-    console.log(message);
+    console.log(message)
   }
 }
 
-module.exports = trace;
+module.exports = trace
