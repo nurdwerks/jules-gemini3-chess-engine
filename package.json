@@ -6,6 +6,7 @@
   "scripts": {
     "test": "jest",
     "coverage": "jest --coverage",
+    "eslint": "eslint .",
     "start": "node src/server.js",
     "tune": "node tools/pipeline.js"
   },
@@ -38,6 +39,11 @@
   },
   "homepage": "https://github.com/nurdwerks/jules-gemini3-chess-engine#readme",
   "devDependencies": {
+    "eslint": "^8.57.1",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-n": "^16.6.2",
+    "eslint-plugin-promise": "^6.6.0",
     "http-server": "^14.1.1",
     "jest": "^29.7.0"
   },
