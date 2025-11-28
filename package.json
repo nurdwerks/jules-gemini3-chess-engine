@@ -4,12 +4,13 @@
   "description": "This project serves as a testbed for evaluating the capabilities of **Jules** and **Gemini 3**. The objective is to build a chess engine using **Node.js**.",
   "main": "index.js",
   "scripts": {
-    "test": "jest --coverage",
+    "test": "jest",
+    "coverage": "jest --coverage",
     "start": "node server.js",
     "tune": "node tools/pipeline.js"
   },
   "jest": {
-    "collectCoverage": true,
+    "collectCoverage": false,
     "coverageReporters": [
       "text",
       "lcov"
