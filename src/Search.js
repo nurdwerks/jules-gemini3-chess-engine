@@ -758,6 +758,11 @@ class Search {
                   if (prevMove) {
                       this.heuristics.storeCounterMove(this.board.activeColor, prevMove.from, prevMove.to, move);
                   }
+              } else {
+                  // Epic 49: Capture History Heuristic
+                  if (this.options.UseCaptureHistory && state.capturedPiece) {
+                      this.heuristics.addCaptureHistory(move.piece.type, move.to, state.capturedPiece.type, depth);
+                  }
               }
 
               return beta;

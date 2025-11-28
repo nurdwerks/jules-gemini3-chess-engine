@@ -8,19 +8,6 @@ Benchmarking functions can be written and verified, but performance-critical ben
 
 ## Active Roadmap
 
-### Epic 49: Capture History Heuristic
-**Size:** Small (2 days)
-**Description:** Improve move ordering for captures using a history table.
-**User Stories:**
-1.  **Capture History Table (S)**
-    *   *Description:* Implement a history table indexed by `[piece][to_square][captured_piece]`.
-    *   *Acceptance Criteria:*
-        *   [ ] Updates on beta cutoffs caused by captures.
-2.  **Integration (S)**
-    *   *Description:* Use capture history scores to sort captures (after SEE checks).
-    *   *Acceptance Criteria:*
-        *   [ ] Reduces node count in tactical positions.
-
 ### Epic 50: Singular Extensions
 **Size:** Medium (3 days)
 **Description:** Extend the search depth for moves that are significantly better than all other alternatives (singular moves) to avoid missing tactical refutations.

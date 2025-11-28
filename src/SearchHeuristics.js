@@ -1,7 +1,10 @@
+const PIECE_INDEX = { 'pawn': 0, 'knight': 1, 'bishop': 2, 'rook': 3, 'queen': 4, 'king': 5 };
+
 class SearchHeuristics {
     constructor() {
         this.killerMoves = new Array(64).fill(null).map(() => []);
         this.history = new Int32Array(2 * 128 * 128);
+        this.captureHistory = new Int32Array(6 * 128 * 6); // [piece][to][captured]
         this.counterMoves = new Array(2 * 128 * 128).fill(null);
     }
 
@@ -16,6 +19,7 @@ class SearchHeuristics {
 
     ageHistory() {
         for(let i=0; i<this.history.length; i++) this.history[i] >>= 1;
+        for(let i=0; i<this.captureHistory.length; i++) this.captureHistory[i] >>= 1;
     }
 
     getHistoryScore(side, from, to) {
@@ -30,6 +34,27 @@ class SearchHeuristics {
         this.history[idx] += bonus;
         if (this.history[idx] > 1000000) { // Cap/Age
             for(let i=0; i<this.history.length; i++) this.history[i] >>= 1;
+        }
+    }
+
+    getCaptureHistory(pieceType, to, capturedType) {
+        const pIdx = PIECE_INDEX[pieceType];
+        const cIdx = PIECE_INDEX[capturedType];
+        if (pIdx === undefined || cIdx === undefined) return 0;
+        return this.captureHistory[pIdx * 128 * 6 + to * 6 + cIdx];
+    }
+
+    addCaptureHistory(pieceType, to, capturedType, depth) {
+        const pIdx = PIECE_INDEX[pieceType];
+        const cIdx = PIECE_INDEX[capturedType];
+        if (pIdx === undefined || cIdx === undefined) return;
+
+        const idx = pIdx * 128 * 6 + to * 6 + cIdx;
+        const bonus = depth * depth;
+        this.captureHistory[idx] += bonus;
+
+        if (this.captureHistory[idx] > 1000000) {
+            for(let i=0; i<this.captureHistory.length; i++) this.captureHistory[i] >>= 1;
         }
     }
 

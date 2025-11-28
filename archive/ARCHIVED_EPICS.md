@@ -739,3 +739,15 @@ The following Epics were part of the initial development phase and are either co
     *   *Acceptance Criteria:*
         *   [x] Search stops close to the limit.
         *   [x] Reported nodes count is consistent.
+### Epic 49: Capture History Heuristic
+**Size:** Small (2 days)
+**Description:** Improve move ordering for captures using a history table.
+**User Stories:**
+1.  **Capture History Table (S)**
+    *   *Description:* Implement a history table indexed by `[piece][to_square][captured_piece]`.
+    *   *Acceptance Criteria:*
+        *   [x] Updates on beta cutoffs caused by captures.
+2.  **Integration (S)**
+    *   *Description:* Use capture history scores to sort captures (after SEE checks).
+    *   *Acceptance Criteria:*
+        *   [x] Reduces node count in tactical positions.
