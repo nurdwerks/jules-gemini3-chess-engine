@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const statusElement = document.getElementById('status')
   const engineOutputElement = document.getElementById('engine-output')
   const uciOptionsElement = document.getElementById('uci-options')
+  const moveHistoryElement = document.getElementById('move-history')
   const newGameBtn = document.getElementById('new-game-btn')
   const flipBoardBtn = document.getElementById('flip-board-btn')
 
@@ -21,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let selectedSquare = null // { row, col }
   let isFlipped = false
   let gameStarted = false
+  let currentViewIndex = -1 // -1 means live view
   let legalMovesForSelectedPiece = [] // Array of move objects from chess.js
 
   function connect () {
@@ -67,7 +69,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const promotion = move.length > 4 ? move[4] : undefined
 
       game.move({ from, to, promotion })
+      currentViewIndex = -1
       renderBoard()
+      renderHistory()
     }
   }
 
@@ -291,13 +295,78 @@ document.addEventListener('DOMContentLoaded', () => {
     game.reset()
     selectedSquare = null
     legalMovesForSelectedPiece = []
+    currentViewIndex = -1
     renderBoard()
+    renderHistory()
     socket.send('ucinewgame')
+  }
+
+  function renderHistory () {
+    moveHistoryElement.innerHTML = ''
+    const history = game.history()
+
+    // Grid layout: row per move pair (items flow into grid columns)
+    for (let i = 0; i < history.length; i += 2) {
+      const moveNum = Math.floor(i / 2) + 1
+      const whiteMove = history[i]
+      const blackMove = history[i + 1]
+
+      const numDiv = document.createElement('div')
+      numDiv.classList.add('move-number')
+      numDiv.textContent = moveNum + '.'
+      moveHistoryElement.appendChild(numDiv)
+
+      const whiteDiv = document.createElement('div')
+      whiteDiv.classList.add('move-san')
+      whiteDiv.textContent = whiteMove
+      if (currentViewIndex === i) whiteDiv.classList.add('active')
+      whiteDiv.addEventListener('click', () => handleHistoryClick(i))
+      moveHistoryElement.appendChild(whiteDiv)
+
+      if (blackMove) {
+        const blackDiv = document.createElement('div')
+        blackDiv.classList.add('move-san')
+        blackDiv.textContent = blackMove
+        if (currentViewIndex === i + 1) blackDiv.classList.add('active')
+        blackDiv.addEventListener('click', () => handleHistoryClick(i + 1))
+        moveHistoryElement.appendChild(blackDiv)
+      }
+    }
+
+    // Scroll to bottom if live
+    if (currentViewIndex === -1) {
+      moveHistoryElement.scrollTop = moveHistoryElement.scrollHeight
+    }
+  }
+
+  function handleHistoryClick (index) {
+    currentViewIndex = index
+    selectedSquare = null
+    legalMovesForSelectedPiece = []
+    renderBoard()
+    renderHistory()
+  }
+
+  function getBoardState () {
+    if (currentViewIndex === -1) {
+      return game.board()
+    }
+    const tempGame = new Chess()
+    const startFen = game.header().FEN
+    if (startFen) {
+      tempGame.load(startFen)
+    }
+
+    const history = game.history({ verbose: true })
+    for (let i = 0; i <= currentViewIndex; i++) {
+      tempGame.move(history[i])
+    }
+    return tempGame.board()
   }
 
   function renderBoard () {
     boardElement.innerHTML = ''
-    const board = game.board() // 8x8 array of objects {type, color} or null
+    const board = getBoardState()
 
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
@@ -351,6 +420,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function handleSquareClick (row, col) {
+    if (currentViewIndex !== -1) return
+
     const board = game.board()
     const pieceObj = board[row][col]
     const alg = coordsToAlgebraic(row, col)
@@ -391,7 +462,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     selectedSquare = null
     legalMovesForSelectedPiece = []
+    currentViewIndex = -1
     renderBoard()
+    renderHistory()
     sendPositionAndGo()
   }
 
