@@ -4,9 +4,25 @@
   "description": "This project serves as a testbed for evaluating the capabilities of **Jules** and **Gemini 3**. The objective is to build a chess engine using **Node.js**.",
   "main": "index.js",
   "scripts": {
-    "test": "jest",
+    "test": "jest --coverage",
     "start": "node server.js",
     "tune": "node tools/pipeline.js"
+  },
+  "jest": {
+    "collectCoverage": true,
+    "coverageReporters": [
+      "text",
+      "lcov"
+    ],
+    "coverageDirectory": "coverage",
+    "coverageThreshold": {
+      "global": {
+        "branches": 70,
+        "functions": 80,
+        "lines": 80,
+        "statements": 80
+      }
+    }
   },
   "repository": {
     "type": "git",

@@ -16,6 +16,10 @@ const PIECE_VALUES = {
   'king': 20000
 };
 
+/**
+ * Tunable evaluation parameters.
+ * These can be overridden by tuned_evaluation_params.json.
+ */
 const PARAMS = {
     DoubledPawnPenalty: 10,
     IsolatedPawnPenalty: 15,
@@ -167,6 +171,11 @@ class Evaluation {
         return (finalMask & opponentPawns) === 0n;
     }
 
+    /**
+     * Statically evaluates the board state.
+     * @param {Board} board - The board to evaluate.
+     * @returns {number} The score in centipawns from the perspective of the side to move.
+     */
     static evaluate(board) {
         let score = 0;
         let whiteKingIndex = -1;

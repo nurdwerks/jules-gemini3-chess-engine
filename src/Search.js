@@ -3,6 +3,8 @@ const { TranspositionTable, TT_FLAG } = require('./TranspositionTable');
 const { Accumulator } = require('./NNUE');
 const SEE = require('./SEE');
 const Syzygy = require('./Syzygy'); // Epic 15
+const SearchHeuristics = require('./SearchHeuristics');
+const MoveSorter = require('./MoveSorter');
 
 class Search {
   constructor(board, tt = null, nnue = null) {
@@ -20,25 +22,7 @@ class Search {
     // this.syzygy.loadTable('path/to/tb');
 
     // Move Ordering Heuristics
-    this.killerMoves = new Array(64).fill(null).map(() => []); // [depth][0..1]
-    this.history = new Array(2).fill(null).map(() =>
-        new Array(128).fill(0) // [color][to] - Simplified History (Butterfly)
-    );
-    // Better history: [side][from][to] or [piece][to].
-    // Common is [side][from][to] or [piece][to].
-    // 0x88 board is 128 squares.
-    // Let's use [side][from][to] -> 2 * 128 * 128.
-    // To avoid large arrays, let's use 1D array of size 2 * 128 * 128 = 32k integers.
-    this.history = new Int32Array(2 * 128 * 128);
-
-    // Epic 23: Countermove Heuristic
-    // Table: [side][prevFrom][prevTo] -> move
-    // Size: 2 * 128 * 128 * (Move Object Reference?)
-    // Storing full move objects might be memory intensive if strict.
-    // But JS arrays are sparse/references.
-    // Let's use a flat array of moves or objects.
-    // We can index by [side * 128 * 128 + from * 128 + to].
-    this.counterMoves = new Array(2 * 128 * 128).fill(null);
+    this.heuristics = new SearchHeuristics();
 
     this.stats = {
         nodes: 0,
@@ -50,22 +34,15 @@ class Search {
     };
   }
 
-  getHistoryScore(side, from, to) {
-      const colorIdx = side === 'w' ? 0 : 1;
-      return this.history[colorIdx * 128 * 128 + from * 128 + to];
-  }
 
-  addHistoryScore(side, from, to, depth) {
-      const colorIdx = side === 'w' ? 0 : 1;
-      const idx = colorIdx * 128 * 128 + from * 128 + to;
-      const bonus = depth * depth;
-      this.history[idx] += bonus;
-      if (this.history[idx] > 1000000) { // Cap/Age
-          for(let i=0; i<this.history.length; i++) this.history[i] >>= 1;
-      }
-  }
-
-  // Iterative Deepening Search
+  /**
+   * Performs an iterative deepening search to find the best move.
+   * @param {number} [maxDepth=5] - The maximum depth to search.
+   * @param {Object|number} [timeLimits] - Time constraints ({ hardLimit, softLimit }) or just hard limit in ms.
+   * @param {Object} [options] - Search options (UCI options, debug flags, etc.).
+   * @param {TimeManager} [timeManager] - Optional TimeManager instance for advanced time control.
+   * @returns {Object|null} The best move found, or null if none.
+   */
   search(maxDepth = 5, timeLimits = { hardLimit: 1000, softLimit: 1000 }, options = {}, timeManager = null) {
     this.options = options;
     this.isStable = false;
@@ -104,9 +81,9 @@ class Search {
     this.stopFlag = false;
     // Reset Heuristics?
     // Killers should be reset. History can persist or age.
-    this.killerMoves = new Array(64).fill(null).map(() => []);
+    this.heuristics.clearKillers();
     // Age history
-    for(let i=0; i<this.history.length; i++) this.history[i] >>= 1;
+    this.heuristics.ageHistory();
 
     // this.tt.clear(); // Preserve TT across searches for efficiency
 
@@ -530,6 +507,14 @@ class Search {
       return 0;
   }
 
+  /**
+   * The Alpha-Beta pruning search algorithm.
+   * @param {number} depth - The remaining depth to search.
+   * @param {number} alpha - The lower bound score.
+   * @param {number} beta - The upper bound score.
+   * @param {Object} [prevMove=null] - The move that led to this position (for heuristics).
+   * @returns {number} The score of the position from the perspective of the side to move.
+   */
   alphaBeta(depth, alpha, beta, prevMove = null) {
       this.nodes++;
 
@@ -567,23 +552,9 @@ class Search {
       // But recursion calls with newDepth.
 
       // Null Move Pruning
-      // Conditions: depth >= 3, not in check, big beta? (Or just allow cutoffs)
-      // We need to know if we are in check.
-      // And probably assume we have "some" material (not Zugzwang).
-      // For now, simplistic: depth >= 3.
-      if (depth >= 3 && !inCheck) {
-          const state = this.board.makeNullMove();
-          const R = 2; // Reduction
-          const score = -this.alphaBeta(depth - 1 - R, -beta, -beta + 1);
-          this.board.undoNullMove(state);
-
-          if (this.stopFlag) return alpha;
-
-          if (score >= beta) {
-              this.stats.pruning.nullMove++;
-              return beta; // Cutoff
-          }
-      }
+      const nmResult = this._tryNullMovePruning(depth, beta, inCheck);
+      if (nmResult === 'STOP') return alpha;
+      if (nmResult !== null) return nmResult;
 
       // TT Probe
       const ttEntry = this.tt.probe(this.board.zobristKey);
@@ -611,43 +582,16 @@ class Search {
         : Evaluation.evaluate(this.board);
 
       // Razoring
-      // If depth is low and static eval is way below alpha, drop to qsearch.
-      if (depth <= 3 && !inCheck && staticEval + 300 + 100 * depth <= alpha) {
-          const qScore = this.quiescence(alpha, beta);
-          if (qScore <= alpha) {
-              return alpha;
-          }
-      }
+      const razoringResult = this._tryRazoring(depth, alpha, beta, staticEval, inCheck);
+      if (razoringResult !== null) return razoringResult;
 
       // Futility Pruning
-      // Condition: depth <= 3, not in check, not PV node (alpha != beta - 1? No, just not root? alpha/beta window).
-      // If eval + margin < alpha, we assume we can't raise alpha.
-      // Margin: 100 * depth?
-      if (depth <= 3 && !this.board.isInCheck()) {
-          // const staticEval = Evaluation.evaluate(this.board); // Already computed
-          const margin = 100 * depth;
-          if (staticEval + margin <= alpha) {
-              this.stats.pruning.futility++;
-              return alpha;
-          }
-      }
+      const futilityResult = this._tryFutilityPruning(depth, alpha, staticEval, inCheck);
+      if (futilityResult !== null) return futilityResult;
 
       // Epic 46: ProbCut Pruning
-      // Condition: depth >= 5, not in check, |beta| < 20000 (avoid mate scores)
-      if (depth >= 5 && !inCheck && Math.abs(beta) < 20000) {
-          const PROBCUT_MARGIN = 200;
-          const PROBCUT_REDUCTION = 4;
-
-          // Shallow search with a widened window
-          const probCutBeta = beta + PROBCUT_MARGIN;
-
-          const score = this.alphaBeta(depth - PROBCUT_REDUCTION, probCutBeta - 1, probCutBeta, prevMove);
-
-          if (score >= probCutBeta) {
-              this.stats.pruning.probCut++;
-              return beta;
-          }
-      }
+      const probCutResult = this._tryProbCut(depth, beta, inCheck, prevMove);
+      if (probCutResult !== null) return probCutResult;
 
       // Epic 24: Multi-Cut Pruning (MCP)
       // If not PV (alpha == beta - 1 implied by window check usually, or explicitly passed isPV),
@@ -802,24 +746,15 @@ class Search {
 
               // Update Killers and History for quiet moves
               if (!move.flags.includes('c')) {
-                  this.storeKiller(depth, move);
+                  this.heuristics.storeKiller(depth, move);
                   if (this.options.UseHistory) {
-                    this.addHistoryScore(this.board.activeColor, move.from, move.to, depth);
+                    this.heuristics.addHistoryScore(this.board.activeColor, move.from, move.to, depth);
                   }
 
                   // Epic 23: Countermove Heuristic
                   // Store countermove for opponent's previous move
                   if (prevMove) {
-                      const sideIdx = this.board.activeColor === 'w' ? 0 : 1; // This is CURRENT side.
-                      // Opponent made prevMove. We want to store OUR move as the refutation.
-                      // Table is indexed by [SideWhoMoving][PrevFrom][PrevTo] -> BestResponse
-                      // Wait, usually CounterMove is "If opponent moved X, I play Y".
-                      // So index by Opponent Side? No, typically [MySide][OppFrom][OppTo].
-                      // Let's use: [CurrentSide][PrevFrom][PrevTo] = CurrentMove
-                      const idx = sideIdx * 128 * 128 + prevMove.from * 128 + prevMove.to;
-                      if (idx < this.counterMoves.length) {
-                          this.counterMoves[idx] = move;
-                      }
+                      this.heuristics.storeCounterMove(this.board.activeColor, prevMove.from, prevMove.to, move);
                   }
               }
 
@@ -839,82 +774,16 @@ class Search {
       return alpha;
   }
 
-  storeKiller(depth, move) {
-      if (depth >= 64) return;
-      // Store up to 2 killer moves
-      const killers = this.killerMoves[depth];
-      // Check if already present
-      if (killers.some(k => k.from === move.from && k.to === move.to)) return;
-
-      // Shift
-      if (killers.length >= 2) {
-          killers.pop();
-      }
-      killers.unshift(move);
-  }
-
   orderMoves(moves, ttMove, depth = 0, prevMove = null) {
-      moves.sort((a, b) => {
-        // 1. TT Move (Best Move)
-        if (ttMove) {
-            const isA = (a.from === ttMove.from && a.to === ttMove.to);
-            const isB = (b.from === ttMove.from && b.to === ttMove.to);
-            if (isA) return -1;
-            if (isB) return 1;
-        }
-
-        const scoreMove = (m) => {
-             // Captures: MVV-LVA and SEE
-             if (m.flags.includes('c')) {
-                 // SEE Score
-                 const seeScore = SEE.see(this.board, m);
-                 if (seeScore < 0) {
-                     // Bad capture: Score low (below quiet moves but above pure losing moves?)
-                     // Usually bad captures are ordered after killer/history.
-                     return -1000000 + seeScore;
-                 }
-
-                 // Good capture
-                 const victim = m.captured ? this.getPieceValue(m.captured) : 0;
-                 const attacker = this.getPieceValue(m.piece);
-                 return 1000000 + victim * 10 - attacker + seeScore; // Break ties with SEE
-             }
-
-             // Quiet Moves
-             // Killers
-             if (depth < 64) {
-                 const killers = this.killerMoves[depth];
-                 if (killers && killers.some(k => k.from === m.from && k.to === m.to)) {
-                     return 900000; // High score for killer
-                 }
-             }
-
-             // Epic 23: Countermove
-             if (prevMove) {
-                 const sideIdx = this.board.activeColor === 'w' ? 0 : 1;
-                 const idx = sideIdx * 128 * 128 + prevMove.from * 128 + prevMove.to;
-                 if (idx < this.counterMoves.length) {
-                     const cm = this.counterMoves[idx];
-                     if (cm && cm.from === m.from && cm.to === m.to) {
-                         return 800000; // Below killer (900k), above History
-                     }
-                 }
-             }
-
-             // History
-             if (this.options.UseHistory) {
-                return this.getHistoryScore(this.board.activeColor, m.from, m.to);
-             }
-             return 0;
-        };
-
-        const scoreA = scoreMove(a);
-        const scoreB = scoreMove(b);
-
-        return scoreB - scoreA;
-      });
+      MoveSorter.sort(moves, this.board, ttMove, depth, prevMove, this.heuristics, this.options);
   }
 
+  /**
+   * Quiescence search to settle tactical possibilities (captures, promotions).
+   * @param {number} alpha - The lower bound score.
+   * @param {number} beta - The upper bound score.
+   * @returns {number} The score of the position.
+   */
   quiescence(alpha, beta) {
       this.nodes++;
 
@@ -948,11 +817,7 @@ class Search {
       const interestingMoves = moves.filter(m => m.flags.includes('c') || m.flags.includes('p'));
 
       // Sort captures (MVV-LVA simplified: just capture high value piece)
-      interestingMoves.sort((a, b) => {
-          const valA = (a.promotion ? 900 : 0) + (a.captured ? this.getPieceValue(a.captured) : 0);
-          const valB = (b.promotion ? 900 : 0) + (b.captured ? this.getPieceValue(b.captured) : 0);
-          return valB - valA;
-      });
+      MoveSorter.sortCaptures(interestingMoves);
 
       for (const move of interestingMoves) {
           // SEE Pruning for captures
@@ -992,10 +857,6 @@ class Search {
       return alpha;
   }
 
-  getPieceValue(piece) {
-      const values = { 'pawn': 100, 'knight': 320, 'bishop': 330, 'rook': 500, 'queen': 900, 'king': 20000 };
-      return values[piece.type] || 0;
-  }
 
   moveToString(move) {
       const { row: fromRow, col: fromCol } = this.board.toRowCol(move.from);
@@ -1090,6 +951,62 @@ class Search {
       if (!valid) {
           throw new Error("PV Consistency Check Failed");
       }
+  }
+
+  _tryNullMovePruning(depth, beta, inCheck) {
+    if (depth >= 3 && !inCheck) {
+      const state = this.board.makeNullMove();
+      const R = 2; // Reduction
+      const score = -this.alphaBeta(depth - 1 - R, -beta, -beta + 1);
+      this.board.undoNullMove(state);
+
+      if (this.stopFlag) return 'STOP';
+
+      if (score >= beta) {
+        this.stats.pruning.nullMove++;
+        return beta; // Cutoff
+      }
+    }
+    return null;
+  }
+
+  _tryRazoring(depth, alpha, beta, staticEval, inCheck) {
+    if (depth <= 3 && !inCheck && staticEval + 300 + 100 * depth <= alpha) {
+      const qScore = this.quiescence(alpha, beta);
+      if (qScore <= alpha) {
+        return alpha;
+      }
+    }
+    return null;
+  }
+
+  _tryFutilityPruning(depth, alpha, staticEval, inCheck) {
+    if (depth <= 3 && !inCheck) {
+      const margin = 100 * depth;
+      if (staticEval + margin <= alpha) {
+        this.stats.pruning.futility++;
+        return alpha;
+      }
+    }
+    return null;
+  }
+
+  _tryProbCut(depth, beta, inCheck, prevMove) {
+    if (depth >= 5 && !inCheck && Math.abs(beta) < 20000) {
+      const PROBCUT_MARGIN = 200;
+      const PROBCUT_REDUCTION = 4;
+
+      // Shallow search with a widened window
+      const probCutBeta = beta + PROBCUT_MARGIN;
+
+      const score = this.alphaBeta(depth - PROBCUT_REDUCTION, probCutBeta - 1, probCutBeta, prevMove);
+
+      if (score >= probCutBeta) {
+        this.stats.pruning.probCut++;
+        return beta;
+      }
+    }
+    return null;
   }
 }
 
