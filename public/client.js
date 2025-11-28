@@ -9,6 +9,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const newGameBtn = document.getElementById('new-game-btn')
   const flipBoardBtn = document.getElementById('flip-board-btn')
 
+  const evalValueElement = document.getElementById('eval-value')
+  const depthValueElement = document.getElementById('depth-value')
+  const npsValueElement = document.getElementById('nps-value')
+  const pvLinesElement = document.getElementById('pv-lines')
+
   // Initialize chess.js
   const game = new Chess()
 
@@ -69,6 +74,92 @@ document.addEventListener('DOMContentLoaded', () => {
   function _handleInfoMsg (msg) {
     if (msg.includes('score cp') || msg.includes('mate')) {
       logToOutput(msg)
+    }
+    const info = parseInfo(msg)
+    if (info) {
+      updateSearchStats(info)
+    }
+  }
+
+  function parseInfo (msg) {
+    const parts = msg.split(' ')
+    const info = {}
+
+    const getVal = (key) => {
+      const idx = parts.indexOf(key)
+      if (idx !== -1 && idx + 1 < parts.length) {
+        return parts[idx + 1]
+      }
+      return null
+    }
+
+    info.depth = getVal('depth')
+    info.seldepth = getVal('seldepth')
+    info.nodes = getVal('nodes')
+    info.nps = getVal('nps')
+
+    const scoreCp = getVal('cp')
+    const scoreMate = getVal('mate')
+    if (scoreMate) {
+      info.score = { type: 'mate', value: parseInt(scoreMate) }
+    } else if (scoreCp) {
+      info.score = { type: 'cp', value: parseInt(scoreCp) }
+    }
+
+    const pvIdx = parts.indexOf('pv')
+    if (pvIdx !== -1) {
+      info.pv = parts.slice(pvIdx + 1)
+    }
+
+    // Only return info if we parsed something useful
+    if (info.depth || info.score || info.pv) return info
+    return null
+  }
+
+  function updateSearchStats (info) {
+    if (info.depth) depthValueElement.textContent = info.depth
+    if (info.nps) npsValueElement.textContent = formatNps(info.nps)
+    if (info.score) evalValueElement.textContent = formatScore(info.score)
+    if (info.pv) updatePvDisplay(info.pv)
+  }
+
+  function formatNps (nps) {
+    const n = parseInt(nps)
+    if (isNaN(n)) return '-'
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M'
+    if (n >= 1000) return (n / 1000).toFixed(1) + 'k'
+    return n
+  }
+
+  function formatScore (score) {
+    if (score.type === 'mate') {
+      return '#' + score.value
+    }
+    const val = score.value / 100
+    return (val > 0 ? '+' : '') + val.toFixed(2)
+  }
+
+  function updatePvDisplay (pvMoves) {
+    try {
+      const tempGame = new Chess(game.fen())
+      const sanMoves = []
+
+      for (const uciMove of pvMoves) {
+        const from = uciMove.substring(0, 2)
+        const to = uciMove.substring(2, 4)
+        const promotion = uciMove.length > 4 ? uciMove[4] : undefined
+
+        const move = tempGame.move({ from, to, promotion })
+        if (move) {
+          sanMoves.push(move.san)
+        } else {
+          break
+        }
+      }
+      pvLinesElement.textContent = sanMoves.join(' ')
+    } catch (e) {
+      // Fallback if chess.js fails or FEN is invalid
+      pvLinesElement.textContent = pvMoves.join(' ')
     }
   }
 
@@ -305,6 +396,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function sendPositionAndGo () {
+    // Reset stats
+    evalValueElement.textContent = '-'
+    depthValueElement.textContent = '-'
+    npsValueElement.textContent = '-'
+    pvLinesElement.textContent = ''
+
     const history = game.history({ verbose: true })
     const uciMoves = history.map(m => {
       let uci = m.from + m.to

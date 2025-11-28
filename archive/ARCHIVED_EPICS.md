@@ -826,3 +826,16 @@ The following Epics were part of the initial development phase and are either co
     *   *Description:* When a piece is selected, highlight all legal destination squares.
     *   *Acceptance Criteria:*
         *   [x] Clicking a piece shows dots or highlights on valid target squares.
+
+### Epic 56: Enhanced Search Visualization
+**Size:** Medium (3-5 days)
+**Description:** Replace the raw text log with a visual dashboard for engine search data.
+**User Stories:**
+1.  **PV Line Display (S)**
+    *   *Description:* Show the Principal Variation (PV) line in a clean, readable format (e.g., using piece symbols).
+    *   *Acceptance Criteria:*
+        *   [x] Best line is clearly visible and updates in real-time.
+2.  **Search Stats (S)**
+    *   *Description:* Display depth, nodes per second, and current evaluation score in dedicated statistic cards.
+    *   *Acceptance Criteria:*
+        *   [x] Key metrics are prominent and easy to read.
