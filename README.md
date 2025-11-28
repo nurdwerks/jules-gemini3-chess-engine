@@ -12,19 +12,6 @@ Benchmarking functions can be written and verified, but performance-critical ben
 
 ## Active Roadmap
 
-### Epic 54: History Malus
-**Size:** Small (1-2 days)
-**Description:** Penalize moves that consistently fail low by reducing their history score, allowing them to be pruned later.
-**User Stories:**
-1.  **Negative History Update (S)**
-    *   *Description:* When a move fails low (does not cause a cutoff), decrease its history score.
-    *   *Acceptance Criteria:*
-        *   [ ] Bad moves are sorted later in future searches.
-2.  **Pruning Integration (S)**
-    *   *Description:* Use the negative history to support more aggressive pruning logic (e.g. History Pruning).
-    *   *Acceptance Criteria:*
-        *   [ ] Elo gain verified.
-
 ### Epic 55: Move Validation and Legal Move Highlighting
 **Size:** Medium (3-5 days)
 **Description:** Implement robust move validation in the client to prevent illegal moves and visual cues to guide the user.
@@ -157,4 +144,4 @@ Benchmarking functions can be written and verified, but performance-critical ben
 
 ## Archived Roadmap (Completed or Superseded)
 
-See [archive/ARCHIVED_EPICS.md](archive/ARCHIVED_EPICS.md) for Epics 1-53.
+See [archive/ARCHIVED_EPICS.md](archive/ARCHIVED_EPICS.md) for Epics 1-54.

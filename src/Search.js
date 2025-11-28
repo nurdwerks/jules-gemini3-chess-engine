@@ -428,26 +428,43 @@ class Search {
       movesSearched++
 
       if (this.stopFlag) return alpha
-      if (score >= beta) {
-        this.tt.save(this.board.zobristKey, score, depth, TT_FLAG.LOWERBOUND, move)
-        this.updateHeuristics(move, depth, prevMove, this.board.getPiece(move.to)) // captured? no, we need to know what was captured.
-        // Wait, undoApplyMove restored it. We can get it from board?
-        // No, searchMove undoes it.
-        // I need to return captured piece from searchMove? Or handle heuristics inside searchMove?
-        // Handling inside searchMove is cleaner but requires passing more data.
-        return beta
-      }
-      if (score > bestScore) {
-        bestScore = score
-        bestMove = move
-        if (score > alpha) {
-          alpha = score
-          flag = TT_FLAG.EXACT
-        }
-      }
+
+      const result = this._processSearchMoveResult(score, alpha, beta, move, depth, prevMove, bestScore, bestMove, flag)
+      if (result.cutoff) return beta
+
+      bestScore = result.bestScore
+      bestMove = result.bestMove
+      alpha = result.alpha
+      flag = result.flag
     }
     this.tt.save(this.board.zobristKey, bestScore, depth, flag, bestMove)
     return alpha
+  }
+
+  _processSearchMoveResult (score, alpha, beta, move, depth, prevMove, bestScore, bestMove, flag) {
+    if (score >= beta) {
+      this.tt.save(this.board.zobristKey, score, depth, TT_FLAG.LOWERBOUND, move)
+      this.updateHeuristics(move, depth, prevMove, this.board.getPiece(move.to))
+      return { cutoff: true }
+    }
+
+    if (score > bestScore) {
+      bestScore = score
+      bestMove = move
+      if (score > alpha) {
+        alpha = score
+        flag = TT_FLAG.EXACT
+      }
+    }
+
+    if (score <= alpha && this.options.UseHistory) {
+      const isQuiet = !move.flags.includes('c') && !move.flags.includes('p')
+      if (isQuiet) {
+        this.heuristics.subtractHistoryScore(this.board.activeColor, move.from, move.to, depth)
+      }
+    }
+
+    return { cutoff: false, bestScore, bestMove, alpha, flag }
   }
 
   isSameMove (m1, m2) {
@@ -561,9 +578,12 @@ class Search {
   }
 
   shouldPruneLateMove (depth, movesSearched, inCheck, move) {
-    if (depth <= 3 && movesSearched >= (3 + depth * depth) && !inCheck) {
-      if (!move.flags.includes('c') && !move.flags.includes('p') && !move.flags.includes('k') && !move.flags.includes('q')) {
-        return true
+    const isQuiet = !move.flags.includes('c') && !move.flags.includes('p') && !move.flags.includes('k') && !move.flags.includes('q')
+    if (depth <= 3 && !inCheck && isQuiet) {
+      if (movesSearched >= (3 + depth * depth)) return true
+      if (this.options.UseHistory) {
+        const hScore = this.heuristics.getHistoryScore(this.board.activeColor, move.from, move.to)
+        if (hScore < -4000 * depth) return true
       }
     }
     return false

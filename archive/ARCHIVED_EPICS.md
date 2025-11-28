@@ -801,3 +801,15 @@ The following Epics were part of the initial development phase and are either co
     *   *Description:* Use a dedicated TT to cache perft results for identical positions.
     *   *Acceptance Criteria:*
         *   [x] Massive speedup for high-depth perft checks.
+### Epic 54: History Malus
+**Size:** Small (1-2 days)
+**Description:** Penalize moves that consistently fail low by reducing their history score, allowing them to be pruned later.
+**User Stories:**
+1.  **Negative History Update (S)**
+    *   *Description:* When a move fails low (does not cause a cutoff), decrease its history score.
+    *   *Acceptance Criteria:*
+        *   [x] Bad moves are sorted later in future searches.
+2.  **Pruning Integration (S)**
+    *   *Description:* Use the negative history to support more aggressive pruning logic (e.g. History Pruning).
+    *   *Acceptance Criteria:*
+        *   [x] Elo gain verified.

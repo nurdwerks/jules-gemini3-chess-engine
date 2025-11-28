@@ -37,6 +37,16 @@ class SearchHeuristics {
     }
   }
 
+  subtractHistoryScore (side, from, to, depth) {
+    const colorIdx = side === 'w' ? 0 : 1
+    const idx = colorIdx * 128 * 128 + from * 128 + to
+    const penalty = depth * depth
+    this.history[idx] -= penalty
+    if (this.history[idx] < -1000000) {
+      for (let i = 0; i < this.history.length; i++) this.history[i] >>= 1
+    }
+  }
+
   getCaptureHistory (pieceType, to, capturedType) {
     const pIdx = PIECE_INDEX[pieceType]
     const cIdx = PIECE_INDEX[capturedType]
