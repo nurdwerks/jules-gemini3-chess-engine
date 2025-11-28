@@ -137,7 +137,7 @@ describe('NNUE', () => {
 
     test('incremental update should match full refresh for Chess960 castling', () => {
         const board = new Board();
-        board.loadFen('5k1r/8/8/8/8/8/8/5K1R w FHfh - 0 1');
+        board.loadFen('5k1r/8/8/8/8/8/8/5K1R w Hh - 0 1');
 
         const moves = board.generateMoves();
         const move = moves.find(m => m.flags === 'k960');
