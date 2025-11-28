@@ -682,3 +682,60 @@ The following Epics were part of the initial development phase and are either co
     *   *Acceptance Criteria:*
         *   [x] Tool can convert a PGN file into a custom opening book format.
         *   [x] Allows for basic book manipulation without external software.
+
+### Epic 45: MultiPV Search
+**Size:** Medium (3-5 days)
+**Description:** Enable the engine to analyze and report multiple principal variations (best lines) simultaneously.
+**User Stories:**
+1.  **Iterative Root Search (S)**
+    *   *Description:* Modify the root search loop to select the top `k` moves instead of just one.
+    *   *Acceptance Criteria:*
+        *   [x] `MultiPV` option controls the number of lines.
+        *   [x] Moves found in previous PVs are excluded from subsequent searches in the same iteration.
+2.  **UCI Reporting (S)**
+    *   *Description:* Report standard `info multipv <id> ...` strings.
+    *   *Acceptance Criteria:*
+        *   [x] Output matches UCI standard.
+        *   [x] GUI displays multiple lines.
+
+### Epic 46: ProbCut Pruning
+**Size:** Small (2-3 days)
+**Description:** Implement Probabilistic Cut (ProbCut) to aggressively prune nodes with high static evaluations.
+**User Stories:**
+1.  **ProbCut Logic (S)**
+    *   *Description:* Perform a shallow search with a widened window if static eval is very high/low.
+    *   *Acceptance Criteria:*
+        *   [x] Triggers at appropriate depths.
+        *   [x] Prunes nodes successfully.
+2.  **Regression Testing (S)**
+    *   *Description:* Ensure no significant Elo loss or tactical blindness.
+    *   *Acceptance Criteria:*
+        *   [x] Passes tactical test suites.
+        *   [x] Neutral or positive Elo in SPRT.
+
+### Epic 47: Outpost Evaluation
+**Size:** Small (2 days)
+**Description:** Enhance evaluation by rewarding Knights and Bishops on strong outpost squares.
+**User Stories:**
+1.  **Identify Outposts (S)**
+    *   *Description:* Detect squares supported by friendly pawns and not attackable by enemy pawns.
+    *   *Acceptance Criteria:*
+        *   [x] Correctly identifies outpost squares via bitboards.
+2.  **Scoring Terms (S)**
+    *   *Description:* Add tunable bonuses for outposts, scaled by rank (e.g., Rank 4/5/6).
+    *   *Acceptance Criteria:*
+        *   [x] Engine prefers placing knights on outposts.
+
+### Epic 48: Exact Node Search (`go nodes`)
+**Size:** Small (1 day)
+**Description:** Support the `go nodes <x>` UCI command for precise debugging and regression testing.
+**User Stories:**
+1.  **UCI Parsing (S)**
+    *   *Description:* Parse `nodes <x>` from the `go` command.
+    *   *Acceptance Criteria:*
+        *   [x] Extracts node count correctly.
+2.  **Search Limits (S)**
+    *   *Description:* Terminate search exactly when (or immediately after) the node count is reached.
+    *   *Acceptance Criteria:*
+        *   [x] Search stops close to the limit.
+        *   [x] Reported nodes count is consistent.
