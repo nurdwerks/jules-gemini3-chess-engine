@@ -14,12 +14,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let movesHistory = [] // List of UCI moves (e.g., 'e2e4')
   let gameStarted = false
 
-  // Unicode Chess Pieces
-  const pieces = {
-    w: { k: '♔', q: '♕', r: '♖', b: '♗', n: '♘', p: '♙' },
-    b: { k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' }
-  }
-
   function connect () {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     socket = new WebSocket(`${protocol}//${window.location.host}`)
@@ -231,12 +225,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (pieceChar !== '.') {
           const color = (pieceChar === pieceChar.toUpperCase()) ? 'w' : 'b'
           const type = pieceChar.toLowerCase()
-          square.textContent = pieces[color][type]
-          // Make black pieces black (default is black but let's be safe if CSS changes text color)
-          // Wait, CSS sets color: black for both squares.
-          // But usually black pieces are solid and white pieces are hollow in Unicode.
-          // Actually, unicode black pieces are filled, white are hollow.
-          // So we can just rely on the character.
+          const img = document.createElement('img')
+          img.src = `images/${color}${type}.svg`
+          img.classList.add('piece')
+          square.appendChild(img)
         }
 
         square.dataset.row = row
