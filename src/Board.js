@@ -114,17 +114,9 @@ class Board {
    * @returns {Piece|null} The captured piece, if any, or null.
    */
   makeMove (move) {
-    // Determine captured piece
-    let captured = move.captured
-    if (!captured && move.flags !== 'e' && move.flags !== 'ep') {
-      // Fallback if not provided in move object (e.g. manual tests)
-      captured = this.getPiece(move.to)
-    }
+    let captured = this._resolveCapturedPiece(move)
 
-    // Update Bitboards for moving piece
     this.toggleBitboard(move.piece, move.from)
-
-    // Handle capture (remove captured piece from bitboards)
     if (captured) {
       this.toggleBitboard(captured, move.to)
     }
@@ -134,139 +126,100 @@ class Board {
       return null
     }
 
-    const pieceType = move.promotion ? ({ q: 'queen', r: 'rook', b: 'bishop', n: 'knight' }[move.promotion]) : move.piece.type
-    const color = move.piece.color
+    this._toggleMovedPiece(move)
 
-    const { row: toRow, col: toCol } = this.toRowCol(move.to)
-    const bbRank = 7 - toRow
-    const bbSq = bbRank * 8 + toCol
-    const toBit = 1n << BigInt(bbSq)
+    captured = this._handleEnPassant(move, captured)
+    this._handleCastling(move)
 
-    // Place piece at destination
-    this.bitboards[color] |= toBit
-    this.bitboards[pieceType] |= toBit
-
-    // Handle En Passant
-    if (move.flags === 'e' || move.flags === 'ep') {
-      const isWhite = move.piece.color === 'white'
-      const captureSq = isWhite ? move.to + 16 : move.to - 16
-      // Logic to remove the captured pawn
-      // We know it's a pawn of opposite color
-      const capturedPawn = new Piece(isWhite ? 'black' : 'white', 'pawn')
-      this.toggleBitboard(capturedPawn, captureSq)
-      captured = capturedPawn // Return it as captured
-    }
-
-    // Handle Castling
-    if (move.flags === 'k' || move.flags === 'q' || move.flags === 'k960' || move.flags === 'q960') {
-      if (move.flags === 'k960' || move.flags === 'q960') {
-        const rookSource = move.rookSource
-        const isKingside = move.flags === 'k960'
-        const rank = move.piece.color === 'white' ? 7 : 0
-        const rookTargetFile = isKingside ? 5 : 3
-        const rookTarget = (rank << 4) | rookTargetFile
-
-        const rook = new Piece(move.piece.color, 'rook')
-
-        this.toggleBitboard(rook, rookSource)
-        this.toggleBitboard(rook, rookTarget)
-      } else {
-        if (move.piece.color === 'white') {
-          const rook = new Piece('white', 'rook')
-          if (move.flags === 'k') {
-            this.toggleBitboard(rook, 119)
-            this.toggleBitboard(rook, 117)
-          } else {
-            this.toggleBitboard(rook, 112)
-            this.toggleBitboard(rook, 115)
-          }
-        } else {
-          const rook = new Piece('black', 'rook')
-          if (move.flags === 'k') {
-            this.toggleBitboard(rook, 7)
-            this.toggleBitboard(rook, 5)
-          } else {
-            this.toggleBitboard(rook, 0)
-            this.toggleBitboard(rook, 3)
-          }
-        }
-      }
-    }
     return captured
   }
 
-  /**
-   * Reverts a move made by makeMove.
-   * @param {Object} move - The move object to unmake.
-   * @param {Piece|null} captured - The piece that was captured, if any.
-   */
   unmakeMove (move, captured) {
     if (!move.piece) {
       console.error('Board.unmakeMove: move.piece is null!', move)
       return
     }
 
-    const pieceType = move.promotion ? ({ q: 'queen', r: 'rook', b: 'bishop', n: 'knight' }[move.promotion]) : move.piece.type
-    const color = move.piece.color
-
-    const { row: toRow, col: toCol } = this.toRowCol(move.to)
-    const bbRank = 7 - toRow
-    const bbSq = bbRank * 8 + toCol
-    const toBit = 1n << BigInt(bbSq)
-
-    // Remove piece from destination
-    this.bitboards[color] ^= toBit
-    this.bitboards[pieceType] ^= toBit
-
-    // Put piece back at source
+    this._toggleMovedPiece(move)
     this.toggleBitboard(move.piece, move.from)
 
-    // Restore captured piece
     if (captured && move.flags !== 'e' && move.flags !== 'ep') {
       this.toggleBitboard(captured, move.to)
     }
 
-    // Handle En Passant
+    this._handleEnPassant(move, captured)
+    this._handleCastling(move)
+  }
+
+  _resolveCapturedPiece (move) {
+    let captured = move.captured
+    if (!captured && move.flags !== 'e' && move.flags !== 'ep') {
+      captured = this.getPiece(move.to)
+    }
+    return captured
+  }
+
+  _toggleMovedPiece (move) {
+    const pieceType = move.promotion ? ({ q: 'queen', r: 'rook', b: 'bishop', n: 'knight' }[move.promotion]) : move.piece.type
+    const color = move.piece.color
+    const { row: toRow, col: toCol } = this.toRowCol(move.to)
+    const bbRank = 7 - toRow
+    const bbSq = bbRank * 8 + toCol
+    const toBit = 1n << BigInt(bbSq)
+    this.bitboards[color] ^= toBit
+    this.bitboards[pieceType] ^= toBit
+  }
+
+  _handleEnPassant (move, captured) {
     if (move.flags === 'e' || move.flags === 'ep') {
       const isWhite = move.piece.color === 'white'
       const captureSq = isWhite ? move.to + 16 : move.to - 16
-      // captured is passed in as the pawn
-      this.toggleBitboard(captured, captureSq)
+      const capturedPawn = new Piece(isWhite ? 'black' : 'white', 'pawn')
+      this.toggleBitboard(capturedPawn, captureSq)
+      return capturedPawn
     }
+    return captured
+  }
 
-    // Handle Castling
-    if (move.flags === 'k' || move.flags === 'q' || move.flags === 'k960' || move.flags === 'q960') {
-      if (move.flags === 'k960' || move.flags === 'q960') {
-        const rookSource = move.rookSource
-        const isKingside = move.flags === 'k960'
-        const rank = move.piece.color === 'white' ? 7 : 0
-        const rookTargetFile = isKingside ? 5 : 3
-        const rookTarget = (rank << 4) | rookTargetFile
-
-        const rook = new Piece(move.piece.color, 'rook')
-
-        this.toggleBitboard(rook, rookTarget)
-        this.toggleBitboard(rook, rookSource)
+  _handleCastling (move) {
+    if (['k', 'q', 'k960', 'q960'].includes(move.flags)) {
+      if (move.flags.endsWith('960')) {
+        this._handle960Castling(move)
       } else {
-        if (move.piece.color === 'white') {
-          const rook = new Piece('white', 'rook')
-          if (move.flags === 'k') {
-            this.toggleBitboard(rook, 117)
-            this.toggleBitboard(rook, 119)
-          } else {
-            this.toggleBitboard(rook, 115)
-            this.toggleBitboard(rook, 112)
-          }
-        } else {
-          const rook = new Piece('black', 'rook')
-          if (move.flags === 'k') {
-            this.toggleBitboard(rook, 5)
-            this.toggleBitboard(rook, 7)
-          } else {
-            this.toggleBitboard(rook, 3)
-            this.toggleBitboard(rook, 0)
-          }
-        }
+        this._handleStandardCastling(move)
+      }
+    }
+  }
+
+  _handle960Castling (move) {
+    const rookSource = move.rookSource
+    const isKingside = move.flags === 'k960'
+    const rank = move.piece.color === 'white' ? 7 : 0
+    const rookTargetFile = isKingside ? 5 : 3
+    const rookTarget = (rank << 4) | rookTargetFile
+    const rook = new Piece(move.piece.color, 'rook')
+    this.toggleBitboard(rook, rookSource)
+    this.toggleBitboard(rook, rookTarget)
+  }
+
+  _handleStandardCastling (move) {
+    if (move.piece.color === 'white') {
+      const rook = new Piece('white', 'rook')
+      if (move.flags === 'k') {
+        this.toggleBitboard(rook, 119)
+        this.toggleBitboard(rook, 117)
+      } else {
+        this.toggleBitboard(rook, 112)
+        this.toggleBitboard(rook, 115)
+      }
+    } else {
+      const rook = new Piece('black', 'rook')
+      if (move.flags === 'k') {
+        this.toggleBitboard(rook, 7)
+        this.toggleBitboard(rook, 5)
+      } else {
+        this.toggleBitboard(rook, 0)
+        this.toggleBitboard(rook, 3)
       }
     }
   }
@@ -315,9 +268,20 @@ class Board {
 
     const occupancy = this.bitboards.white | this.bitboards.black
 
-    const knights = this.bitboards.knight & this.bitboards[attackingSide]
-    if ((Bitboard.getKnightAttacks(bbSq) & knights) !== 0n) return true
+    if (this._isAttackedByKnight(bbSq, attackingSide)) return true
+    if (this._isAttackedByPawn(bbRank, col, bbSq, attackingSide)) return true
+    if (this._isAttackedByKing(bbSq, attackingSide)) return true
+    if (this._isAttackedBySlider(bbSq, occupancy, attackingSide)) return true
 
+    return false
+  }
+
+  _isAttackedByKnight (bbSq, attackingSide) {
+    const knights = this.bitboards.knight & this.bitboards[attackingSide]
+    return (Bitboard.getKnightAttacks(bbSq) & knights) !== 0n
+  }
+
+  _isAttackedByPawn (bbRank, col, bbSq, attackingSide) {
     if (attackingSide === 'white') {
       const whitePawns = this.bitboards.pawn & this.bitboards.white
       if (bbRank > 0) {
@@ -331,16 +295,20 @@ class Board {
         if (col < 7 && ((blackPawns >> BigInt(bbSq + 9)) & 1n)) return true
       }
     }
+    return false
+  }
 
+  _isAttackedByKing (bbSq, attackingSide) {
     const king = this.bitboards.king & this.bitboards[attackingSide]
-    if ((Bitboard.getKingAttacks(bbSq) & king) !== 0n) return true
+    return (Bitboard.getKingAttacks(bbSq) & king) !== 0n
+  }
 
+  _isAttackedBySlider (bbSq, occupancy, attackingSide) {
     const rq = (this.bitboards.rook | this.bitboards.queen) & this.bitboards[attackingSide]
     if ((Bitboard.getRookAttacks(bbSq, occupancy) & rq) !== 0n) return true
 
     const bq = (this.bitboards.bishop | this.bitboards.queen) & this.bitboards[attackingSide]
     if ((Bitboard.getBishopAttacks(bbSq, occupancy) & bq) !== 0n) return true
-
     return false
   }
 
@@ -412,7 +380,40 @@ class Board {
    * @returns {Object} A state object containing previous state values for undoing.
    */
   applyMove (move) {
-    const state = {
+    const state = this._createUndoState()
+
+    if (!move.piece) {
+      console.error('Board.applyMove: move.piece is null!', move)
+      throw new Error('Board.applyMove: move.piece is null')
+    }
+
+    const capturedPiece = this._getCapturedForZobrist(move)
+    this._updateZobristPieceMoves(move, capturedPiece)
+
+    this.zobristKey ^= Zobrist.sideToMove
+    this.zobristKey ^= this.getCastlingHash(this.castlingRights)
+    const oldEpIndex = Zobrist.getEpIndex(this.enPassantTarget)
+    if (oldEpIndex !== -1) this.zobristKey ^= Zobrist.enPassant[oldEpIndex]
+
+    const madeCapturedPiece = this.makeMove(move)
+    state.capturedPiece = madeCapturedPiece
+
+    this.activeColor = this.activeColor === 'w' ? 'b' : 'w'
+    this.updateCastlingRights(move, madeCapturedPiece)
+    this.zobristKey ^= this.getCastlingHash(this.castlingRights)
+
+    this.updateEnPassant(move)
+    const newEpIndex = Zobrist.getEpIndex(this.enPassantTarget)
+    if (newEpIndex !== -1) this.zobristKey ^= Zobrist.enPassant[newEpIndex]
+
+    this._updateClocks(move, madeCapturedPiece)
+
+    this.history.push(this.zobristKey)
+    return state
+  }
+
+  _createUndoState () {
+    return {
       activeColor: this.activeColor,
       castlingRights: this.castlingRights,
       enPassantTarget: this.enPassantTarget,
@@ -421,20 +422,15 @@ class Board {
       zobristKey: this.zobristKey,
       capturedPiece: null
     }
+  }
 
-    if (!move.piece) {
-      console.error('Board.applyMove: move.piece is null!', move)
-      throw new Error('Board.applyMove: move.piece is null')
-    }
+  _getCapturedForZobrist (move) {
+    return move.captured || ((move.flags !== 'e' && move.flags !== 'ep') ? this.getPiece(move.to) : null)
+  }
 
+  _updateZobristPieceMoves (move, capturedPiece) {
     const { c, t } = Zobrist.getPieceIndex(move.piece.color, move.piece.type)
     this.zobristKey ^= Zobrist.pieces[c][t][move.from]
-
-    // Determine captured piece before making move
-    // Either from move object or lookup
-    const capturedPiece = move.captured || ((move.flags !== 'e' && move.flags !== 'ep') ? this.getPiece(move.to) : null)
-
-    // Note: If EP, we handle Zobrist below
 
     if (capturedPiece) {
       const capIdx = Zobrist.getPieceIndex(capturedPiece.color, capturedPiece.type)
@@ -456,50 +452,36 @@ class Board {
     }
 
     if (move.flags === 'k' || move.flags === 'q') {
-      if (move.piece.color === 'white') {
-        const rookIdx = Zobrist.getPieceIndex('white', 'rook')
-        if (move.flags === 'k') {
-          this.zobristKey ^= Zobrist.pieces[rookIdx.c][rookIdx.t][119]
-          this.zobristKey ^= Zobrist.pieces[rookIdx.c][rookIdx.t][117]
-        } else {
-          this.zobristKey ^= Zobrist.pieces[rookIdx.c][rookIdx.t][112]
-          this.zobristKey ^= Zobrist.pieces[rookIdx.c][rookIdx.t][115]
-        }
+      this._updateZobristCastlingRook(move)
+    }
+  }
+
+  _updateZobristCastlingRook (move) {
+    if (move.piece.color === 'white') {
+      const rookIdx = Zobrist.getPieceIndex('white', 'rook')
+      if (move.flags === 'k') {
+        this.zobristKey ^= Zobrist.pieces[rookIdx.c][rookIdx.t][119]
+        this.zobristKey ^= Zobrist.pieces[rookIdx.c][rookIdx.t][117]
       } else {
-        const rookIdx = Zobrist.getPieceIndex('black', 'rook')
-        if (move.flags === 'k') {
-          this.zobristKey ^= Zobrist.pieces[rookIdx.c][rookIdx.t][7]
-          this.zobristKey ^= Zobrist.pieces[rookIdx.c][rookIdx.t][5]
-        } else {
-          this.zobristKey ^= Zobrist.pieces[rookIdx.c][rookIdx.t][0]
-          this.zobristKey ^= Zobrist.pieces[rookIdx.c][rookIdx.t][3]
-        }
+        this.zobristKey ^= Zobrist.pieces[rookIdx.c][rookIdx.t][112]
+        this.zobristKey ^= Zobrist.pieces[rookIdx.c][rookIdx.t][115]
+      }
+    } else {
+      const rookIdx = Zobrist.getPieceIndex('black', 'rook')
+      if (move.flags === 'k') {
+        this.zobristKey ^= Zobrist.pieces[rookIdx.c][rookIdx.t][7]
+        this.zobristKey ^= Zobrist.pieces[rookIdx.c][rookIdx.t][5]
+      } else {
+        this.zobristKey ^= Zobrist.pieces[rookIdx.c][rookIdx.t][0]
+        this.zobristKey ^= Zobrist.pieces[rookIdx.c][rookIdx.t][3]
       }
     }
+  }
 
-    this.zobristKey ^= Zobrist.sideToMove
-    this.zobristKey ^= this.getCastlingHash(this.castlingRights)
-
-    const oldEpIndex = Zobrist.getEpIndex(this.enPassantTarget)
-    if (oldEpIndex !== -1) this.zobristKey ^= Zobrist.enPassant[oldEpIndex]
-
-    const madeCapturedPiece = this.makeMove(move)
-    state.capturedPiece = madeCapturedPiece
-
-    this.activeColor = this.activeColor === 'w' ? 'b' : 'w'
-    this.updateCastlingRights(move, madeCapturedPiece)
-    this.zobristKey ^= this.getCastlingHash(this.castlingRights)
-
-    this.updateEnPassant(move)
-    const newEpIndex = Zobrist.getEpIndex(this.enPassantTarget)
-    if (newEpIndex !== -1) this.zobristKey ^= Zobrist.enPassant[newEpIndex]
-
+  _updateClocks (move, captured) {
     this.halfMoveClock++
-    if (move.piece.type === 'pawn' || madeCapturedPiece) this.halfMoveClock = 0
+    if (move.piece.type === 'pawn' || captured) this.halfMoveClock = 0
     if (this.activeColor === 'w') this.fullMoveNumber++
-
-    this.history.push(this.zobristKey)
-    return state
   }
 
   makeNullMove () {

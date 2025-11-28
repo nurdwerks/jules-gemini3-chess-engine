@@ -251,24 +251,33 @@ class Evaluation {
   }
 
   static evaluateOutpost (board, index, type, color) {
-    // Only for Knights and Bishops
     if (type !== 'knight' && type !== 'bishop') return 0
 
     const sq64 = Bitboard.to64(index)
-    const rank = Math.floor(sq64 / 8) // 0-7. 0=Rank1.
+    const rank = Math.floor(sq64 / 8)
     const col = sq64 % 8
 
-    let rankBonusMultiplier = 0
+    const rankBonusMultiplier = Evaluation.getOutpostRankMultiplier(rank, color)
+    if (rankBonusMultiplier === 0) return 0
 
+    if (!Evaluation.isOutpostSupported(board, rank, col, color)) return 0
+    if (Evaluation.isOutpostAttackable(board, rank, col, color)) return 0
+
+    const baseBonus = type === 'knight' ? PARAMS.KnightOutpostBonus : PARAMS.BishopOutpostBonus
+    return baseBonus * rankBonusMultiplier
+  }
+
+  static getOutpostRankMultiplier (rank, color) {
     if (color === 'white') {
-      if (rank < 3 || rank > 5) return 0 // Only Ranks 4, 5, 6 (Indices 3,4,5)
-      rankBonusMultiplier = (rank - 2)
+      if (rank < 3 || rank > 5) return 0
+      return (rank - 2)
     } else {
-      if (rank < 2 || rank > 4) return 0 // Ranks 6, 5, 4 (Indices 5,4,3) for Black
-      rankBonusMultiplier = (5 - rank)
+      if (rank < 2 || rank > 4) return 0
+      return (5 - rank)
     }
+  }
 
-    // 1. Supported by friendly pawn
+  static isOutpostSupported (board, rank, col, color) {
     const friendlyPawns = board.bitboards[color] & board.bitboards.pawn
     let supportMask = 0n
 
@@ -284,9 +293,10 @@ class Evaluation {
       }
     }
 
-    if ((friendlyPawns & supportMask) === 0n) return 0 // Not supported
+    return (friendlyPawns & supportMask) !== 0n
+  }
 
-    // 2. Not attackable by enemy pawn
+  static isOutpostAttackable (board, rank, col, color) {
     const opponent = color === 'white' ? 'black' : 'white'
     const enemyPawns = board.bitboards[opponent] & board.bitboards.pawn
 
@@ -297,23 +307,17 @@ class Evaluation {
 
     for (const f of checkFiles) {
       if (color === 'white') {
-        // Check Black pawns at Rank >= rank + 1
         for (let r = rank + 1; r < 8; r++) {
           attackMask |= (1n << BigInt(r * 8 + f))
         }
       } else {
-        // Check White pawns at Rank <= rank - 1
         for (let r = 0; r < rank; r++) {
           attackMask |= (1n << BigInt(r * 8 + f))
         }
       }
     }
 
-    if ((enemyPawns & attackMask) !== 0n) return 0 // Attackable
-
-    // Is Outpost!
-    const baseBonus = type === 'knight' ? PARAMS.KnightOutpostBonus : PARAMS.BishopOutpostBonus
-    return baseBonus * rankBonusMultiplier
+    return (enemyPawns & attackMask) !== 0n
   }
 
   static updateParam (name, value) {
@@ -349,16 +353,34 @@ class Evaluation {
     const row = index >> 4
 
     // Doubled Pawns
-    const forward = color === 'white' ? -16 : 16
-    const frontSq = index + forward
-    // Check piece in front
-    const frontPiece = board.getPiece(frontSq)
-    if (frontPiece && frontPiece.type === 'pawn' && frontPiece.color === color) {
-      score -= PARAMS.DoubledPawnPenalty
-    }
+    score -= Evaluation.calcDoubledPawnPenalty(board, index, color)
 
     // Isolated Pawns
-    let hasNeighbor = false
+    const hasNeighbor = Evaluation.hasPawnNeighbor(board, col, color)
+    if (!hasNeighbor) {
+      score -= PARAMS.IsolatedPawnPenalty
+    } else {
+      // Backward Pawns
+      score -= Evaluation.calcBackwardPawnPenalty(board, index, col, row, color)
+    }
+
+    // Passed Pawn
+    score += Evaluation.calcPassedPawnBonus(board, index, col, row, color)
+
+    return score
+  }
+
+  static calcDoubledPawnPenalty (board, index, color) {
+    const forward = color === 'white' ? -16 : 16
+    const frontSq = index + forward
+    const frontPiece = board.getPiece(frontSq)
+    if (frontPiece && frontPiece.type === 'pawn' && frontPiece.color === color) {
+      return PARAMS.DoubledPawnPenalty
+    }
+    return 0
+  }
+
+  static hasPawnNeighbor (board, col, color) {
     const files = [col - 1, col + 1]
     for (const f of files) {
       if (f >= 0 && f <= 7) {
@@ -366,76 +388,83 @@ class Evaluation {
           const idx = (r << 4) | f
           const p = board.getPiece(idx)
           if (p && p.type === 'pawn' && p.color === color) {
-            hasNeighbor = true
-            break
+            return true
           }
         }
       }
     }
-    if (!hasNeighbor) score -= PARAMS.IsolatedPawnPenalty
+    return false
+  }
 
-    // Backward Pawns
-    if (hasNeighbor) {
-      let isBehindAllNeighbors = true
-      for (const f of files) {
-        if (f >= 0 && f <= 7) {
-          for (let r = 0; r < 8; r++) { // scan file
-            const idx = (r << 4) | f
-            const p = board.getPiece(idx)
-            if (p && p.type === 'pawn' && p.color === color) {
-              if (color === 'white') {
-                if (r > row) isBehindAllNeighbors = false
-              } else {
-                if (r < row) isBehindAllNeighbors = false
-              }
+  static calcBackwardPawnPenalty (board, index, col, row, color) {
+    const files = [col - 1, col + 1]
+    let isBehindAllNeighbors = true
+    for (const f of files) {
+      if (f >= 0 && f <= 7) {
+        for (let r = 0; r < 8; r++) { // scan file
+          const idx = (r << 4) | f
+          const p = board.getPiece(idx)
+          if (p && p.type === 'pawn' && p.color === color) {
+            if (color === 'white') {
+              if (r > row) isBehindAllNeighbors = false
+            } else {
+              if (r < row) isBehindAllNeighbors = false
             }
           }
         }
       }
-      if (isBehindAllNeighbors) {
-        score -= PARAMS.BackwardPawnPenalty
-      }
     }
+    return isBehindAllNeighbors ? PARAMS.BackwardPawnPenalty : 0
+  }
 
-    // Passed Pawn
+  static calcPassedPawnBonus (board, index, col, row, color) {
+    if (Evaluation._isPassedPawnInternal(board, col, row, color)) {
+      return Evaluation.getPassedBonus(row, color)
+    }
+    return 0
+  }
+
+  static isPassedPawn (board, index) {
+    const piece = board.getPiece(index)
+    if (!piece || piece.type !== 'pawn') return false
+    const color = piece.color
+    const col = index & 7
+    const row = index >> 4
+    return Evaluation._isPassedPawnInternal(board, col, row, color)
+  }
+
+  static _isPassedPawnInternal (board, col, row, color) {
     const enemyColor = color === 'white' ? 'black' : 'white'
-    let isPassed = true
     const checkFiles = [col - 1, col, col + 1]
-
     const startRow = color === 'white' ? 0 : row + 1
     const endRow = color === 'white' ? row - 1 : 7
 
-    outerLoop:
     for (const f of checkFiles) {
       if (f < 0 || f > 7) continue
+      if (Evaluation.fileHasEnemyPawn(board, f, startRow, endRow, enemyColor)) return false
+    }
+    return true
+  }
 
-      if (startRow <= endRow) {
-        for (let r = startRow; r <= endRow; r++) {
-          const idx = (r << 4) | f
-          const p = board.getPiece(idx)
-          if (p && p.type === 'pawn' && p.color === enemyColor) {
-            isPassed = false
-            break outerLoop
-          }
+  static fileHasEnemyPawn (board, f, startRow, endRow, enemyColor) {
+    if (startRow <= endRow) {
+      for (let r = startRow; r <= endRow; r++) {
+        const idx = (r << 4) | f
+        const p = board.getPiece(idx)
+        if (p && p.type === 'pawn' && p.color === enemyColor) {
+          return true
         }
       }
     }
+    return false
+  }
 
-    if (isPassed) {
-      const PASSED_BONUS = [0, 0, 10, 20, 40, 80, 160, 0]
-      let rankIdx = 0
-      if (color === 'white') {
-        rankIdx = 7 - row
-      } else {
-        rankIdx = row
-      }
-      if (rankIdx < 0) rankIdx = 0
-      if (rankIdx > 7) rankIdx = 7
-
-      score += PASSED_BONUS[rankIdx]
-    }
-
-    return score
+  static getPassedBonus (row, color) {
+    const PASSED_BONUS = [0, 0, 10, 20, 40, 80, 160, 0]
+    let rankIdx = color === 'white' ? 7 - row : row
+    if (rankIdx < 0) rankIdx = 0
+    if (rankIdx > 7) rankIdx = 7
+    return PASSED_BONUS[rankIdx]
   }
 
   static evaluateMobility (board, index, type, color) {
@@ -498,25 +527,31 @@ class Evaluation {
 
   static evaluateKingSafety (board, kingIndex, color) {
     let score = 0
+    const attackData = Evaluation.calculateAttackUnits(board, kingIndex, color)
+
+    if (attackData.attackerCount > 1) {
+      const safetyTable = [0, 0, 10, 30, 60, 100, 150, 210, 280, 360, 450]
+      const idx = Math.min(attackData.attackUnits, 10)
+      score -= safetyTable[idx]
+    }
+
+    score += Evaluation.calculatePawnShieldAndStorm(board, kingIndex, color)
+
+    return score
+  }
+
+  static calculateAttackUnits (board, kingIndex, color) {
     let attackUnits = 0
     let attackerCount = 0
     const opponent = color === 'white' ? 'black' : 'white'
-    const zoneOffsets = [-17, -16, -15, -1, 1, 15, 16, 17]
-
     const r = 7 - (kingIndex >> 4)
     const c = kingIndex & 7
     const kSq = r * 8 + c
-
-    const zone = Bitboard.getKingAttacks(kSq) // Surrounding 8
-
-    const enemyKnights = board.bitboards.knight & board.bitboards[opponent]
-    const enemyBishops = board.bitboards.bishop & board.bitboards[opponent]
-    const enemyRooks = board.bitboards.rook & board.bitboards[opponent]
-    const enemyQueens = board.bitboards.queen & board.bitboards[opponent]
+    const zone = Bitboard.getKingAttacks(kSq)
     const occupancy = board.bitboards.white | board.bitboards.black
 
     // Knights
-    let kn = enemyKnights
+    let kn = board.bitboards.knight & board.bitboards[opponent]
     while (kn) {
       const sq = Bitboard.lsb(kn)
       const att = Bitboard.getKnightAttacks(sq)
@@ -527,8 +562,8 @@ class Evaluation {
       kn &= (kn - 1n)
     }
 
-    // Sliders (Rook/Queen)
-    let rq = enemyRooks | enemyQueens
+    // Rooks/Queens
+    let rq = (board.bitboards.rook | board.bitboards.queen) & board.bitboards[opponent]
     while (rq) {
       const sq = Bitboard.lsb(rq)
       const att = Bitboard.getRookAttacks(sq, occupancy)
@@ -539,8 +574,8 @@ class Evaluation {
       rq &= (rq - 1n)
     }
 
-    // Sliders (Bishop/Queen)
-    let bq = enemyBishops | enemyQueens
+    // Bishops/Queens
+    let bq = (board.bitboards.bishop | board.bitboards.queen) & board.bitboards[opponent]
     while (bq) {
       const sq = Bitboard.lsb(bq)
       const att = Bitboard.getBishopAttacks(sq, occupancy)
@@ -551,72 +586,63 @@ class Evaluation {
       bq &= (bq - 1n)
     }
 
-    if (attackerCount > 1) {
-      const safetyTable = [0, 0, 10, 30, 60, 100, 150, 210, 280, 360, 450]
-      const idx = Math.min(attackUnits, 10)
-      score -= safetyTable[idx]
-    }
+    return { attackUnits, attackerCount }
+  }
 
-    // Epic 52: Pawn Shield & Storm
+  static calculatePawnShieldAndStorm (board, kingIndex, color) {
+    const opponent = color === 'white' ? 'black' : 'white'
+    const r = 7 - (kingIndex >> 4)
+    const c = kingIndex & 7
     const kFile = c
     const rankIndex = r
-    const forward = color === 'white' ? 1 : -1
 
     let shieldScore = 0
     let stormScore = 0
 
     for (let f = kFile - 1; f <= kFile + 1; f++) {
       if (f < 0 || f > 7) continue
+      shieldScore += Evaluation.getFileShieldScore(board, f, rankIndex, color)
+      stormScore += Evaluation.getFileStormScore(board, f, rankIndex, color, opponent)
+    }
+    return shieldScore + stormScore
+  }
 
-      const fileMask = FILE_MASKS[f]
-
-      // Shield: Friendly pawns at rank + 1, rank + 2
-      const r1 = rankIndex + forward
-      let shieldFound = false
-      if (r1 >= 0 && r1 <= 7) {
-        const idx = r1 * 8 + f
-        if (board.bitboards.pawn & board.bitboards[color] & (1n << BigInt(idx))) {
-          shieldScore += PARAMS.ShieldBonus
-          shieldFound = true
-        }
-      }
-      if (!shieldFound) {
-        const r2 = rankIndex + forward * 2
-        if (r2 >= 0 && r2 <= 7) {
-          const idx = r2 * 8 + f
-          if (board.bitboards.pawn & board.bitboards[color] & (1n << BigInt(idx))) {
-            shieldScore += (PARAMS.ShieldBonus / 2)
-          }
-        }
-      }
-
-      // Storm: Nearest enemy pawn
-      const enemyPawns = board.bitboards.pawn & board.bitboards[opponent] & fileMask
-      if (enemyPawns) {
-        let pSq
-        if (color === 'white') {
-          // White King at low rank. Enemy at high rank.
-          // Closest enemy is Lowest Rank -> Smallest Index.
-          pSq = Bitboard.lsb(enemyPawns)
-        } else {
-          // Black King at high rank. Enemy at low rank.
-          // Closest enemy is Highest Rank -> Largest Index.
-          pSq = Bitboard.msb(enemyPawns)
-        }
-
-        const pRank = Math.floor(pSq / 8)
-        const dist = Math.abs(pRank - rankIndex)
-
-        if (dist > 0) {
-          stormScore -= (60 / dist)
-        }
+  static getFileShieldScore (board, f, rankIndex, color) {
+    const forward = color === 'white' ? 1 : -1
+    const r1 = rankIndex + forward
+    if (r1 >= 0 && r1 <= 7) {
+      const idx = r1 * 8 + f
+      if (board.bitboards.pawn & board.bitboards[color] & (1n << BigInt(idx))) {
+        return PARAMS.ShieldBonus
       }
     }
+    const r2 = rankIndex + forward * 2
+    if (r2 >= 0 && r2 <= 7) {
+      const idx = r2 * 8 + f
+      if (board.bitboards.pawn & board.bitboards[color] & (1n << BigInt(idx))) {
+        return (PARAMS.ShieldBonus / 2)
+      }
+    }
+    return 0
+  }
 
-    score += shieldScore
-    score += stormScore
-
-    return score
+  static getFileStormScore (board, f, rankIndex, color, opponent) {
+    const fileMask = FILE_MASKS[f]
+    const enemyPawns = board.bitboards.pawn & board.bitboards[opponent] & fileMask
+    if (enemyPawns) {
+      let pSq
+      if (color === 'white') {
+        pSq = Bitboard.lsb(enemyPawns)
+      } else {
+        pSq = Bitboard.msb(enemyPawns)
+      }
+      const pRank = Math.floor(pSq / 8)
+      const dist = Math.abs(pRank - rankIndex)
+      if (dist > 0) {
+        return -(60 / dist)
+      }
+    }
+    return 0
   }
 }
 

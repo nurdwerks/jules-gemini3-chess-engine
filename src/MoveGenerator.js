@@ -59,6 +59,10 @@ class MoveGenerator {
   static generatePawnMoves (board, us, them, occupancy, moves) {
     const color = board.activeColor === 'w' ? 'white' : 'black'
     let pawns = board.bitboards.pawn & us
+    const forward = color === 'white' ? -16 : 16
+    const startRank = color === 'white' ? 6 : 1
+    const promotionRank = color === 'white' ? 0 : 7
+
     while (pawns) {
       const fromSq = Bitboard.lsb(pawns)
       const fromRow = 7 - Math.floor(fromSq / 8)
@@ -66,150 +70,155 @@ class MoveGenerator {
       const from0x88 = (fromRow << 4) | fromCol
       const piece = new Piece(color, 'pawn')
 
-      const forward = color === 'white' ? -16 : 16
-      const targetSingle = from0x88 + forward
-
-      // Check emptiness of single push
-      let emptySingle = false
-      if (board.isValidSquare(targetSingle)) {
-        const t64 = Bitboard.to64(targetSingle)
-        if ((occupancy & (1n << BigInt(t64))) === 0n) emptySingle = true
-      }
-
-      if (emptySingle) {
-        const targetRow = targetSingle >> 4
-        const promotionRank = color === 'white' ? 0 : 7
-        if (targetRow === promotionRank) {
-          ['q', 'r', 'b', 'n'].forEach(promo => {
-            moves.push({ from: from0x88, to: targetSingle, flags: 'p', piece, promotion: promo })
-          })
-        } else {
-          moves.push({ from: from0x88, to: targetSingle, flags: 'n', piece })
-          const startRank = color === 'white' ? 6 : 1
-          const currentRow = from0x88 >> 4
-          const targetDouble = from0x88 + (forward * 2)
-          if (currentRow === startRank && board.isValidSquare(targetDouble)) {
-            const t64Double = Bitboard.to64(targetDouble)
-            if ((occupancy & (1n << BigInt(t64Double))) === 0n) {
-              moves.push({ from: from0x88, to: targetDouble, flags: 'n', piece })
-            }
-          }
-        }
-      }
-
-      const captureOffsets = color === 'white' ? [-17, -15] : [15, 17]
-      for (const capOffset of captureOffsets) {
-        const targetCap = from0x88 + capOffset
-        if (board.isValidSquare(targetCap)) {
-          const t64 = Bitboard.to64(targetCap)
-          const isOcc = (occupancy & (1n << BigInt(t64))) !== 0n
-          const isThem = (them & (1n << BigInt(t64))) !== 0n
-
-          if (isThem) {
-            // Capture
-            const targetPiece = board.getPiece(targetCap)
-            const targetRow = targetCap >> 4
-            const promotionRank = color === 'white' ? 0 : 7
-            if (targetRow === promotionRank) {
-              ['q', 'r', 'b', 'n'].forEach(promo => {
-                moves.push({ from: from0x88, to: targetCap, flags: 'cp', piece, captured: targetPiece, promotion: promo })
-              })
-            } else {
-              moves.push({ from: from0x88, to: targetCap, flags: 'c', piece, captured: targetPiece })
-            }
-          } else if (!isOcc && board.enPassantTarget !== '-') {
-            const epIndex = board.algebraicToIndex(board.enPassantTarget)
-            if (targetCap === epIndex) {
-              moves.push({ from: from0x88, to: targetCap, flags: 'e', piece })
-            }
-          }
-        }
-      }
+      MoveGenerator.genPawnPushes(board, from0x88, forward, startRank, promotionRank, occupancy, piece, moves)
+      MoveGenerator.genPawnCaptures(board, from0x88, color, them, occupancy, promotionRank, piece, moves)
 
       pawns &= (pawns - 1n)
     }
   }
 
-  static generateCastlingMoves (board, from0x88, piece, opponent, occupancy, moves) {
-    const color = board.activeColor === 'w' ? 'white' : 'black'
-    if (board.isChess960) {
-      const rooks = board.castlingRooks[color]
-      for (const rookIndex of rooks) {
-        // Use getPiece for rooks as they are specific instances we need to verify
-        const rookPiece = board.getPiece(rookIndex)
-        if (!rookPiece || rookPiece.type !== 'rook' || rookPiece.color !== color) continue
+  static genPawnPushes (board, from0x88, forward, startRank, promotionRank, occupancy, piece, moves) {
+    const targetSingle = from0x88 + forward
+    let emptySingle = false
+    if (board.isValidSquare(targetSingle)) {
+      const t64 = Bitboard.to64(targetSingle)
+      if ((occupancy & (1n << BigInt(t64))) === 0n) emptySingle = true
+    }
 
-        const kingCol = from0x88 & 7
-        const rookCol = rookIndex & 7
-
-        const isKingside = rookCol > kingCol
-        const canCastle = (isKingside && board.castling[color === 'white' ? 'w' : 'b'].k) || (!isKingside && board.castling[color === 'white' ? 'w' : 'b'].q)
-        if (!canCastle) continue
-        const targetFile = isKingside ? 6 : 2
-        const rank = color === 'white' ? 7 : 0
-        const kingTargetIndex = (rank << 4) | targetFile
-        const rookTargetFile = isKingside ? 5 : 3
-        const rookTargetIndex = (rank << 4) | rookTargetFile
-
-        const kingPath = [from0x88, kingTargetIndex].sort((a, b) => a - b)
-        const rookPath = [rookIndex, rookTargetIndex].sort((a, b) => a - b)
-
-        const squaresToCheck = new Set()
-        for (let i = kingPath[0]; i <= kingPath[1]; i++) squaresToCheck.add(i)
-        for (let i = rookPath[0]; i <= rookPath[1]; i++) squaresToCheck.add(i)
-
-        let pathClear = true
-        for (const sq of squaresToCheck) {
-          if (sq !== from0x88 && sq !== rookIndex) {
-            // Check occupancy using bitboards
-            const sq64 = Bitboard.to64(sq)
-            if ((occupancy & (1n << BigInt(sq64))) !== 0n) {
-              pathClear = false
-              break
-            }
+    if (emptySingle) {
+      const targetRow = targetSingle >> 4
+      if (targetRow === promotionRank) {
+        ['q', 'r', 'b', 'n'].forEach(promo => {
+          moves.push({ from: from0x88, to: targetSingle, flags: 'p', piece, promotion: promo })
+        })
+      } else {
+        moves.push({ from: from0x88, to: targetSingle, flags: 'n', piece })
+        const currentRow = from0x88 >> 4
+        const targetDouble = from0x88 + (forward * 2)
+        if (currentRow === startRank && board.isValidSquare(targetDouble)) {
+          const t64Double = Bitboard.to64(targetDouble)
+          if ((occupancy & (1n << BigInt(t64Double))) === 0n) {
+            moves.push({ from: from0x88, to: targetDouble, flags: 'n', piece })
           }
-        }
-        if (!pathClear) continue
-
-        let kingAttacked = false
-        for (let i = kingPath[0]; i <= kingPath[1]; i++) {
-          if (board.isSquareAttacked(i, opponent)) {
-            kingAttacked = true
-            break
-          }
-        }
-        if (kingAttacked) continue
-
-        const flag = isKingside ? 'k960' : 'q960'
-        moves.push({ from: from0x88, to: kingTargetIndex, flags: flag, piece, rookSource: rookIndex })
-      }
-    } else { // Standard chess
-      const kingIndex = from0x88
-      const kingPiece = piece
-
-      // Check if king exists (redundant in generation but safe)
-      if (board.castling[color === 'white' ? 'w' : 'b'].k) {
-        const rook = board.getPiece(kingIndex + 3)
-        const occ1 = board.getPiece(kingIndex + 1)
-        const occ2 = board.getPiece(kingIndex + 2)
-
-        if (rook && rook.type === 'rook' && !occ1 && !occ2 &&
-                    !board.isSquareAttacked(kingIndex, opponent) && !board.isSquareAttacked(kingIndex + 1, opponent) && !board.isSquareAttacked(kingIndex + 2, opponent)) {
-          moves.push({ from: kingIndex, to: kingIndex + 2, flags: 'k', piece: kingPiece })
-        }
-      }
-      if (board.castling[color === 'white' ? 'w' : 'b'].q) {
-        const rook = board.getPiece(kingIndex - 4)
-        const occ1 = board.getPiece(kingIndex - 1)
-        const occ2 = board.getPiece(kingIndex - 2)
-        const occ3 = board.getPiece(kingIndex - 3)
-
-        if (rook && rook.type === 'rook' && !occ1 && !occ2 && !occ3 &&
-                    !board.isSquareAttacked(kingIndex, opponent) && !board.isSquareAttacked(kingIndex - 1, opponent) && !board.isSquareAttacked(kingIndex - 2, opponent)) {
-          moves.push({ from: kingIndex, to: kingIndex - 2, flags: 'q', piece: kingPiece })
         }
       }
     }
+  }
+
+  static genPawnCaptures (board, from0x88, color, them, occupancy, promotionRank, piece, moves) {
+    const captureOffsets = color === 'white' ? [-17, -15] : [15, 17]
+    for (const capOffset of captureOffsets) {
+      const targetCap = from0x88 + capOffset
+      if (board.isValidSquare(targetCap)) {
+        const t64 = Bitboard.to64(targetCap)
+        const isOcc = (occupancy & (1n << BigInt(t64))) !== 0n
+        const isThem = (them & (1n << BigInt(t64))) !== 0n
+
+        if (isThem) {
+          const targetPiece = board.getPiece(targetCap)
+          const targetRow = targetCap >> 4
+          if (targetRow === promotionRank) {
+            ['q', 'r', 'b', 'n'].forEach(promo => {
+              moves.push({ from: from0x88, to: targetCap, flags: 'cp', piece, captured: targetPiece, promotion: promo })
+            })
+          } else {
+            moves.push({ from: from0x88, to: targetCap, flags: 'c', piece, captured: targetPiece })
+          }
+        } else if (!isOcc && board.enPassantTarget !== '-') {
+          const epIndex = board.algebraicToIndex(board.enPassantTarget)
+          if (targetCap === epIndex) {
+            moves.push({ from: from0x88, to: targetCap, flags: 'e', piece })
+          }
+        }
+      }
+    }
+  }
+
+  static generateCastlingMoves (board, from0x88, piece, opponent, occupancy, moves) {
+    if (board.isChess960) {
+      MoveGenerator.generateChess960Castling(board, from0x88, piece, opponent, occupancy, moves)
+    } else {
+      MoveGenerator.generateStandardCastling(board, from0x88, piece, opponent, moves)
+    }
+  }
+
+  static generateChess960Castling (board, from0x88, piece, opponent, occupancy, moves) {
+    const color = piece.color
+    const rooks = board.castlingRooks[color]
+    for (const rookIndex of rooks) {
+      const rookPiece = board.getPiece(rookIndex)
+      if (!rookPiece || rookPiece.type !== 'rook' || rookPiece.color !== color) continue
+
+      const kingCol = from0x88 & 7
+      const rookCol = rookIndex & 7
+
+      const isKingside = rookCol > kingCol
+      const canCastle = (isKingside && board.castling[color === 'white' ? 'w' : 'b'].k) || (!isKingside && board.castling[color === 'white' ? 'w' : 'b'].q)
+      if (!canCastle) continue
+
+      MoveGenerator.try960Castling(board, from0x88, rookIndex, isKingside, color, piece, opponent, occupancy, moves)
+    }
+  }
+
+  static try960Castling (board, kingIndex, rookIndex, isKingside, color, piece, opponent, occupancy, moves) {
+    const targetFile = isKingside ? 6 : 2
+    const rank = color === 'white' ? 7 : 0
+    const kingTargetIndex = (rank << 4) | targetFile
+    const rookTargetFile = isKingside ? 5 : 3
+    const rookTargetIndex = (rank << 4) | rookTargetFile
+
+    const kingPath = [kingIndex, kingTargetIndex].sort((a, b) => a - b)
+    const rookPath = [rookIndex, rookTargetIndex].sort((a, b) => a - b)
+
+    const squaresToCheck = new Set()
+    for (let i = kingPath[0]; i <= kingPath[1]; i++) squaresToCheck.add(i)
+    for (let i = rookPath[0]; i <= rookPath[1]; i++) squaresToCheck.add(i)
+
+    for (const sq of squaresToCheck) {
+      if (sq !== kingIndex && sq !== rookIndex) {
+        const sq64 = Bitboard.to64(sq)
+        if ((occupancy & (1n << BigInt(sq64))) !== 0n) return
+      }
+    }
+
+    for (let i = kingPath[0]; i <= kingPath[1]; i++) {
+      if (board.isSquareAttacked(i, opponent)) return
+    }
+
+    const flag = isKingside ? 'k960' : 'q960'
+    moves.push({ from: kingIndex, to: kingTargetIndex, flags: flag, piece, rookSource: rookIndex })
+  }
+
+  static generateStandardCastling (board, kingIndex, piece, opponent, moves) {
+    const color = piece.color
+    if (board.castling[color === 'white' ? 'w' : 'b'].k) {
+      MoveGenerator.tryStandardCastle(board, kingIndex, piece, opponent, true, moves)
+    }
+    if (board.castling[color === 'white' ? 'w' : 'b'].q) {
+      MoveGenerator.tryStandardCastle(board, kingIndex, piece, opponent, false, moves)
+    }
+  }
+
+  static tryStandardCastle (board, kingIndex, piece, opponent, kingside, moves) {
+    const offset = kingside ? 1 : -1
+    const rookOffset = kingside ? 3 : -4
+    const targetOffset = kingside ? 2 : -2
+
+    const rookIndex = kingIndex + rookOffset
+    const rook = board.getPiece(rookIndex)
+
+    if (!rook || rook.type !== 'rook') return
+
+    const emptyCount = kingside ? 2 : 3
+    for (let i = 1; i <= emptyCount; i++) {
+      if (board.getPiece(kingIndex + (i * offset))) return
+    }
+
+    for (let i = 0; i <= 2; i++) {
+      if (board.isSquareAttacked(kingIndex + (i * offset), opponent)) return
+    }
+
+    moves.push({ from: kingIndex, to: kingIndex + targetOffset, flags: kingside ? 'k' : 'q', piece })
   }
 
   static generateKingMoves (board, us, them, occupancy, moves) {

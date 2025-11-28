@@ -177,27 +177,54 @@ class UCI {
   }
 
   handleGo (args) {
+    const TimeManager = require('./TimeManager')
+    const tm = new TimeManager(this.board)
+
+    const { searchMoves, isPonder, depth, nodes, timeLimits } = this._parseGoArgs(args, tm)
+
+    this.pendingBestMove = null
+
+    if (!args.includes('infinite') && !isPonder && !nodes) {
+      if (this._tryBookMove()) return
+    }
+
+    const Search = require('./Search')
+    this.currentSearch = new Search(this.board, this.tt, this.nnue)
+    const searchOptions = {
+      ...this.options,
+      searchMoves,
+      nodes,
+      onInfo: (info) => this.output(`info ${info}`)
+    }
+
+    this._notifyWorkers(depth, timeLimits)
+
+    const bestMove = this.currentSearch.search(depth, timeLimits, searchOptions, tm)
+
+    this._finishSearch(bestMove, isPonder)
+  }
+
+  _tryBookMove () {
+    const bookMove = this.book.findMove(this.board)
+    if (bookMove) {
+      const fromAlg = this.indexToAlgebraic(bookMove.from)
+      const toAlg = this.indexToAlgebraic(bookMove.to)
+      this.output(`bestmove ${fromAlg}${toAlg}${bookMove.promotion || ''}`)
+      return true
+    }
+    return false
+  }
+
+  _parseGoArgs (args, tm) {
     let searchMoves = null
     if (args.includes('searchmoves')) {
       const idx = args.indexOf('searchmoves')
       searchMoves = args.slice(idx + 1)
     }
     const isPonder = args.includes('ponder')
-    this.pendingBestMove = null
-    if (!args.includes('infinite') && !isPonder) {
-      const bookMove = this.book.findMove(this.board)
-      if (bookMove) {
-        const fromAlg = this.indexToAlgebraic(bookMove.from)
-        const toAlg = this.indexToAlgebraic(bookMove.to)
-        this.output(`bestmove ${fromAlg}${toAlg}${bookMove.promotion || ''}`)
-        return
-      }
-    }
-    const TimeManager = require('./TimeManager')
-    const tm = new TimeManager(this.board)
     const timeLimits = tm.parseGoCommand(args, this.board.activeColor)
-    let depth = 64
 
+    let depth = 64
     const nodesIdx = args.indexOf('nodes')
     let nodes = null
     if (nodesIdx !== -1) {
@@ -211,25 +238,23 @@ class UCI {
         timeLimits.softLimit = Infinity
       }
     } else if (nodes !== null) {
-      // If nodes specified but not depth, search deep (limited by nodes)
       depth = 128
       timeLimits.hardLimit = Infinity
       timeLimits.softLimit = Infinity
     } else if (!args.includes('wtime') && !args.includes('movetime') && !args.includes('infinite')) {
       depth = 5
     }
-    const Search = require('./Search')
-    this.currentSearch = new Search(this.board, this.tt, this.nnue)
-    const searchOptions = {
-      ...this.options,
-      searchMoves,
-      nodes,
-      onInfo: (info) => this.output(`info ${info}`)
-    }
+
+    return { searchMoves, isPonder, depth, nodes, timeLimits }
+  }
+
+  _notifyWorkers (depth, timeLimits) {
     for (const worker of this.workers) {
       worker.postMessage({ type: 'search', fen: this.board.generateFen(), depth, limits: timeLimits, options: this.options })
     }
-    const bestMove = this.currentSearch.search(depth, timeLimits, searchOptions, tm)
+  }
+
+  _finishSearch (bestMove, isPonder) {
     this.currentSearch = null
     this.stopWorkers()
     let bestMoveStr = 'bestmove 0000'
@@ -251,12 +276,19 @@ class UCI {
   }
 
   handleSetOption (args) {
+    const { name, value } = this._parseOptionArgs(args)
+    if (!name) return
+    this._applyOption(name, value)
+  }
+
+  _parseOptionArgs (args) {
     let nameIdx = -1; let valueIdx = -1
     for (let i = 0; i < args.length; i++) {
       if (args[i] === 'name') nameIdx = i
       if (args[i] === 'value') valueIdx = i
     }
-    if (nameIdx === -1) return
+    if (nameIdx === -1) return { name: null, value: null }
+
     const name = args.slice(nameIdx + 1, valueIdx !== -1 ? valueIdx : args.length).join(' ')
     let value = null
     if (valueIdx !== -1 && valueIdx + 1 < args.length) {
@@ -265,26 +297,34 @@ class UCI {
       else if (valStr === 'false') value = false
       else value = isNaN(parseInt(valStr, 10)) ? valStr : parseInt(valStr, 10)
     }
+    return { name, value }
+  }
+
+  _applyOption (name, value) {
     if (this.options.hasOwnProperty(name)) {
       this.options[name] = value
-      if (name === 'Hash' && this.options.Threads === 1) {
-        this.tt.resize(value)
-        this.output(`info string Hash resized to ${value} MB`)
-      } else if (name === 'Threads') {
-        this.stopWorkers()
-        this.startWorkers()
-      } else if (name === 'UCI_UseNNUE' || name === 'UCI_NNUE_File') {
-        if (this.options.UCI_UseNNUE) {
-          this.nnue.loadNetwork(this.options.UCI_NNUE_File).catch(err => {
-            this.output(`info string Failed to load NNUE: ${err.message}`)
-            this.options.UCI_UseNNUE = false
-          })
-        }
-      } else if (name === 'BookFile') {
-        this.book.loadBook(value)
-      }
+      this._onOptionChanged(name, value)
     } else {
       require('./Evaluation').updateParam(name, value)
+    }
+  }
+
+  _onOptionChanged (name, value) {
+    if (name === 'Hash' && this.options.Threads === 1) {
+      this.tt.resize(value)
+      this.output(`info string Hash resized to ${value} MB`)
+    } else if (name === 'Threads') {
+      this.stopWorkers()
+      this.startWorkers()
+    } else if (name === 'UCI_UseNNUE' || name === 'UCI_NNUE_File') {
+      if (this.options.UCI_UseNNUE) {
+        this.nnue.loadNetwork(this.options.UCI_NNUE_File).catch(err => {
+          this.output(`info string Failed to load NNUE: ${err.message}`)
+          this.options.UCI_UseNNUE = false
+        })
+      }
+    } else if (name === 'BookFile') {
+      this.book.loadBook(value)
     }
   }
 }
