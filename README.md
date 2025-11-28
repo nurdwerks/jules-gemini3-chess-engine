@@ -12,19 +12,6 @@ Benchmarking functions can be written and verified, but performance-critical ben
 
 ## Active Roadmap
 
-### Epic 59: Interactive Board Customization
-**Size:** Small (1-2 days)
-**Description:** Allow users to personalize the board's appearance.
-**User Stories:**
-1.  **Theme Selection (S)**
-    *   *Description:* Provide a dropdown to select different board color themes (e.g., Green, Blue, Wood).
-    *   *Acceptance Criteria:*
-        *   [ ] Board colors change immediately upon selection.
-2.  **Piece Sets (S)**
-    *   *Description:* Support SVG-based piece sets alongside the Unicode default.
-    *   *Acceptance Criteria:*
-        *   [ ] Users can toggle between Unicode and SVG pieces.
-
 ### Epic 60: PGN and FEN Import/Export
 **Size:** Medium (3 days)
 **Description:** Facilitate game sharing and custom position setup.
