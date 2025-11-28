@@ -1,14 +1,88 @@
+const fs = require('fs');
+const path = require('path');
 const { NNUE, Accumulator } = require('../../src/NNUE');
 const Board = require('../../src/Board');
 
-jest.setTimeout(60000);
+// No long timeout needed since we generate local file
+// jest.setTimeout(60000);
 
 describe('NNUE', () => {
     let nnue;
+    const testNetworkPath = path.join(__dirname, '..', 'resources', 'dummy.nnue');
+
+    const TRANSFORMER_OUTPUT_DIMS = 256;
+    const HALF_KP_INPUT_DIMS = 22528;
+    const L1_SIZE = 512;
+    const L2_SIZE = 32;
+    const L3_SIZE = 32;
+
+    // Helper to generate a dummy NNUE file
+    function generateDummyNNUE(filepath) {
+        const buffers = [];
+
+        // Helper to write UInt32LE
+        const writeU32 = (val) => {
+            const b = Buffer.alloc(4);
+            b.writeUInt32LE(val, 0);
+            buffers.push(b);
+        };
+
+        // Helper to write LEB128 (assuming value 1 for simplicity for weights/biases)
+        // We want to fill 'count' items. Each item is 1 byte (value 1).
+        const writeLeb128Fill = (count, value) => {
+            // value should be small positive integer < 128
+            const b = Buffer.alloc(count, value);
+            buffers.push(b);
+        };
+
+        // Header
+        writeU32(0x7AF32F20); // Version (random)
+        writeU32(0x12345678); // Hash
+        const desc = "Dummy Network";
+        writeU32(desc.length); // Description Size
+        buffers.push(Buffer.from(desc, 'utf8')); // Description
+
+        // Feature Transformer
+        writeU32(0xAAAAAAAA); // Hash
+        writeLeb128Fill(TRANSFORMER_OUTPUT_DIMS, 1); // Biases
+        writeLeb128Fill(TRANSFORMER_OUTPUT_DIMS * HALF_KP_INPUT_DIMS, 1); // Weights
+
+        // Layer 1 (512 -> 32)
+        writeU32(0xBBBBBBBB); // Hash
+        writeLeb128Fill(32, 1); // Biases
+        writeLeb128Fill(512 * 32, 1); // Weights
+
+        // Layer 2 (32 -> 32)
+        writeU32(0xCCCCCCCC); // Hash
+        writeLeb128Fill(32, 1); // Biases
+        writeLeb128Fill(32 * 32, 1); // Weights
+
+        // Layer 3 (32 -> 1)
+        writeU32(0xDDDDDDDD); // Hash
+        writeLeb128Fill(1, 1); // Biases
+        writeLeb128Fill(32 * 1, 1); // Weights
+
+        const finalBuffer = Buffer.concat(buffers);
+        fs.writeFileSync(filepath, finalBuffer);
+    }
 
     beforeAll(async () => {
+        // Create resources dir if not exists
+        const resourcesDir = path.dirname(testNetworkPath);
+        if (!fs.existsSync(resourcesDir)) {
+            fs.mkdirSync(resourcesDir, { recursive: true });
+        }
+
+        generateDummyNNUE(testNetworkPath);
+
         nnue = new NNUE();
-        await nnue.loadNetwork('https://tests.stockfishchess.org/api/nn/nn-46832cfbead3.nnue');
+        await nnue.loadNetwork(testNetworkPath);
+    });
+
+    afterAll(() => {
+        if (fs.existsSync(testNetworkPath)) {
+            fs.unlinkSync(testNetworkPath);
+        }
     });
 
     test('should load the network file and parse all layers', () => {

@@ -12,6 +12,10 @@ describe('UCI Options', () => {
     uci = new UCI(mockLog);
   });
 
+  afterEach(() => {
+      if (uci) uci.stopWorkers();
+  });
+
   test('uci command reports required options', () => {
     uci.processCommand('uci');
 
