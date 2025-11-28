@@ -64,14 +64,17 @@ describe('Evaluation', () => {
 
     test('Rook mobility', () => {
         const boardOpen = new Board();
-        boardOpen.loadFen('1p6/8/8/8/8/8/8/r7 b - - 0 1'); // Pawn on b7 does not block rook on a1
+        boardOpen.loadFen('1p6/8/8/8/8/8/8/r7 b - - 0 1'); // Pawn on b8 does not block rook on a1
         const scoreOpen = Evaluation.evaluate(boardOpen);
 
         const boardClosed = new Board();
-        boardClosed.loadFen('p7/8/8/8/8/8/8/r7 b - - 0 1');   // Pawn on a7 blocks rook on a1
+        boardClosed.loadFen('p7/8/8/8/8/8/8/r7 b - - 0 1');   // Pawn on a8 blocks rook on a1
         const scoreClosed = Evaluation.evaluate(boardClosed);
 
         expect(scoreOpen).toBeGreaterThan(scoreClosed);
+        // Explicitly verify the bonus difference (1 extra square * RookMobilityBonus(2) = 2)
+        const diff = scoreOpen - scoreClosed;
+        expect(diff).toBe(2);
     });
 
     test('Queen mobility', () => {
