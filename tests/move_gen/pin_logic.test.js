@@ -1,5 +1,4 @@
 const Board = require('../../src/Board')
-const Piece = require('../../src/Piece')
 
 describe('Pin Logic Verification (Story 1.3a)', () => {
   let board

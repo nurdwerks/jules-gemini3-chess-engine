@@ -2,15 +2,12 @@ const Search = require('../../src/Search')
 const Board = require('../../src/Board')
 
 // Mock console.log to capture output
-let output = []
-const mockLog = (msg) => output.push(msg)
 
 describe('Search Statistics & PV Consistency', () => {
   let board
   let search
 
   beforeEach(() => {
-    output = []
     board = new Board()
     search = new Search(board)
   })
@@ -38,7 +35,6 @@ describe('Search Statistics & PV Consistency', () => {
     // Create a situation where PV is obvious
     board.loadFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
     // Mock a PV
-    const pv = [{ from: 8, to: 24 }, { from: 56, to: 40 }] // a2a3, a7a6 (using indices?)
     // Indices: a2 is 96? No 0x88.
     // Rank 0 (8): 0-7. Rank 1 (7): 16-23...
     // Board 0x88:

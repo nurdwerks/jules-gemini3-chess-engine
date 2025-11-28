@@ -3,7 +3,6 @@
  * Tunes evaluation parameters by playing matches.
  */
 
-const Match = require('./match') // Assuming tools/match.js exists or we mock it
 const fs = require('fs')
 
 class SPSA {

@@ -43,25 +43,34 @@ class MoveSorter {
   }
 
   static scoreQuiet (m, board, depth, prevMove, heuristics, options) {
-    // Killers
+    const killerScore = MoveSorter._getKillerScore(m, depth, heuristics)
+    if (killerScore > 0) return killerScore
+
+    const counterScore = MoveSorter._getCounterScore(m, board, prevMove, heuristics)
+    if (counterScore > 0) return counterScore
+
+    if (options && options.UseHistory && heuristics) {
+      return heuristics.getHistoryScore(board.activeColor, m.from, m.to)
+    }
+    return 0
+  }
+
+  static _getKillerScore (m, depth, heuristics) {
     if (depth < 64 && heuristics) {
       const killers = heuristics.getKillers(depth)
       if (killers && killers.some(k => k.from === m.from && k.to === m.to)) {
         return 900000
       }
     }
+    return 0
+  }
 
-    // Countermove
+  static _getCounterScore (m, board, prevMove, heuristics) {
     if (prevMove && heuristics) {
       const cm = heuristics.getCounterMove(board.activeColor, prevMove.from, prevMove.to)
       if (cm && cm.from === m.from && cm.to === m.to) {
         return 800000
       }
-    }
-
-    // History
-    if (options && options.UseHistory && heuristics) {
-      return heuristics.getHistoryScore(board.activeColor, m.from, m.to)
     }
     return 0
   }

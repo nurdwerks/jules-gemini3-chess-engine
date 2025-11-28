@@ -32,9 +32,6 @@ class EpdLoader {
     // Extract FEN part.
     // 2. Look for "1-0", "0-1", "1/2-1/2".
 
-    const parts = line.trim().split(';')
-    const mainPart = parts[0] // FEN + some opcodes?
-
     // Extract result
     let result = null // 1.0 (white win), 0.0 (black win), 0.5 (draw)
 

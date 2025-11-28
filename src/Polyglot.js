@@ -56,28 +56,31 @@ class Polyglot {
 
   hashEnPassant (board, constants) {
     if (board.enPassantTarget === '-') return 0n
+    if (this._canEnPassantCapture(board)) {
+      const epIndex = board.algebraicToIndex(board.enPassantTarget)
+      const epCol = epIndex & 7
+      return constants.Random64[772 + epCol]
+    }
+    return 0n
+  }
+
+  _canEnPassantCapture (board) {
     const epIndex = board.algebraicToIndex(board.enPassantTarget)
     const epCol = epIndex & 7
     const epRow = epIndex >> 4
     const epPawnRow = board.activeColor === 'w' ? epRow + 1 : epRow - 1
 
-    let hasPawn = false
     const cols = [epCol - 1, epCol + 1]
     for (const c of cols) {
       if (c >= 0 && c <= 7) {
         const idx = (epPawnRow << 4) | c
         const p = board.getPiece(idx)
         if (p && p.type === 'pawn' && (p.color === 'white' ? 'w' : 'b') === board.activeColor) {
-          hasPawn = true
-          break
+          return true
         }
       }
     }
-
-    if (hasPawn) {
-      return constants.Random64[772 + epCol]
-    }
-    return 0n
+    return false
   }
 
   hashTurn (board, constants) {

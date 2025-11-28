@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 const { spawn } = require('child_process')
-const path = require('path')
 
 const engine = spawn('/app/src/engine.js', [], { shell: true })
 

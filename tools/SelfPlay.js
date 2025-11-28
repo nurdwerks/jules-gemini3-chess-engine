@@ -17,8 +17,6 @@ class SelfPlay {
     this.engine.processCommand('ucinewgame')
     this.engine.processCommand('position startpos')
 
-    const moves = []
-    const side = 'w'
     let moveCount = 0
 
     while (moveCount < 20) { // Short game for test

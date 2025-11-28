@@ -1,5 +1,4 @@
 const Board = require('../../src/Board')
-const Piece = require('../../src/Piece')
 
 test('initial board state', () => {
   const board = new Board()

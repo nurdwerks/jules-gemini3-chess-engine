@@ -12,9 +12,6 @@ describe('NNUE', () => {
 
   const TRANSFORMER_OUTPUT_DIMS = 256
   const HALF_KP_INPUT_DIMS = 22528
-  const L1_SIZE = 512
-  const L2_SIZE = 32
-  const L3_SIZE = 32
 
   // Helper to generate a dummy NNUE file
   function generateDummyNNUE (filepath) {

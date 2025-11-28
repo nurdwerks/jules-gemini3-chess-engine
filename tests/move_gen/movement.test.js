@@ -1,5 +1,4 @@
 const Board = require('../../src/Board')
-const Piece = require('../../src/Piece')
 
 describe('Piece Movement Logic', () => {
   let board

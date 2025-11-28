@@ -1,6 +1,4 @@
 const Board = require('../../src/Board')
-const Search = require('../../src/Search')
-const Zobrist = require('../../src/Zobrist')
 
 describe('Story Verification', () => {
   test('Draw by 50-move rule', () => {
@@ -15,11 +13,6 @@ describe('Story Verification', () => {
   test('Draw by Repetition (3-fold)', () => {
     const board = new Board()
     // Start pos
-    const startKey = board.zobristKey
-
-    // Move 1: e2e4
-    const e2 = board.algebraicToIndex('e2')
-    const e4 = board.algebraicToIndex('e4')
 
     // Knights jumping back and forth
 
