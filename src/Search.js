@@ -5,6 +5,8 @@ const SEE = require('./SEE');
 const Syzygy = require('./Syzygy'); // Epic 15
 const SearchHeuristics = require('./SearchHeuristics');
 const MoveSorter = require('./MoveSorter');
+const Quiescence = require('./Quiescence');
+const SearchPruning = require('./SearchPruning');
 
 class Search {
   constructor(board, tt = null, nnue = null) {
@@ -552,7 +554,7 @@ class Search {
       // But recursion calls with newDepth.
 
       // Null Move Pruning
-      const nmResult = this._tryNullMovePruning(depth, beta, inCheck);
+      const nmResult = SearchPruning.tryNullMovePruning(this, depth, beta, inCheck);
       if (nmResult === 'STOP') return alpha;
       if (nmResult !== null) return nmResult;
 
@@ -582,15 +584,15 @@ class Search {
         : Evaluation.evaluate(this.board);
 
       // Razoring
-      const razoringResult = this._tryRazoring(depth, alpha, beta, staticEval, inCheck);
+      const razoringResult = SearchPruning.tryRazoring(this, depth, alpha, beta, staticEval, inCheck);
       if (razoringResult !== null) return razoringResult;
 
       // Futility Pruning
-      const futilityResult = this._tryFutilityPruning(depth, alpha, staticEval, inCheck);
+      const futilityResult = SearchPruning.tryFutilityPruning(this, depth, alpha, staticEval, inCheck);
       if (futilityResult !== null) return futilityResult;
 
       // Epic 46: ProbCut Pruning
-      const probCutResult = this._tryProbCut(depth, beta, inCheck, prevMove);
+      const probCutResult = SearchPruning.tryProbCut(this, depth, beta, inCheck, prevMove);
       if (probCutResult !== null) return probCutResult;
 
       // Epic 24: Multi-Cut Pruning (MCP)
@@ -785,76 +787,7 @@ class Search {
    * @returns {number} The score of the position.
    */
   quiescence(alpha, beta) {
-      this.nodes++;
-
-      if (this.stopFlag) return alpha;
-      if (this.checkLimits && this.checkLimits()) return alpha;
-
-      const currentAccumulator = this.accumulatorStack.length > 0 ? this.accumulatorStack[this.accumulatorStack.length - 1] : null;
-      const standPat = (this.options && this.options.UCI_UseNNUE && this.nnue && this.nnue.network)
-        ? this.nnue.evaluate(this.board, currentAccumulator)
-        : Evaluation.evaluate(this.board);
-      if (standPat >= beta) {
-          return beta;
-      }
-      // Delta Pruning: If stand_pat is much worse than alpha, it's unlikely
-      // that a single capture can raise the score above alpha.
-      const safetyMargin = 975; // A bit more than a queen
-      if (standPat < alpha - safetyMargin) {
-         // However, we should not prune if there is a checking move that could lead to mate.
-         // This is expensive to check, so for now we apply a simpler version of delta pruning,
-         // by not pruning at all if the king is in check.
-         if (!this.board.isInCheck()) {
-            return alpha;
-         }
-      }
-      if (alpha < standPat) {
-          alpha = standPat;
-      }
-
-      const moves = this.board.generateMoves();
-      // Filter for captures and promotions, which are tactical moves.
-      const interestingMoves = moves.filter(m => m.flags.includes('c') || m.flags.includes('p'));
-
-      // Sort captures (MVV-LVA simplified: just capture high value piece)
-      MoveSorter.sortCaptures(interestingMoves);
-
-      for (const move of interestingMoves) {
-          // SEE Pruning for captures
-          if (move.flags.includes('c') && SEE.see(this.board, move) < 0) continue;
-
-          const state = this.board.applyMove(move);
-
-          if (this.options.UCI_UseNNUE && this.nnue && this.nnue.network) {
-              const newAccumulator = this.accumulatorStack[this.accumulatorStack.length - 1].clone();
-              const changes = this.nnue.getChangedIndices(this.board, move, state.capturedPiece);
-              if (changes[move.piece.color].refresh) {
-                  const tempBoard = this.board.clone(); // Assumes clone
-                  tempBoard.applyMove(move);
-                  this.nnue.refreshAccumulator(newAccumulator, tempBoard);
-              } else {
-                  this.nnue.updateAccumulator(newAccumulator, changes);
-              }
-              this.accumulatorStack.push(newAccumulator);
-          }
-
-          const score = -this.quiescence(-beta, -alpha);
-          this.board.undoApplyMove(move, state);
-
-          if (this.options.UCI_UseNNUE && this.nnue && this.nnue.network) {
-              this.accumulatorStack.pop();
-          }
-
-          if (this.stopFlag) return alpha;
-
-          if (score >= beta) {
-              return beta;
-          }
-          if (score > alpha) {
-              alpha = score;
-          }
-      }
-      return alpha;
+      return Quiescence(this, alpha, beta);
   }
 
 
@@ -953,61 +886,6 @@ class Search {
       }
   }
 
-  _tryNullMovePruning(depth, beta, inCheck) {
-    if (depth >= 3 && !inCheck) {
-      const state = this.board.makeNullMove();
-      const R = 2; // Reduction
-      const score = -this.alphaBeta(depth - 1 - R, -beta, -beta + 1);
-      this.board.undoNullMove(state);
-
-      if (this.stopFlag) return 'STOP';
-
-      if (score >= beta) {
-        this.stats.pruning.nullMove++;
-        return beta; // Cutoff
-      }
-    }
-    return null;
-  }
-
-  _tryRazoring(depth, alpha, beta, staticEval, inCheck) {
-    if (depth <= 3 && !inCheck && staticEval + 300 + 100 * depth <= alpha) {
-      const qScore = this.quiescence(alpha, beta);
-      if (qScore <= alpha) {
-        return alpha;
-      }
-    }
-    return null;
-  }
-
-  _tryFutilityPruning(depth, alpha, staticEval, inCheck) {
-    if (depth <= 3 && !inCheck) {
-      const margin = 100 * depth;
-      if (staticEval + margin <= alpha) {
-        this.stats.pruning.futility++;
-        return alpha;
-      }
-    }
-    return null;
-  }
-
-  _tryProbCut(depth, beta, inCheck, prevMove) {
-    if (depth >= 5 && !inCheck && Math.abs(beta) < 20000) {
-      const PROBCUT_MARGIN = 200;
-      const PROBCUT_REDUCTION = 4;
-
-      // Shallow search with a widened window
-      const probCutBeta = beta + PROBCUT_MARGIN;
-
-      const score = this.alphaBeta(depth - PROBCUT_REDUCTION, probCutBeta - 1, probCutBeta, prevMove);
-
-      if (score >= probCutBeta) {
-        this.stats.pruning.probCut++;
-        return beta;
-      }
-    }
-    return null;
-  }
 }
 
 module.exports = Search;
