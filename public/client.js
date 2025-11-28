@@ -58,10 +58,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function logToOutput (msg) {
+    const now = new Date()
+    const pad = (n, width = 2) => n.toString().padStart(width, '0')
+    const time = `[${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}.${pad(now.getMilliseconds(), 3)}]`
     const line = document.createElement('div')
-    line.textContent = msg
-    engineOutputElement.appendChild(line)
-    engineOutputElement.scrollTop = engineOutputElement.scrollHeight
+    line.textContent = `${time} ${msg}`
+    engineOutputElement.prepend(line)
   }
 
   function parseOption (line) {
