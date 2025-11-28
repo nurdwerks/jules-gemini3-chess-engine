@@ -60,9 +60,11 @@ class Search {
         timeLimits = { hardLimit: timeLimits, softLimit: timeLimits };
     }
 
-    // Handle Limit Strength
+    // Handle Limit Strength and Node Limits
     let maxNodes = Infinity;
-    if (options.UCI_LimitStrength && options.UCI_Elo) {
+    if (options.nodes) {
+        maxNodes = options.nodes;
+    } else if (options.UCI_LimitStrength && options.UCI_Elo) {
         maxNodes = StrengthLimiter.getNodesForElo(options.UCI_Elo);
     }
 
@@ -98,19 +100,17 @@ class Search {
     let stableMoveCount = 0;
 
     // Timer/Node check function attached to instance
+    // checkMask controls frequency of TIME checks.
     let checkMask = 2047;
-    if (maxNodes < 5000) checkMask = 127;
-    if (maxNodes < 128) checkMask = 15;
-    if (maxNodes < 16) checkMask = 0; // Check every node
 
     this.checkLimits = () => {
-        if ((this.nodes & checkMask) !== 0) return false;
-
-        // Node limit check
+        // Node limit check (Exact)
         if (this.nodes >= maxNodes) {
             this.stopFlag = true;
             return true;
         }
+
+        if ((this.nodes & checkMask) !== 0) return false;
 
         // We only check hard limit here to force stop
         if (timeLimits.hardLimit !== Infinity) {
