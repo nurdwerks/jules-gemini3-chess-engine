@@ -1,5 +1,12 @@
 const Board = require('./Board')
-const { NNUE, Accumulator } = require('./NNUE')
+const { NNUE } = require('./NNUE')
+const TimeManager = require('./TimeManager')
+const Search = require('./Search')
+const Bench = require('./Bench')
+const Evaluation = require('./Evaluation')
+const Polyglot = require('./Polyglot')
+const { TranspositionTable } = require('./TranspositionTable')
+const { Worker } = require('worker_threads')
 
 class UCI {
   constructor (outputCallback = console.log) {
@@ -22,11 +29,7 @@ class UCI {
       BookFile: 'polyglot/gm2001.bin'
     }
 
-    // Initialize TT
-    const { TranspositionTable } = require('./TranspositionTable')
     this.tt = new TranspositionTable(this.options.Hash)
-
-    // Initialize NNUE
     this.nnue = new NNUE()
     if (this.options.UCI_UseNNUE) {
       this.nnue.loadNetwork(this.options.UCI_NNUE_File).catch(err => {
@@ -35,8 +38,6 @@ class UCI {
       })
     }
 
-    // Initialize Book
-    const Polyglot = require('./Polyglot')
     this.book = new Polyglot()
     this.book.loadBook(this.options.BookFile)
     this.workers = []
@@ -44,9 +45,7 @@ class UCI {
   }
 
   startWorkers () {
-    const { Worker } = require('worker_threads')
     const sharedBuffer = this.tt.getSharedBuffer()
-
     for (let i = 0; i < this.options.Threads - 1; i++) {
       const worker = new Worker('./src/Worker.js', {
         workerData: {
@@ -68,74 +67,77 @@ class UCI {
   processCommand (command) {
     const parts = command.trim().split(/\s+/)
     if (parts.length === 0) return
-
     const cmd = parts[0]
 
-    switch (cmd) {
-      case 'uci':
-        this.output('id name JulesGemini')
-        this.output('id author JulesGemini')
-        this.output(`option name Hash type spin default ${this.options.Hash} min 1 max 1024`)
-        this.output(`option name Threads type spin default ${this.options.Threads} min 1 max 64`)
-        this.output(`option name Ponder type check default ${this.options.Ponder}`)
-        this.output(`option name MultiPV type spin default ${this.options.MultiPV} min 1 max 500`)
-        this.output(`option name UCI_LimitStrength type check default ${this.options.UCI_LimitStrength}`)
-        this.output(`option name UCI_Elo type spin default ${this.options.UCI_Elo} min 100 max 3000`)
-        this.output(`option name AspirationWindow type spin default ${this.options.AspirationWindow} min 10 max 500`)
-        this.output(`option name Contempt type spin default ${this.options.Contempt} min -100 max 100`)
-        this.output('option name UseHistory type check default true')
-        this.output('option name UseCaptureHistory type check default true')
-        this.output(`option name UCI_UseNNUE type check default ${this.options.UCI_UseNNUE}`)
-        this.output(`option name UCI_NNUE_File type string default ${this.options.UCI_NNUE_File}`)
-        this.output(`option name BookFile type string default ${this.options.BookFile}`)
-        this.output('uciok')
-        break
-      case 'isready':
-        this.output('readyok')
-        break
-      case 'ucinewgame':
-        this.board = new Board()
-        break
-      case 'position':
-        this.handlePosition(parts.slice(1))
-        break
-      case 'setoption':
-        this.handleSetOption(parts.slice(1))
-        break
-      case 'go':
-        this.handleGo(parts.slice(1))
-        break
-      case 'stop':
-        if (this.currentSearch) this.currentSearch.stopFlag = true
-        this.stopWorkers()
-        if (this.pendingBestMove) {
-          this.output(this.pendingBestMove)
-          this.pendingBestMove = null
-        }
-        break
-      case 'ponderhit':
-        if (this.pendingBestMove) {
-          this.output(this.pendingBestMove)
-          this.pendingBestMove = null
-        }
-        break
-      case 'quit':
-        process.exit(0)
-        break
-      case 'debug_tree':
-        const Search = require('./Search')
-        this.currentSearch = new Search(this.board, this.tt)
-        this.currentSearch.search(2, { hardLimit: Infinity }, { debug: true, debugFile: 'debug_tree.json' })
-        this.currentSearch = null
-        this.output('info string Debug tree written to debug_tree.json')
-        break
-      case 'bench':
-        const Bench = require('./Bench')
-        Bench.run(this)
-        break
-      default:
-        break
+    const handlers = {
+      uci: () => this.cmdUCI(),
+      isready: () => this.cmdIsReady(),
+      ucinewgame: () => this.cmdUciNewGame(),
+      position: () => this.handlePosition(parts.slice(1)),
+      setoption: () => this.handleSetOption(parts.slice(1)),
+      go: () => this.handleGo(parts.slice(1)),
+      stop: () => this.cmdStop(),
+      ponderhit: () => this.cmdPonderHit(),
+      quit: () => process.exit(0),
+      debug_tree: () => this.cmdDebugTree(),
+      bench: () => this.cmdBench()
     }
+
+    if (handlers[cmd]) handlers[cmd]()
+  }
+
+  cmdUCI () {
+    this.output('id name JulesGemini')
+    this.output('id author JulesGemini')
+    this.output(`option name Hash type spin default ${this.options.Hash} min 1 max 1024`)
+    this.output(`option name Threads type spin default ${this.options.Threads} min 1 max 64`)
+    this.output(`option name Ponder type check default ${this.options.Ponder}`)
+    this.output(`option name MultiPV type spin default ${this.options.MultiPV} min 1 max 500`)
+    this.output(`option name UCI_LimitStrength type check default ${this.options.UCI_LimitStrength}`)
+    this.output(`option name UCI_Elo type spin default ${this.options.UCI_Elo} min 100 max 3000`)
+    this.output(`option name AspirationWindow type spin default ${this.options.AspirationWindow} min 10 max 500`)
+    this.output(`option name Contempt type spin default ${this.options.Contempt} min -100 max 100`)
+    this.output('option name UseHistory type check default true')
+    this.output('option name UseCaptureHistory type check default true')
+    this.output(`option name UCI_UseNNUE type check default ${this.options.UCI_UseNNUE}`)
+    this.output(`option name UCI_NNUE_File type string default ${this.options.UCI_NNUE_File}`)
+    this.output(`option name BookFile type string default ${this.options.BookFile}`)
+    this.output('uciok')
+  }
+
+  cmdIsReady () {
+    this.output('readyok')
+  }
+
+  cmdUciNewGame () {
+    this.board = new Board()
+  }
+
+  cmdStop () {
+    if (this.currentSearch) this.currentSearch.stopFlag = true
+    this.stopWorkers()
+    if (this.pendingBestMove) {
+      this.output(this.pendingBestMove)
+      this.pendingBestMove = null
+    }
+  }
+
+  cmdPonderHit () {
+    if (this.pendingBestMove) {
+      this.output(this.pendingBestMove)
+      this.pendingBestMove = null
+    }
+  }
+
+  cmdDebugTree () {
+    this.currentSearch = new Search(this.board, this.tt)
+    this.currentSearch.search(2, { hardLimit: Infinity }, { debug: true, debugFile: 'debug_tree.json' })
+    this.currentSearch = null
+    this.output('info string Debug tree written to debug_tree.json')
+  }
+
+  cmdBench () {
+    Bench.run(this)
   }
 
   handlePosition (args) {
@@ -193,32 +195,25 @@ class UCI {
         return
       }
     }
-    const TimeManager = require('./TimeManager')
+
     const tm = new TimeManager(this.board)
     const timeLimits = tm.parseGoCommand(args, this.board.activeColor)
-    let depth = 64
-
-    const nodesIdx = args.indexOf('nodes')
+    const depth = this.getSearchDepth(args)
     let nodes = null
-    if (nodesIdx !== -1) {
-      nodes = parseInt(args[nodesIdx + 1], 10)
-    }
+    const nodesIdx = args.indexOf('nodes')
+    if (nodesIdx !== -1) nodes = parseInt(args[nodesIdx + 1], 10)
 
-    if (args.includes('depth')) {
-      depth = parseInt(args[args.indexOf('depth') + 1], 10)
+    // Override limits based on fixed depth/nodes
+    if (args.includes('depth') || nodes !== null) {
       if (!args.includes('wtime') && !args.includes('movetime')) {
         timeLimits.hardLimit = Infinity
         timeLimits.softLimit = Infinity
       }
-    } else if (nodes !== null) {
-      // If nodes specified but not depth, search deep (limited by nodes)
-      depth = 128
-      timeLimits.hardLimit = Infinity
-      timeLimits.softLimit = Infinity
     } else if (!args.includes('wtime') && !args.includes('movetime') && !args.includes('infinite')) {
-      depth = 5
+      // Default depth if no limits specified
+      // We already set depth=5 default in getSearchDepth if not found, but logic here ensures it applies when NO time is present.
     }
-    const Search = require('./Search')
+
     this.currentSearch = new Search(this.board, this.tt, this.nnue)
     const searchOptions = {
       ...this.options,
@@ -245,6 +240,17 @@ class UCI {
     }
   }
 
+  getSearchDepth (args) {
+    if (args.includes('depth')) {
+      return parseInt(args[args.indexOf('depth') + 1], 10)
+    } else if (args.includes('nodes')) {
+      return 128
+    } else if (!args.includes('wtime') && !args.includes('movetime') && !args.includes('infinite')) {
+      return 5
+    }
+    return 64
+  }
+
   indexToAlgebraic (index) {
     const { row, col } = this.board.toRowCol(index)
     return `${String.fromCharCode('a'.charCodeAt(0) + col)}${8 - row}`
@@ -265,7 +271,11 @@ class UCI {
       else if (valStr === 'false') value = false
       else value = isNaN(parseInt(valStr, 10)) ? valStr : parseInt(valStr, 10)
     }
-    if (this.options.hasOwnProperty(name)) {
+    this.applyOption(name, value)
+  }
+
+  applyOption (name, value) {
+    if (Object.prototype.hasOwnProperty.call(this.options, name)) {
       this.options[name] = value
       if (name === 'Hash' && this.options.Threads === 1) {
         this.tt.resize(value)
@@ -284,7 +294,7 @@ class UCI {
         this.book.loadBook(value)
       }
     } else {
-      require('./Evaluation').updateParam(name, value)
+      Evaluation.updateParam(name, value)
     }
   }
 }

@@ -32,7 +32,6 @@ function NNUE () {
   }
 
   self.loadNetwork = async (url) => {
-    // Check if it's a local file
     if (fs.existsSync(url)) {
       try {
         const buffer = fs.readFileSync(url)
@@ -116,24 +115,30 @@ function NNUE () {
     const result = new arrayType(count)
     const bitLength = type === 'int16' ? 16 : 32
     for (let i = 0; i < count; i++) {
-      let val = 0; let shift = 0; let byte
-      do {
-        if (offset >= buffer.length) throw new RangeError('Reading beyond buffer in LEB128')
-        byte = buffer.readUInt8(offset++)
-        val |= (byte & 0x7f) << shift
-        shift += 7
-      } while (byte >= 128)
-      if ((shift < bitLength) && (byte & 0x40)) val |= (~0 << shift)
-      result[i] = val
+      const { value, newOffset } = self.readLeb128Value(buffer, offset, bitLength)
+      result[i] = value
+      offset = newOffset
     }
     return { result, newOffset: offset }
+  }
+
+  self.readLeb128Value = (buffer, offset, bitLength) => {
+    let val = 0; let shift = 0; let byte
+    do {
+      if (offset >= buffer.length) throw new RangeError('Reading beyond buffer in LEB128')
+      byte = buffer.readUInt8(offset++)
+      val |= (byte & 0x7f) << shift
+      shift += 7
+    } while (byte >= 128)
+    if ((shift < bitLength) && (byte & 0x40)) val |= (~0 << shift)
+    return { value: val, newOffset: offset }
   }
 
   self.getHalfKPIndex = (kingSq, pieceSq, piece, perspectiveColor) => {
     if (!piece) return -1
     const colorId = (piece.color === perspectiveColor) ? 0 : 1
-    const p_idx = PIECE_TO_ID[piece.type] * 2 + colorId
-    return pieceSq + (p_idx + kingSq * 10) * 64
+    const pIdx = PIECE_TO_ID[piece.type] * 2 + colorId
+    return pieceSq + (pIdx + kingSq * 10) * 64
   }
 
   self.getHalfKPIndices = (board, perspectiveColor) => {
@@ -291,14 +296,14 @@ function NNUE () {
     }
     const stm = board.activeColor === 'w' ? 'white' : 'black'
     const perspective = stm === 'white' ? [accumulator.white, accumulator.black] : [accumulator.black, accumulator.white]
-    let layer_input = new Int16Array(L1_SIZE)
-    layer_input.set(self.clippedRelu(perspective[0]), 0)
-    layer_input.set(self.clippedRelu(perspective[1]), TRANSFORMER_OUTPUT_DIMS)
+    let layerInput = new Int16Array(L1_SIZE)
+    layerInput.set(self.clippedRelu(perspective[0]), 0)
+    layerInput.set(self.clippedRelu(perspective[1]), TRANSFORMER_OUTPUT_DIMS)
     for (let i = 0; i < self.network.layers.length - 1; i++) {
-      const output = self.propagate(layer_input, self.network.layers[i])
-      layer_input = self.clippedRelu(output)
+      const output = self.propagate(layerInput, self.network.layers[i])
+      layerInput = self.clippedRelu(output)
     }
-    const finalOutput = self.propagate(layer_input, self.network.layers[self.network.layers.length - 1])
+    const finalOutput = self.propagate(layerInput, self.network.layers[self.network.layers.length - 1])
     return finalOutput[0] / 400
   }
 

@@ -22,15 +22,14 @@ class TimeManager {
     this.startTime = 0
   }
 
-  /**
-     * Parse UCI 'go' command arguments.
-     * @param {string[]} args
-     * @param {string} color 'w' or 'b'
-     */
   parseGoCommand (args, color) {
     this.reset()
     this.startTime = Date.now()
+    this.extractGoParams(args)
+    return this.calculateTimeAllocation(color)
+  }
 
+  extractGoParams (args) {
     for (let i = 0; i < args.length; i++) {
       const arg = args[i]
       if (arg === 'wtime' && i + 1 < args.length) this.wtime = parseInt(args[i + 1], 10)
@@ -41,54 +40,43 @@ class TimeManager {
       if (arg === 'movetime' && i + 1 < args.length) this.movetime = parseInt(args[i + 1], 10)
       if (arg === 'infinite') this.infinite = true
     }
-
-    return this.calculateTimeAllocation(color)
   }
 
   calculateTimeAllocation (color) {
-    if (this.movetime > 0) {
-      return { hardLimit: this.movetime, softLimit: this.movetime }
-    }
-
-    if (this.infinite) {
-      return { hardLimit: Infinity, softLimit: Infinity }
-    }
+    if (this.movetime > 0) return { hardLimit: this.movetime, softLimit: this.movetime }
+    if (this.infinite) return { hardLimit: Infinity, softLimit: Infinity }
 
     const time = color === 'w' ? this.wtime : this.btime
+    if (time === 0) return { hardLimit: Infinity, softLimit: Infinity }
+
     const inc = color === 'w' ? this.winc : this.binc
     const opponentTime = color === 'w' ? this.btime : this.wtime
 
-    if (time === 0) {
-      return { hardLimit: Infinity, softLimit: Infinity }
-    }
-
     const overhead = this.moveOverhead || 50
-    let maxTime = time - overhead
-    if (maxTime < 10) maxTime = 10
+    const maxTime = Math.max(10, time - overhead)
 
-    // Game Phase Logic
-    let movesLeft
-    if (this.movestogo > 0) {
-      movesLeft = this.movestogo
-    } else if (this.board.fullMoveNumber < 15) { // Opening
-      movesLeft = 50 // Spend less time
-    } else if (this.board.fullMoveNumber > 40) { // Endgame
-      movesLeft = 20 // Spend more time
-    } else { // Middlegame
-      movesLeft = 30
-    }
+    const movesLeft = this.estimateMovesLeft()
+    let targetTime = (time / movesLeft) + (inc * 0.75)
+    targetTime = this.adjustForOpponentTime(targetTime, time, opponentTime)
 
-    let targetTime = (time / movesLeft) + (inc * 0.75) // Use most of the increment
+    return this.calculateLimits(targetTime, maxTime)
+  }
 
-    // Opponent Time Logic
-    const timeRatio = time / (opponentTime + 1) // Add 1 to avoid division by zero
-    if (timeRatio > 2) {
-      targetTime *= 0.8 // We have a large time advantage, be conservative
-    } else if (timeRatio < 0.5) {
-      targetTime *= 1.2 // We are in time trouble, think a bit more
-    }
+  estimateMovesLeft () {
+    if (this.movestogo > 0) return this.movestogo
+    if (this.board.fullMoveNumber < 15) return 50
+    if (this.board.fullMoveNumber > 40) return 20
+    return 30
+  }
 
-    // Safety Buffers
+  adjustForOpponentTime (targetTime, time, opponentTime) {
+    const timeRatio = time / (opponentTime + 1)
+    if (timeRatio > 2) return targetTime * 0.8
+    if (timeRatio < 0.5) return targetTime * 1.2
+    return targetTime
+  }
+
+  calculateLimits (targetTime, maxTime) {
     let softLimit = Math.min(maxTime, targetTime)
     let hardLimit = Math.min(maxTime, softLimit * 4)
 
@@ -104,9 +92,7 @@ class TimeManager {
 
   shouldStop (elapsed, softLimit, isStable) {
     if (elapsed >= softLimit) {
-      if (isStable) {
-        return true
-      }
+      if (isStable) return true
     }
     return false
   }
