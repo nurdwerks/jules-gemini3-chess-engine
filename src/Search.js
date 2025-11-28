@@ -7,6 +7,8 @@ const SearchHeuristics = require('./SearchHeuristics');
 const MoveSorter = require('./MoveSorter');
 const Quiescence = require('./Quiescence');
 const SearchPruning = require('./SearchPruning');
+const StrengthLimiter = require('./StrengthLimiter');
+const fs = require('fs');
 
 class Search {
   constructor(board, tt = null, nnue = null) {
@@ -61,7 +63,6 @@ class Search {
     // Handle Limit Strength
     let maxNodes = Infinity;
     if (options.UCI_LimitStrength && options.UCI_Elo) {
-        const StrengthLimiter = require('./StrengthLimiter');
         maxNodes = StrengthLimiter.getNodesForElo(options.UCI_Elo);
     }
 
@@ -379,7 +380,6 @@ class Search {
     }
 
         if (this.debugMode) {
-            const fs = require('fs');
             try {
                 fs.writeFileSync(this.debugFile, JSON.stringify(this.debugTree, null, 2));
             } catch (e) {
