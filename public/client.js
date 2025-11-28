@@ -9,6 +9,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const moveHistoryElement = document.getElementById('move-history')
   const newGameBtn = document.getElementById('new-game-btn')
   const flipBoardBtn = document.getElementById('flip-board-btn')
+  const fenInput = document.getElementById('fen-input')
+  const loadFenBtn = document.getElementById('load-fen-btn')
+  const copyFenBtn = document.getElementById('copy-fen-btn')
+  const exportPgnBtn = document.getElementById('export-pgn-btn')
+  const toastContainer = document.getElementById('toast-container')
 
   const boardThemeSelect = document.getElementById('board-theme')
   const pieceSetSelect = document.getElementById('piece-set')
@@ -33,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentViewIndex = -1 // -1 means live view
   let currentPieceSet = 'svg' // 'svg' or 'unicode'
   let legalMovesForSelectedPiece = [] // Array of move objects from chess.js
+  let startingFen = 'startpos' // Track the initial position
 
   let whiteTime = 300000 // 5 minutes in ms
   let blackTime = 300000
@@ -308,6 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function startNewGame () {
     game.reset()
+    startingFen = 'startpos'
     selectedSquare = null
     legalMovesForSelectedPiece = []
     currentViewIndex = -1
@@ -458,9 +465,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return game.board()
     }
     const tempGame = new Chess()
-    const startFen = game.header().FEN
-    if (startFen) {
-      tempGame.load(startFen)
+    if (startingFen !== 'startpos') {
+      tempGame.load(startingFen)
     }
 
     const history = game.history({ verbose: true })
@@ -589,15 +595,24 @@ document.addEventListener('DOMContentLoaded', () => {
     npsValueElement.textContent = '-'
     pvLinesElement.textContent = ''
 
-    const history = game.history({ verbose: true })
-    const uciMoves = history.map(m => {
-      let uci = m.from + m.to
-      if (m.promotion) uci += m.promotion
-      return uci
-    })
+    let cmd = 'position '
+    if (startingFen === 'startpos') {
+      cmd += 'startpos'
+    } else {
+      cmd += `fen ${startingFen}`
+    }
 
-    const movesStr = uciMoves.join(' ')
-    socket.send(`position startpos moves ${movesStr}`)
+    const history = game.history({ verbose: true })
+    if (history.length > 0) {
+      const uciMoves = history.map(m => {
+        let uci = m.from + m.to
+        if (m.promotion) uci += m.promotion
+        return uci
+      })
+      cmd += ` moves ${uciMoves.join(' ')}`
+    }
+
+    socket.send(cmd)
     socket.send(`go wtime ${Math.floor(whiteTime)} btime ${Math.floor(blackTime)}`)
   }
 
@@ -623,7 +638,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function setBoardTheme (theme) {
     // Remove existing theme classes
     ['theme-green', 'theme-blue', 'theme-wood'].forEach(cls => {
-        boardElement.classList.remove(cls)
+      boardElement.classList.remove(cls)
     })
 
     if (theme !== 'classic') {
@@ -637,6 +652,89 @@ document.addEventListener('DOMContentLoaded', () => {
       b: { p: '♟', n: '♞', b: '♝', r: '♜', q: '♛', k: '♚' }
     }
     return map[color][type]
+  }
+
+  loadFenBtn.addEventListener('click', handleLoadFen)
+  copyFenBtn.addEventListener('click', handleCopyFen)
+  exportPgnBtn.addEventListener('click', handleExportPgn)
+
+  function handleLoadFen () {
+    const fen = fenInput.value.trim()
+    if (!fen) return
+
+    // Validate by trying to load
+    // Note: game.load() returns true if valid, false otherwise (in chess.js v0.10+)
+    // It also sets the board state.
+    const valid = game.load(fen)
+
+    if (valid) {
+      startingFen = fen
+      selectedSquare = null
+      legalMovesForSelectedPiece = []
+      currentViewIndex = -1
+
+      // Reset clocks for the new game state (or custom position)
+      whiteTime = 300000
+      blackTime = 300000
+      startClock()
+
+      renderBoard()
+      renderHistory()
+      renderClocks()
+
+      // Send new position to engine
+      // We also send 'ucinewgame' to clear hash etc, although strictly it's a new game.
+      socket.send('ucinewgame')
+      sendPositionAndGo()
+
+      showToast('FEN loaded successfully', 'success')
+      fenInput.value = ''
+    } else {
+      showToast('Invalid FEN string', 'error')
+    }
+  }
+
+  function handleCopyFen () {
+    const fen = game.fen()
+    navigator.clipboard.writeText(fen).then(() => {
+      showToast('FEN copied to clipboard', 'success')
+    }).catch(err => {
+      console.error('Failed to copy FEN: ', err)
+      showToast('Failed to copy FEN', 'error')
+    })
+  }
+
+  function handleExportPgn () {
+    const pgn = game.pgn()
+    const blob = new Blob([pgn], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'game.pgn'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    showToast('PGN exported', 'success')
+  }
+
+  function showToast (message, type = 'info') {
+    const toast = document.createElement('div')
+    toast.classList.add('toast')
+    if (type) toast.classList.add(type)
+
+    // Icon based on type could be added here
+    toast.textContent = message
+
+    toastContainer.appendChild(toast)
+
+    // Remove after 3 seconds
+    setTimeout(() => {
+      toast.style.animation = 'fadeOut 0.3s ease-out forwards'
+      toast.addEventListener('animationend', () => {
+        if (toast.parentNode) toast.parentNode.removeChild(toast)
+      })
+    }, 3000)
   }
 
   connect()
