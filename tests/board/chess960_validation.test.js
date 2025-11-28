@@ -1,6 +1,6 @@
 const Board = require('../../src/Board');
 
-describe.skip('Chess960 Validation', () => {
+describe('Chess960 Validation', () => {
     let board;
     beforeEach(() => {
         board = new Board();

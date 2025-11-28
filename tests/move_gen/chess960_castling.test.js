@@ -11,7 +11,7 @@ describe('Chess960 Castling', () => {
 
     it('should allow castling when king is on f1 and rook is on h1', () => {
         const board = new Board();
-        board.loadFen('5k1r/8/8/8/8/8/8/5K1R w FHfh - 0 1');
+        board.loadFen('5k1r/8/8/8/8/8/8/5K1R w Hh - 0 1');
         const moves = board.generateMoves();
         const castlingMoves = moves.filter(m => m.flags === 'k960');
         expect(castlingMoves.length).toBe(1);

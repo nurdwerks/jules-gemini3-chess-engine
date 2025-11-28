@@ -68,6 +68,22 @@ class FenParser {
     }
 
     static validatePosition(board) {
+        ['white', 'black'].forEach(color => {
+            const kingIndex = board.getKingIndex(color);
+            if (kingIndex !== -1) {
+                const kingCol = kingIndex & 7;
+                const rooks = board.castlingRooks[color].map(idx => idx & 7).sort((a, b) => a - b);
+
+                if (rooks.length > 1) {
+                    const minRook = rooks[0];
+                    const maxRook = rooks[rooks.length - 1];
+                    if (kingCol <= minRook || kingCol >= maxRook) {
+                        throw new Error('Invalid FEN string: King must be between Rooks.');
+                    }
+                }
+            }
+        });
+
         // Validate bishops on opposite colors
         const bishops = { white: [], black: [] };
 

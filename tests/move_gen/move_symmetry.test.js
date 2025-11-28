@@ -142,27 +142,27 @@ describe('makeMove/unmakeMove symmetry', () => {
   });
 
   test('chess960 white kingside castle (king on b-file)', () => {
-    testSymmetry('k7/8/8/8/8/8/PPPPPPPP/1K1R3R w DHdh - 0 1', 'b1g1');
+    testSymmetry('4k3/8/8/8/8/8/PPPPPPPP/RK5R w AHah - 0 1', 'b1g1');
   });
 
   test('chess960 white queenside castle (king on b-file)', () => {
-    testSymmetry('k7/8/8/8/8/8/PPPPPPPP/1K1R3R w DHdh - 0 1', 'b1c1');
+    testSymmetry('4k3/8/8/8/8/8/PPPPPPPP/RK5R w AHah - 0 1', 'b1c1');
   });
 
   test('chess960 black kingside castle (king on b-file)', () => {
-    testSymmetry('1k1r3r/pppppppp/8/8/8/8/8/K7 b dh - 0 1', 'b8g8');
+    testSymmetry('rk5r/pppppppp/8/8/8/8/8/4K3 b AHah - 0 1', 'b8g8');
   });
 
   test('chess960 black queenside castle (king on b-file)', () => {
-    testSymmetry('1k1r3r/pppppppp/8/8/8/8/8/K7 b dh - 0 1', 'b8c8');
+    testSymmetry('rk5r/pppppppp/8/8/8/8/8/4K3 b AHah - 0 1', 'b8c8');
   });
 
   test('chess960 white kingside castle (king on d-file)', () => {
-    testSymmetry('k7/8/8/8/8/8/PPPPPPPP/R2K3R w AHah - 0 1', 'd1g1');
+    testSymmetry('4k3/8/8/8/8/8/PPPPPPPP/R2K3R w AHah - 0 1', 'd1g1');
   });
 
   test('chess960 white queenside castle (king on d-file)', () => {
-    testSymmetry('k7/8/8/8/8/8/PPPPPPPP/R2K3R w AHah - 0 1', 'd1c1');
+    testSymmetry('4k3/8/8/8/8/8/PPPPPPPP/R2K3R w AHah - 0 1', 'd1c1');
   });
 
   test('chess960 black kingside castle (king on d-file)', () => {
