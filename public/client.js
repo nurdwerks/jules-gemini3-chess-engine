@@ -15,6 +15,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const npsValueElement = document.getElementById('nps-value')
   const pvLinesElement = document.getElementById('pv-lines')
 
+  const topPlayerName = document.getElementById('top-player-name')
+  const topPlayerClock = document.getElementById('top-player-clock')
+  const bottomPlayerName = document.getElementById('bottom-player-name')
+  const bottomPlayerClock = document.getElementById('bottom-player-clock')
+
   // Initialize chess.js
   const game = new Chess()
 
@@ -24,6 +29,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let gameStarted = false
   let currentViewIndex = -1 // -1 means live view
   let legalMovesForSelectedPiece = [] // Array of move objects from chess.js
+
+  let whiteTime = 300000 // 5 minutes in ms
+  let blackTime = 300000
+  let clockInterval = null
+  let lastFrameTime = 0
 
   function connect () {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -72,6 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
       currentViewIndex = -1
       renderBoard()
       renderHistory()
+      checkGameOver()
     }
   }
 
@@ -296,9 +307,100 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedSquare = null
     legalMovesForSelectedPiece = []
     currentViewIndex = -1
+    whiteTime = 300000
+    blackTime = 300000
+    startClock()
     renderBoard()
     renderHistory()
+    renderClocks()
     socket.send('ucinewgame')
+  }
+
+  function startClock () {
+    if (clockInterval) clearInterval(clockInterval)
+    lastFrameTime = Date.now()
+    clockInterval = setInterval(() => {
+      if (game.game_over() || !gameStarted) return
+
+      const now = Date.now()
+      const delta = now - lastFrameTime
+      lastFrameTime = now
+
+      if (game.turn() === 'w') {
+        whiteTime = Math.max(0, whiteTime - delta)
+      } else {
+        blackTime = Math.max(0, blackTime - delta)
+      }
+
+      renderClocks()
+      if (whiteTime <= 0 || blackTime <= 0) {
+        checkGameOver()
+      }
+    }, 100)
+  }
+
+  function checkGameOver () {
+    if (whiteTime <= 0) {
+      logToOutput('Game Over: White timeout')
+      clearInterval(clockInterval)
+    } else if (blackTime <= 0) {
+      logToOutput('Game Over: Black timeout')
+      clearInterval(clockInterval)
+    } else if (game.game_over()) {
+      if (game.in_checkmate()) logToOutput('Game Over: Checkmate')
+      else if (game.in_draw()) logToOutput('Game Over: Draw')
+      clearInterval(clockInterval)
+    }
+  }
+
+  function renderClocks () {
+    const formatTime = (ms) => {
+      const totalSeconds = Math.ceil(ms / 1000)
+      const m = Math.floor(totalSeconds / 60)
+      const s = totalSeconds % 60
+      return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+    }
+
+    const wStr = formatTime(whiteTime)
+    const bStr = formatTime(blackTime)
+
+    // Determine who is top/bottom based on flip
+    // Default: Top=Black, Bottom=White
+    // Flipped: Top=White, Bottom=Black
+    if (isFlipped) {
+      topPlayerName.textContent = 'White'
+      topPlayerClock.textContent = wStr
+      bottomPlayerName.textContent = 'Black'
+      bottomPlayerClock.textContent = bStr
+
+      _updateClockStyle(topPlayerClock, 'w')
+      _updateClockStyle(bottomPlayerClock, 'b')
+    } else {
+      topPlayerName.textContent = 'Black'
+      topPlayerClock.textContent = bStr
+      bottomPlayerName.textContent = 'White'
+      bottomPlayerClock.textContent = wStr
+
+      _updateClockStyle(topPlayerClock, 'b')
+      _updateClockStyle(bottomPlayerClock, 'w')
+    }
+  }
+
+  function _updateClockStyle (element, color) {
+    // Active if it is this color's turn and game not over
+    if (!game.game_over() && game.turn() === color) {
+      element.classList.add('active')
+    } else {
+      element.classList.remove('active')
+    }
+
+    // Low time warning (< 30s)
+    const time = color === 'w' ? whiteTime : blackTime
+    if (time < 30000) {
+      element.classList.add('low-time')
+    } else {
+      element.classList.remove('low-time')
+    }
   }
 
   function renderHistory () {
@@ -484,7 +586,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const movesStr = uciMoves.join(' ')
     socket.send(`position startpos moves ${movesStr}`)
-    socket.send('go wtime 300000 btime 300000 movestogo 40')
+    socket.send(`go wtime ${Math.floor(whiteTime)} btime ${Math.floor(blackTime)}`)
   }
 
   newGameBtn.addEventListener('click', () => {
@@ -494,6 +596,7 @@ document.addEventListener('DOMContentLoaded', () => {
   flipBoardBtn.addEventListener('click', () => {
     isFlipped = !isFlipped
     renderBoard()
+    renderClocks()
   })
 
   connect()

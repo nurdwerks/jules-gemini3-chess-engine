@@ -308,3 +308,42 @@ button:hover {
     background-color: var(--grafana-accent-blue);
     color: white;
 }
+
+/* Player Info & Clocks */
+.player-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 5px;
+    background-color: var(--grafana-panel-bg);
+}
+
+.player-name {
+    font-weight: 500;
+    color: var(--grafana-text-primary);
+}
+
+.clock {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--grafana-text-secondary);
+    background-color: var(--grafana-input-bg);
+    padding: 5px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--grafana-border);
+    min-width: 80px;
+    text-align: center;
+}
+
+.clock.active {
+    background-color: var(--grafana-input-bg);
+    color: var(--grafana-text-primary);
+    border-color: var(--grafana-accent-blue);
+    box-shadow: 0 0 5px rgba(51, 181, 229, 0.3);
+}
+
+.clock.low-time {
+    color: #F2495C; /* Grafana Red */
+    border-color: #F2495C;
+}
