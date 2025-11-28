@@ -16,7 +16,13 @@ class MoveSorter {
                  }
                  const victim = m.captured ? getPieceValue(m.captured) : 0;
                  const attacker = getPieceValue(m.piece);
-                 return 1000000 + victim * 10 - attacker + seeScore;
+                 let score = 1000000 + victim * 10 - attacker + seeScore;
+
+                 if (heuristics && options && options.UseCaptureHistory && m.captured) {
+                     score += heuristics.getCaptureHistory(m.piece.type, m.to, m.captured.type);
+                 }
+
+                 return score;
              }
 
              // Killers

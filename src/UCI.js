@@ -16,6 +16,7 @@ class UCI {
         UCI_Elo: 3000,
         AspirationWindow: 50,
         Contempt: 0,
+        UseCaptureHistory: true,
         UCI_UseNNUE: process.env.TEST_MODE === 'true' ? false : true,
         UCI_NNUE_File: 'https://tests.stockfishchess.org/api/nn/nn-46832cfbead3.nnue',
         BookFile: 'polyglot/gm2001.bin',
@@ -84,6 +85,7 @@ class UCI {
         this.output(`option name AspirationWindow type spin default ${this.options.AspirationWindow} min 10 max 500`);
         this.output(`option name Contempt type spin default ${this.options.Contempt} min -100 max 100`);
         this.output(`option name UseHistory type check default true`);
+        this.output(`option name UseCaptureHistory type check default true`);
         this.output(`option name UCI_UseNNUE type check default ${this.options.UCI_UseNNUE}`);
         this.output(`option name UCI_NNUE_File type string default ${this.options.UCI_NNUE_File}`);
         this.output(`option name BookFile type string default ${this.options.BookFile}`);

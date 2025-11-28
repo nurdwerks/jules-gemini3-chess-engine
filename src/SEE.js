@@ -231,9 +231,9 @@ class SEE {
             }
         }
 
-        while (depth > 0) {
-            gain[depth - 1] = -Math.max(-gain[depth - 1], gain[depth]);
+        while (depth > 1) {
             depth--;
+            gain[depth - 1] = -Math.max(-gain[depth - 1], gain[depth]);
         }
         return gain[0];
     }
