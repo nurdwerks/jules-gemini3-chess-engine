@@ -813,3 +813,16 @@ The following Epics were part of the initial development phase and are either co
     *   *Description:* Use the negative history to support more aggressive pruning logic (e.g. History Pruning).
     *   *Acceptance Criteria:*
         *   [x] Elo gain verified.
+
+### Epic 55: Move Validation and Legal Move Highlighting
+**Size:** Medium (3-5 days)
+**Description:** Implement robust move validation in the client to prevent illegal moves and visual cues to guide the user.
+**User Stories:**
+1.  **Legal Move Generation (M)**
+    *   *Description:* Implement or integrate a lightweight JS chess library (e.g., chess.js) or query the engine to determine legal moves for the current position.
+    *   *Acceptance Criteria:*
+        *   [x] Users cannot make illegal moves (e.g., leaving king in check).
+2.  **Highlighting (S)**
+    *   *Description:* When a piece is selected, highlight all legal destination squares.
+    *   *Acceptance Criteria:*
+        *   [x] Clicking a piece shows dots or highlights on valid target squares.

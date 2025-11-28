@@ -12,19 +12,6 @@ Benchmarking functions can be written and verified, but performance-critical ben
 
 ## Active Roadmap
 
-### Epic 55: Move Validation and Legal Move Highlighting
-**Size:** Medium (3-5 days)
-**Description:** Implement robust move validation in the client to prevent illegal moves and visual cues to guide the user.
-**User Stories:**
-1.  **Legal Move Generation (M)**
-    *   *Description:* Implement or integrate a lightweight JS chess library (e.g., chess.js) or query the engine to determine legal moves for the current position.
-    *   *Acceptance Criteria:*
-        *   [ ] Users cannot make illegal moves (e.g., leaving king in check).
-2.  **Highlighting (S)**
-    *   *Description:* When a piece is selected, highlight all legal destination squares.
-    *   *Acceptance Criteria:*
-        *   [ ] Clicking a piece shows dots or highlights on valid target squares.
-
 ### Epic 56: Enhanced Search Visualization
 **Size:** Medium (3-5 days)
 **Description:** Replace the raw text log with a visual dashboard for engine search data.

@@ -78,20 +78,8 @@ describe('PerftTT Component', () => {
   })
 
   test('Collision handling: Always replace (different key)', () => {
-    // Force collision by using small TT
-    const sizeMB = 16 / (1024 * 1024) // 16 bytes = 1 entry?
-    // Min size logic might make it bigger.
-    // 16 bytes. count = 1. size = 1.
-    const tt = new PerftTT(0.000016) // Small enough for size=1?
-    // Actually, let's just assume size is power of 2 and construct keys that collide.
-    // Index = key & mask.
-    // If we make a TT with size 4, mask is 3.
-    // Keys 4 (100) and 8 (1000) map to 0?
-    // 4 & 3 = 0. 8 & 3 = 0.
-
     // Use standard size but pick colliding keys.
     const ttStandard = new PerftTT(1) // Size 65536, Mask 65535
-    const mask = BigInt(65535)
     const key1 = 1n
     const key2 = 1n | (1n << 20n) // key2 & mask == 1n & mask == 1
 
