@@ -29,6 +29,8 @@ const PARAMS = {
     RookMobilityBonus: 2,
     QueenMobilityBonus: 3,
     ShieldBonus: 5,
+    KnightOutpostBonus: 20,
+    BishopOutpostBonus: 10,
 };
 
 // PSTs (same as before)
@@ -217,15 +219,20 @@ class Evaluation {
                          pawnStructure = Evaluation.evaluatePawnStructure(board, i, color);
                     }
 
+                    let outpostBonus = 0;
+                    if (type === 'knight' || type === 'bishop') {
+                        outpostBonus = Evaluation.evaluateOutpost(board, i, type, color);
+                    }
+
                     if (color === 'white') {
                         pstValue = PSTS[type][i];
-                        score += (value + pstValue + pawnStructure + mobility);
+                        score += (value + pstValue + pawnStructure + mobility + outpostBonus);
                     } else {
                         const row = i >> 4;
                         const col = i & 7;
                         const flippedIndex = ((7 - row) << 4) | col;
                         pstValue = PSTS[type][flippedIndex];
-                        score -= (value + pstValue + pawnStructure + mobility);
+                        score -= (value + pstValue + pawnStructure + mobility + outpostBonus);
                     }
 
                     bb &= (bb - 1n);
@@ -241,6 +248,72 @@ class Evaluation {
         }
 
         return board.activeColor === 'w' ? score : -score;
+    }
+
+    static evaluateOutpost(board, index, type, color) {
+        // Only for Knights and Bishops
+        if (type !== 'knight' && type !== 'bishop') return 0;
+
+        const sq64 = Bitboard.to64(index);
+        const rank = Math.floor(sq64 / 8); // 0-7. 0=Rank1.
+        const col = sq64 % 8;
+
+        let rankBonusMultiplier = 0;
+
+        if (color === 'white') {
+            if (rank < 3 || rank > 5) return 0; // Only Ranks 4, 5, 6 (Indices 3,4,5)
+            rankBonusMultiplier = (rank - 2);
+        } else {
+            if (rank < 2 || rank > 4) return 0; // Ranks 6, 5, 4 (Indices 5,4,3) for Black
+            rankBonusMultiplier = (5 - rank);
+        }
+
+        // 1. Supported by friendly pawn
+        const friendlyPawns = board.bitboards[color] & board.bitboards.pawn;
+        let supportMask = 0n;
+
+        if (color === 'white') {
+            if (rank > 0) {
+                if (col > 0) supportMask |= (1n << BigInt((rank - 1) * 8 + (col - 1)));
+                if (col < 7) supportMask |= (1n << BigInt((rank - 1) * 8 + (col + 1)));
+            }
+        } else {
+            if (rank < 7) {
+                if (col > 0) supportMask |= (1n << BigInt((rank + 1) * 8 + (col - 1)));
+                if (col < 7) supportMask |= (1n << BigInt((rank + 1) * 8 + (col + 1)));
+            }
+        }
+
+        if ((friendlyPawns & supportMask) === 0n) return 0; // Not supported
+
+        // 2. Not attackable by enemy pawn
+        const opponent = color === 'white' ? 'black' : 'white';
+        const enemyPawns = board.bitboards[opponent] & board.bitboards.pawn;
+
+        let attackMask = 0n;
+        const checkFiles = [];
+        if (col > 0) checkFiles.push(col - 1);
+        if (col < 7) checkFiles.push(col + 1);
+
+        for (const f of checkFiles) {
+            if (color === 'white') {
+                // Check Black pawns at Rank >= rank + 1
+                 for (let r = rank + 1; r < 8; r++) {
+                     attackMask |= (1n << BigInt(r * 8 + f));
+                 }
+            } else {
+                // Check White pawns at Rank <= rank - 1
+                 for (let r = 0; r < rank; r++) {
+                     attackMask |= (1n << BigInt(r * 8 + f));
+                 }
+            }
+        }
+
+        if ((enemyPawns & attackMask) !== 0n) return 0; // Attackable
+
+        // Is Outpost!
+        const baseBonus = type === 'knight' ? PARAMS.KnightOutpostBonus : PARAMS.BishopOutpostBonus;
+        return baseBonus * rankBonusMultiplier;
     }
 
     static updateParam(name, value) {
