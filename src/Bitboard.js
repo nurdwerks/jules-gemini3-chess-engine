@@ -1,5 +1,4 @@
 const Bitboard = {
-  // Basic Bit Manipulation
   popcnt (bb) {
     let c = 0
     while (bb > 0n) {
@@ -21,7 +20,6 @@ const Bitboard = {
 
   msb (bb) {
     if (bb === 0n) return -1
-    // Using string conversion is slow but easy, or just loop down
     let idx = 63
     const one = 1n
     while (idx >= 0) {
@@ -43,11 +41,9 @@ const Bitboard = {
     return (bb & (1n << BigInt(square))) !== 0n
   },
 
-  // Pre-computed tables
   knightAttacks: new BigUint64Array(64),
   kingAttacks: new BigUint64Array(64),
 
-  // Magic Bitboards Data
   rookMasks: new BigUint64Array(64),
   bishopMasks: new BigUint64Array(64),
   rookMagics: new BigUint64Array(64),
@@ -113,19 +109,6 @@ const Bitboard = {
     return this.kingAttacks[sq]
   },
 
-  // --- Magic Bitboards ---
-
-  randomBigInt () {
-    // 64-bit random
-    const u1 = BigInt(Math.floor(Math.random() * 0xFFFFFFFF))
-    const u2 = BigInt(Math.floor(Math.random() * 0xFFFFFFFF))
-    return (u1 << 32n) | u2
-  },
-
-  randomBigIntFewBits () {
-    return this.randomBigInt() & this.randomBigInt() & this.randomBigInt()
-  },
-
   maskRook (sq) {
     let attacks = 0n
     const r = Math.floor(sq / 8)
@@ -148,66 +131,37 @@ const Bitboard = {
     return attacks
   },
 
-  calcRookAttacks (sq, block) {
+  calcSlidingAttacks (sq, block, directions) {
     let attacks = 0n
     const r = Math.floor(sq / 8)
     const c = sq % 8
-    for (let tr = r + 1; tr < 8; tr++) {
-      const t = 1n << BigInt(tr * 8 + c)
-      attacks |= t
-      if ((block & t) !== 0n) break
-    }
-    for (let tr = r - 1; tr >= 0; tr--) {
-      const t = 1n << BigInt(tr * 8 + c)
-      attacks |= t
-      if ((block & t) !== 0n) break
-    }
-    for (let tc = c + 1; tc < 8; tc++) {
-      const t = 1n << BigInt(r * 8 + tc)
-      attacks |= t
-      if ((block & t) !== 0n) break
-    }
-    for (let tc = c - 1; tc >= 0; tc--) {
-      const t = 1n << BigInt(r * 8 + tc)
-      attacks |= t
-      if ((block & t) !== 0n) break
+
+    for (const { dr, dc } of directions) {
+      for (let i = 1; i < 8; i++) {
+        const tr = r + dr * i
+        const tc = c + dc * i
+        if (tr < 0 || tr >= 8 || tc < 0 || tc >= 8) break
+        const t = 1n << BigInt(tr * 8 + tc)
+        attacks |= t
+        if ((block & t) !== 0n) break
+      }
     }
     return attacks
+  },
+
+  calcRookAttacks (sq, block) {
+    return this.calcSlidingAttacks(sq, block, [
+      { dr: 1, dc: 0 }, { dr: -1, dc: 0 }, { dr: 0, dc: 1 }, { dr: 0, dc: -1 }
+    ])
   },
 
   calcBishopAttacks (sq, block) {
-    let attacks = 0n
-    const r = Math.floor(sq / 8)
-    const c = sq % 8
-    for (let tr = r + 1, tc = c + 1; tr < 8 && tc < 8; tr++, tc++) {
-      const t = 1n << BigInt(tr * 8 + tc)
-      attacks |= t
-      if ((block & t) !== 0n) break
-    }
-    for (let tr = r - 1, tc = c + 1; tr >= 0 && tc < 8; tr--, tc++) {
-      const t = 1n << BigInt(tr * 8 + tc)
-      attacks |= t
-      if ((block & t) !== 0n) break
-    }
-    for (let tr = r + 1, tc = c - 1; tr < 8 && tc >= 0; tr++, tc--) {
-      const t = 1n << BigInt(tr * 8 + tc)
-      attacks |= t
-      if ((block & t) !== 0n) break
-    }
-    for (let tr = r - 1, tc = c - 1; tr >= 0 && tc >= 0; tr--, tc--) {
-      const t = 1n << BigInt(tr * 8 + tc)
-      attacks |= t
-      if ((block & t) !== 0n) break
-    }
-    return attacks
-  },
-
-  transform (occupancy, magic, shift) {
-    return ((occupancy * magic) & 0xFFFFFFFFFFFFFFFFn) >> BigInt(shift)
+    return this.calcSlidingAttacks(sq, block, [
+      { dr: 1, dc: 1 }, { dr: -1, dc: 1 }, { dr: 1, dc: -1 }, { dr: -1, dc: -1 }
+    ])
   },
 
   initMagics () {
-    // Optimized init using slower method for now, but fully allocating tables
     this.rookTable = new BigUint64Array(262144)
     this.bishopTable = new BigUint64Array(32768)
 
@@ -230,7 +184,6 @@ const Bitboard = {
     }
   },
 
-  // The method to get attacks
   getRookAttacks (sq, occupancy) {
     return this.calcRookAttacks(sq, occupancy)
   },
