@@ -30,12 +30,12 @@ Benchmarking functions can be written and verified, but performance-critical ben
 1.  **ProbCut Logic (S)**
     *   *Description:* Perform a shallow search with a widened window if static eval is very high/low.
     *   *Acceptance Criteria:*
-        *   [ ] Triggers at appropriate depths.
-        *   [ ] Prunes nodes successfully.
+        *   [x] Triggers at appropriate depths.
+        *   [x] Prunes nodes successfully.
 2.  **Regression Testing (S)**
     *   *Description:* Ensure no significant Elo loss or tactical blindness.
     *   *Acceptance Criteria:*
-        *   [ ] Passes tactical test suites.
+        *   [x] Passes tactical test suites.
         *   [ ] Neutral or positive Elo in SPRT.
 
 ### Epic 47: Outpost Evaluation

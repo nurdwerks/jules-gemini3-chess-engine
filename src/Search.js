@@ -44,7 +44,8 @@ class Search {
         nodes: 0,
         pruning: {
             nullMove: 0,
-            futility: 0
+            futility: 0,
+            probCut: 0
         }
     };
   }
@@ -96,7 +97,8 @@ class Search {
         nodes: 0,
         pruning: {
             nullMove: 0,
-            futility: 0
+            futility: 0,
+            probCut: 0
         }
     };
     this.stopFlag = false;
@@ -630,7 +632,23 @@ class Search {
           }
       }
 
-      // Epic 17: ProbCut (Still commented out pending deeper testing strategy)
+      // Epic 46: ProbCut Pruning
+      // Condition: depth >= 5, not in check, |beta| < 20000 (avoid mate scores)
+      if (depth >= 5 && !inCheck && Math.abs(beta) < 20000) {
+          const PROBCUT_MARGIN = 200;
+          const PROBCUT_REDUCTION = 4;
+
+          // Shallow search with a widened window
+          const probCutBeta = beta + PROBCUT_MARGIN;
+
+          const score = this.alphaBeta(depth - PROBCUT_REDUCTION, probCutBeta - 1, probCutBeta, prevMove);
+
+          if (score >= probCutBeta) {
+              this.stats.pruning.probCut++;
+              return beta;
+          }
+      }
+
       // Epic 24: Multi-Cut Pruning (MCP)
       // If not PV (alpha == beta - 1 implied by window check usually, or explicitly passed isPV),
       // and depth is sufficient.
