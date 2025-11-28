@@ -60,10 +60,9 @@ class UCI {
   }
 
   stopWorkers() {
-    for (const worker of this.workers) {
-        worker.postMessage({ type: 'quit' });
-    }
+    const promises = this.workers.map(worker => worker.terminate());
     this.workers = [];
+    return Promise.all(promises);
   }
 
   processCommand(command) {

@@ -12,8 +12,8 @@ describe('UCI Options', () => {
     uci = new UCI(mockLog);
   });
 
-  afterEach(() => {
-      if (uci) uci.stopWorkers();
+  afterEach(async () => {
+      if (uci) await uci.stopWorkers();
   });
 
   test('uci command reports required options', () => {
