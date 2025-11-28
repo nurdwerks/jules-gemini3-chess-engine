@@ -16,7 +16,7 @@ class UCI {
         UCI_Elo: 3000,
         AspirationWindow: 50,
         Contempt: 0,
-        UCI_UseNNUE: true,
+        UCI_UseNNUE: process.env.TEST_MODE === 'true' ? false : true,
         UCI_NNUE_File: 'https://tests.stockfishchess.org/api/nn/nn-46832cfbead3.nnue',
         BookFile: 'polyglot/gm2001.bin',
     };
@@ -28,7 +28,10 @@ class UCI {
     // Initialize NNUE
     this.nnue = new NNUE();
     if (this.options.UCI_UseNNUE) {
-      this.nnue.loadNetwork(this.options.UCI_NNUE_File);
+      this.nnue.loadNetwork(this.options.UCI_NNUE_File).catch(err => {
+          this.output(`info string Failed to load NNUE: ${err.message}`);
+          this.options.UCI_UseNNUE = false;
+      });
     }
 
     // Initialize Book
@@ -258,7 +261,10 @@ class UCI {
             this.startWorkers();
         } else if (name === 'UCI_UseNNUE' || name === 'UCI_NNUE_File') {
             if (this.options.UCI_UseNNUE) {
-                this.nnue.loadNetwork(this.options.UCI_NNUE_File);
+                this.nnue.loadNetwork(this.options.UCI_NNUE_File).catch(err => {
+                    this.output(`info string Failed to load NNUE: ${err.message}`);
+                    this.options.UCI_UseNNUE = false;
+                });
             }
         } else if (name === 'BookFile') {
             this.book.loadBook(value);
