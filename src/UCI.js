@@ -196,12 +196,24 @@ class UCI {
     const tm = new TimeManager(this.board);
     const timeLimits = tm.parseGoCommand(args, this.board.activeColor);
     let depth = 64;
+
+    const nodesIdx = args.indexOf('nodes');
+    let nodes = null;
+    if (nodesIdx !== -1) {
+        nodes = parseInt(args[nodesIdx + 1], 10);
+    }
+
     if (args.includes('depth')) {
         depth = parseInt(args[args.indexOf('depth') + 1], 10);
         if (!args.includes('wtime') && !args.includes('movetime')) {
              timeLimits.hardLimit = Infinity;
              timeLimits.softLimit = Infinity;
         }
+    } else if (nodes !== null) {
+        // If nodes specified but not depth, search deep (limited by nodes)
+        depth = 128;
+        timeLimits.hardLimit = Infinity;
+        timeLimits.softLimit = Infinity;
     } else if (!args.includes('wtime') && !args.includes('movetime') && !args.includes('infinite')) {
         depth = 5;
     }
@@ -210,6 +222,7 @@ class UCI {
     const searchOptions = {
         ...this.options,
         searchMoves,
+        nodes,
         onInfo: (info) => this.output(`info ${info}`)
     };
     for (const worker of this.workers) {
