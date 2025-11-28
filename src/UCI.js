@@ -17,7 +17,7 @@ class UCI {
         AspirationWindow: 50,
         Contempt: 0,
         UseCaptureHistory: true,
-        UCI_UseNNUE: process.env.TEST_MODE === 'true' ? false : true,
+        UCI_UseNNUE: (process.env.TEST_MODE === 'true' || process.env.NODE_ENV === 'test') ? false : true,
         UCI_NNUE_File: 'https://tests.stockfishchess.org/api/nn/nn-46832cfbead3.nnue',
         BookFile: 'polyglot/gm2001.bin',
     };
