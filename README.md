@@ -12,19 +12,6 @@ Benchmarking functions can be written and verified, but performance-critical ben
 
 ## Active Roadmap
 
-### Epic 56: Enhanced Search Visualization
-**Size:** Medium (3-5 days)
-**Description:** Replace the raw text log with a visual dashboard for engine search data.
-**User Stories:**
-1.  **PV Line Display (S)**
-    *   *Description:* Show the Principal Variation (PV) line in a clean, readable format (e.g., using piece symbols).
-    *   *Acceptance Criteria:*
-        *   [ ] Best line is clearly visible and updates in real-time.
-2.  **Search Stats (S)**
-    *   *Description:* Display depth, nodes per second, and current evaluation score in dedicated statistic cards.
-    *   *Acceptance Criteria:*
-        *   [ ] Key metrics are prominent and easy to read.
-
 ### Epic 57: Game History and Notation Panel
 **Size:** Small (2 days)
 **Description:** Display the game's move history in standard chess notation.
@@ -131,4 +118,4 @@ Benchmarking functions can be written and verified, but performance-critical ben
 
 ## Archived Roadmap (Completed or Superseded)
 
-See [archive/ARCHIVED_EPICS.md](archive/ARCHIVED_EPICS.md) for Epics 1-54.
+See [archive/ARCHIVED_EPICS.md](archive/ARCHIVED_EPICS.md) for Epics 1-56.
