@@ -10,10 +10,10 @@ describe('History Malus', () => {
   beforeEach(() => {
     heuristics = new SearchHeuristics()
     board = {
-        activeColor: 'w',
-        toRowCol: (idx) => ({ row: 0, col: 0 }),
-        zobristKey: BigInt(0),
-        getPiece: () => ({ type: 'pawn', color: 'black' })
+      activeColor: 'w',
+      toRowCol: (idx) => ({ row: 0, col: 0 }),
+      zobristKey: BigInt(0),
+      getPiece: () => ({ type: 'pawn', color: 'black' })
     }
   })
 
@@ -39,8 +39,8 @@ describe('History Malus', () => {
     const depth = 100 // Large penalty
 
     // Decrease repeatedly
-    for(let i=0; i<1000; i++) {
-        heuristics.subtractHistoryScore(side, from, to, depth)
+    for (let i = 0; i < 1000; i++) {
+      heuristics.subtractHistoryScore(side, from, to, depth)
     }
 
     expect(heuristics.getHistoryScore(side, from, to)).toBeLessThan(0)
@@ -63,28 +63,28 @@ describe('History Malus', () => {
   })
 
   test('shouldPruneLateMove prunes moves with bad history', () => {
-      const search = new Search(board, new TranspositionTable(1))
-      search.options = { UseHistory: true }
+    const search = new Search(board, new TranspositionTable(1))
+    search.options = { UseHistory: true }
 
-      const move = { from: 10, to: 20, flags: 'n' } // Quiet
+    const move = { from: 10, to: 20, flags: 'n' } // Quiet
 
-      // Set very bad history
-      // Penalty depth 100 => 10000
-      search.heuristics.subtractHistoryScore('w', 10, 20, 100)
+    // Set very bad history
+    // Penalty depth 100 => 10000
+    search.heuristics.subtractHistoryScore('w', 10, 20, 100)
 
-      // Threshold for depth 1 is -4000. Current score is -10000.
-      const result = search.shouldPruneLateMove(1, 0, false, move)
-      expect(result).toBe(true)
+    // Threshold for depth 1 is -4000. Current score is -10000.
+    const result = search.shouldPruneLateMove(1, 0, false, move)
+    expect(result).toBe(true)
   })
 
   test('shouldPruneLateMove does not prune moves with neutral history', () => {
-      const search = new Search(board, new TranspositionTable(1))
-      search.options = { UseHistory: true }
+    const search = new Search(board, new TranspositionTable(1))
+    search.options = { UseHistory: true }
 
-      const move = { from: 30, to: 40, flags: 'n' }
-      // History is 0
+    const move = { from: 30, to: 40, flags: 'n' }
+    // History is 0
 
-      const result = search.shouldPruneLateMove(1, 0, false, move)
-      expect(result).toBe(false)
+    const result = search.shouldPruneLateMove(1, 0, false, move)
+    expect(result).toBe(false)
   })
 })

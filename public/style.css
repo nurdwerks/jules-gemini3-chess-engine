@@ -89,6 +89,26 @@ body {
   justify-content: center;
   align-items: center;
   cursor: pointer;
+  position: relative;
+}
+
+.legal-move-hint::after {
+    content: '';
+    position: absolute;
+    width: 20%;
+    height: 20%;
+    background-color: rgba(51, 181, 229, 0.6);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.legal-move-hint.capture-hint::after {
+    width: 80%;
+    height: 80%;
+    background: transparent;
+    border: 4px solid rgba(51, 181, 229, 0.6);
+    border-radius: 50%;
+    box-sizing: border-box;
 }
 
 .piece {
