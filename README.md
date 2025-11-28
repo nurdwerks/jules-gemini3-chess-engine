@@ -12,19 +12,6 @@ Benchmarking functions can be written and verified, but performance-critical ben
 
 ## Active Roadmap
 
-### Epic 53: Perft Optimization
-**Size:** Small (2 days)
-**Description:** Optimize the `perft` function to allow for faster regression testing and debugging.
-**User Stories:**
-1.  **Bulk Counting (S)**
-    *   *Description:* At `depth=1`, simply count the generated moves instead of making/unmaking them.
-    *   *Acceptance Criteria:*
-        *   [ ] Perft speed increases significantly.
-2.  **Transposition Table (S)**
-    *   *Description:* Use a dedicated TT to cache perft results for identical positions.
-    *   *Acceptance Criteria:*
-        *   [ ] Massive speedup for high-depth perft checks.
-
 ### Epic 54: History Malus
 **Size:** Small (1-2 days)
 **Description:** Penalize moves that consistently fail low by reducing their history score, allowing them to be pruned later.
@@ -170,4 +157,4 @@ Benchmarking functions can be written and verified, but performance-critical ben
 
 ## Archived Roadmap (Completed or Superseded)
 
-See [archive/ARCHIVED_EPICS.md](archive/ARCHIVED_EPICS.md) for Epics 1-48.
+See [archive/ARCHIVED_EPICS.md](archive/ARCHIVED_EPICS.md) for Epics 1-53.

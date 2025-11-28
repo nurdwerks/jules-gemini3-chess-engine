@@ -788,3 +788,16 @@ The following Epics were part of the initial development phase and are either co
     *   *Acceptance Criteria:*
         *   [x] Detects open/semi-open files and advancing enemy pawns.
         *   [x] Evaluates storm danger based on distance to King.
+
+### Epic 53: Perft Optimization
+**Size:** Small (2 days)
+**Description:** Optimize the `perft` function to allow for faster regression testing and debugging.
+**User Stories:**
+1.  **Bulk Counting (S)**
+    *   *Description:* At `depth=1`, simply count the generated moves instead of making/unmaking them.
+    *   *Acceptance Criteria:*
+        *   [x] Perft speed increases significantly.
+2.  **Transposition Table (S)**
+    *   *Description:* Use a dedicated TT to cache perft results for identical positions.
+    *   *Acceptance Criteria:*
+        *   [x] Massive speedup for high-depth perft checks.

@@ -4,6 +4,7 @@ const Bitboard = require('./Bitboard')
 const trace = require('./trace')
 const FenParser = require('./FenParser')
 const MoveGenerator = require('./MoveGenerator')
+const PerftTT = require('./PerftTT')
 
 class Board {
   constructor () {
@@ -593,17 +594,36 @@ class Board {
     return count >= 2
   }
 
-  perft (depth) {
+  perft (depth, tt = null) {
     trace(`perft(depth: ${depth})`)
     if (depth === 0) return 1
+
+    if (!tt) {
+      tt = new PerftTT(64)
+    }
+
+    const cached = tt.probe(this.zobristKey, depth)
+    if (cached !== null) {
+      return Number(cached)
+    }
+
     const moves = this.generateMoves()
+
+    if (depth === 1) {
+      const count = moves.length
+      tt.save(this.zobristKey, depth, count)
+      return count
+    }
+
     trace(`perft(depth: ${depth}, moves: ${moves.length})`)
     let nodes = 0
     for (const move of moves) {
       const state = this.applyMove(move)
-      nodes += this.perft(depth - 1)
+      nodes += this.perft(depth - 1, tt)
       this.undoApplyMove(move, state)
     }
+
+    tt.save(this.zobristKey, depth, nodes)
     return nodes
   }
 
