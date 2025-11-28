@@ -1,5 +1,4 @@
 const UCI = require('../../src/UCI')
-const Board = require('../../src/Board')
 
 // Mock console.log to capture output
 let output = []

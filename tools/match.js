@@ -181,10 +181,7 @@ function playGame (gameId, startFen, outputFile, enginePath) {
       })
 
       if (!move) {
-        console.error(`Illegal move by ${board.activeColor}: ${moveStr}`)
-        gameOver = true
-        result = (board.activeColor === 'w') ? 0.0 : 1.0
-        saveAndCleanup(result)
+        handleIllegalMove(moveStr)
         return
       }
 
@@ -192,18 +189,7 @@ function playGame (gameId, startFen, outputFile, enginePath) {
       moves.push(moveStr)
       gamePositions.push(board.generateFen())
 
-      if (isCheckmate(board)) {
-        gameOver = true
-        result = (board.activeColor === 'w') ? 0.0 : 1.0
-        saveAndCleanup(result)
-        return
-      }
-      if (isStalemate(board) || board.isDrawByRepetition() || board.isDrawBy50Moves()) {
-        gameOver = true
-        result = 0.5
-        saveAndCleanup(result)
-        return
-      }
+      if (checkGameOverConditions()) return
 
       const nextEngine = board.activeColor === 'w' ? engine1 : engine2
       const positionCmd = startFen === 'startpos'
@@ -211,6 +197,29 @@ function playGame (gameId, startFen, outputFile, enginePath) {
         : `position fen ${startFen} moves ${moves.join(' ')}`
       send(nextEngine, positionCmd)
       send(nextEngine, 'go movetime 100')
+    }
+
+    const handleIllegalMove = (moveStr) => {
+      console.error(`Illegal move by ${board.activeColor}: ${moveStr}`)
+      gameOver = true
+      result = (board.activeColor === 'w') ? 0.0 : 1.0
+      saveAndCleanup(result)
+    }
+
+    const checkGameOverConditions = () => {
+      if (isCheckmate(board)) {
+        gameOver = true
+        result = (board.activeColor === 'w') ? 0.0 : 1.0
+        saveAndCleanup(result)
+        return true
+      }
+      if (isStalemate(board) || board.isDrawByRepetition() || board.isDrawBy50Moves()) {
+        gameOver = true
+        result = 0.5
+        saveAndCleanup(result)
+        return true
+      }
+      return false
     }
 
     const saveAndCleanup = (res) => {
@@ -233,31 +242,42 @@ function playGame (gameId, startFen, outputFile, enginePath) {
         buffer = lines.pop()
 
         for (const line of lines) {
-          // console.log(`[${name}] ${line}`);
-          if (line.trim() === 'uciok') {
-            if (name === 'E1') engine1Ready = true
-            else engine2Ready = true
-
-            if (engine1Ready && engine2Ready) {
-              const firstEngine = board.activeColor === 'w' ? engine1 : engine2
-              send(firstEngine, `position fen ${startFen === 'startpos' ? 'startpos' : startFen}`)
-              send(firstEngine, 'go movetime 100')
-            }
-          }
-          if (line.startsWith('bestmove')) {
-            const parts = line.split(' ')
-            const move = parts[1]
-            if (move === '(none)') {
-              if (board.isInCheck()) result = (board.activeColor === 'w') ? 0.0 : 1.0
-              else result = 0.5
-              gameOver = true
-              saveAndCleanup(result)
-            } else {
-              onMove(move)
-            }
-          }
+          handleEngineLine(line, name)
         }
       })
+    }
+
+    const handleEngineLine = (line, name) => {
+      if (line.trim() === 'uciok') {
+        handleUciOk(name)
+      }
+      if (line.startsWith('bestmove')) {
+        handleBestMoveLine(line)
+      }
+    }
+
+    const handleUciOk = (name) => {
+      if (name === 'E1') engine1Ready = true
+      else engine2Ready = true
+
+      if (engine1Ready && engine2Ready) {
+        const firstEngine = board.activeColor === 'w' ? engine1 : engine2
+        send(firstEngine, `position fen ${startFen === 'startpos' ? 'startpos' : startFen}`)
+        send(firstEngine, 'go movetime 100')
+      }
+    }
+
+    const handleBestMoveLine = (line) => {
+      const parts = line.split(' ')
+      const move = parts[1]
+      if (move === '(none)') {
+        if (board.isInCheck()) result = (board.activeColor === 'w') ? 0.0 : 1.0
+        else result = 0.5
+        gameOver = true
+        saveAndCleanup(result)
+      } else {
+        onMove(move)
+      }
     }
 
     setupEngine(engine1, 'E1')

@@ -1,5 +1,4 @@
 const Search = require('./Search')
-const { TranspositionTable } = require('./TranspositionTable')
 
 class Bench {
   static run (uci, depth = 12) {
@@ -13,7 +12,6 @@ class Bench {
 
     const runBenchmark = (threads) => {
       let totalNodes = 0
-      let totalTime = 0
       const startTotal = Date.now()
 
       console.log(`\nRunning with ${threads} threads`)
@@ -36,7 +34,6 @@ class Bench {
         console.log(`Nodes: ${nodes}, Time: ${time}ms, NPS: ${Math.floor(nodes / (time / 1000 + 0.001))}`)
 
         totalNodes += nodes
-        totalTime += time
       }
       const totalElapsed = Date.now() - startTotal
       console.log('---------------------------')

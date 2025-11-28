@@ -1,3 +1,4 @@
+/* eslint-env browser */
 document.addEventListener('DOMContentLoaded', () => {
   const boardElement = document.getElementById('chessboard')
   const statusElement = document.getElementById('status')
@@ -25,35 +26,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
     socket.onmessage = (event) => {
       const msg = event.data
-      // logToOutput(msg);
-
-      const parts = msg.split(' ')
-      if (msg.startsWith('option name')) {
-        parseOption(msg)
-      } else if (parts[0] === 'uciok') {
-        socket.send('isready')
-      } else if (parts[0] === 'readyok') {
-        if (!gameStarted) {
-          gameStarted = true
-          startNewGame()
-        }
-      } else if (parts[0] === 'bestmove') {
-        const move = parts[1]
-        if (move && move !== '(none)') {
-          makeMove(move)
-          turn = (turn === 'w') ? 'b' : 'w'
-          renderBoard()
-        }
-      } else if (parts[0] === 'info') {
-        // Optionally parse score/depth here
-        if (msg.includes('score cp') || msg.includes('mate')) {
-          logToOutput(msg)
-        }
-      }
+      _handleSocketMessage(msg)
     }
 
     socket.onclose = () => {
       statusElement.textContent = 'Status: Disconnected'
+    }
+  }
+
+  function _handleSocketMessage (msg) {
+    const parts = msg.split(' ')
+    if (msg.startsWith('option name')) parseOption(msg)
+    else if (parts[0] === 'uciok') socket.send('isready')
+    else if (parts[0] === 'readyok') _handleReadyOk()
+    else if (parts[0] === 'bestmove') _handleBestMoveMsg(parts)
+    else if (parts[0] === 'info') _handleInfoMsg(msg)
+  }
+
+  function _handleReadyOk () {
+    if (!gameStarted) {
+      gameStarted = true
+      startNewGame()
+    }
+  }
+
+  function _handleBestMoveMsg (parts) {
+    const move = parts[1]
+    if (move && move !== '(none)') {
+      makeMove(move)
+      turn = (turn === 'w') ? 'b' : 'w'
+      renderBoard()
+    }
+  }
+
+  function _handleInfoMsg (msg) {
+    if (msg.includes('score cp') || msg.includes('mate')) {
+      logToOutput(msg)
     }
   }
 
@@ -131,59 +139,64 @@ document.addEventListener('DOMContentLoaded', () => {
     container.appendChild(label)
 
     let input
-
-    if (type === 'spin') {
-      input = document.createElement('input')
-      input.type = 'number'
-      if (min) input.min = min
-      if (max) input.max = max
-      if (defaultValue) input.value = defaultValue
-
-      input.addEventListener('change', () => {
-        sendOption(name, input.value)
-      })
-    } else if (type === 'check') {
-      input = document.createElement('input')
-      input.type = 'checkbox'
-      if (defaultValue === 'true') input.checked = true
-
-      input.addEventListener('change', () => {
-        sendOption(name, input.checked)
-      })
-    } else if (type === 'string') {
-      input = document.createElement('input')
-      input.type = 'text'
-      if (defaultValue) input.value = defaultValue
-
-      input.addEventListener('change', () => {
-        sendOption(name, input.value)
-      })
-    } else if (type === 'button') {
-      input = document.createElement('button')
-      input.textContent = 'Trigger'
-      input.addEventListener('click', () => {
-        sendOption(name)
-      })
-    } else if (type === 'combo') {
-      input = document.createElement('select')
-      if (vars) {
-        vars.forEach(v => {
-          const option = document.createElement('option')
-          option.value = v
-          option.textContent = v
-          if (v === defaultValue) option.selected = true
-          input.appendChild(option)
-        })
-      }
-      input.addEventListener('change', () => {
-        sendOption(name, input.value)
-      })
-    }
+    if (type === 'spin') input = _createSpinInput(name, defaultValue, min, max)
+    else if (type === 'check') input = _createCheckInput(name, defaultValue)
+    else if (type === 'string') input = _createStringInput(name, defaultValue)
+    else if (type === 'button') input = _createButtonInput(name)
+    else if (type === 'combo') input = _createComboInput(name, defaultValue, vars)
 
     if (input) {
       container.appendChild(input)
       uciOptionsElement.appendChild(container)
     }
+  }
+
+  function _createSpinInput (name, defaultValue, min, max) {
+    const input = document.createElement('input')
+    input.type = 'number'
+    if (min) input.min = min
+    if (max) input.max = max
+    if (defaultValue) input.value = defaultValue
+    input.addEventListener('change', () => sendOption(name, input.value))
+    return input
+  }
+
+  function _createCheckInput (name, defaultValue) {
+    const input = document.createElement('input')
+    input.type = 'checkbox'
+    if (defaultValue === 'true') input.checked = true
+    input.addEventListener('change', () => sendOption(name, input.checked))
+    return input
+  }
+
+  function _createStringInput (name, defaultValue) {
+    const input = document.createElement('input')
+    input.type = 'text'
+    if (defaultValue) input.value = defaultValue
+    input.addEventListener('change', () => sendOption(name, input.value))
+    return input
+  }
+
+  function _createButtonInput (name) {
+    const input = document.createElement('button')
+    input.textContent = 'Trigger'
+    input.addEventListener('click', () => sendOption(name))
+    return input
+  }
+
+  function _createComboInput (name, defaultValue, vars) {
+    const input = document.createElement('select')
+    if (vars) {
+      vars.forEach(v => {
+        const option = document.createElement('option')
+        option.value = v
+        option.textContent = v
+        if (v === defaultValue) option.selected = true
+        input.appendChild(option)
+      })
+    }
+    input.addEventListener('change', () => sendOption(name, input.value))
+    return input
   }
 
   function sendOption (name, value) {
@@ -212,81 +225,56 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderBoard () {
     boardElement.innerHTML = ''
-
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
-        const row = isFlipped ? 7 - r : r
-        const col = isFlipped ? 7 - c : c
-
-        const square = document.createElement('div')
-        square.classList.add('square')
-        if ((row + col) % 2 === 0) square.classList.add('white')
-        else square.classList.add('black')
-
-        const pieceChar = boardState[row][col]
-        if (pieceChar !== '.') {
-          const color = (pieceChar === pieceChar.toUpperCase()) ? 'w' : 'b'
-          const type = pieceChar.toLowerCase()
-          const img = document.createElement('img')
-          img.src = `images/${color}${type}.svg`
-          img.classList.add('piece')
-          square.appendChild(img)
-        }
-
-        square.dataset.row = row
-        square.dataset.col = col
-
-        if (selectedSquare && selectedSquare.row === row && selectedSquare.col === col) {
-          square.classList.add('selected')
-        }
-
-        // Highlight last move from/to if needed (omitted for simplicity for now)
-
-        square.addEventListener('click', () => handleSquareClick(row, col))
-        boardElement.appendChild(square)
+        _createSquare(r, c)
       }
     }
   }
 
+  function _createSquare (r, c) {
+    const row = isFlipped ? 7 - r : r
+    const col = isFlipped ? 7 - c : c
+
+    const square = document.createElement('div')
+    square.classList.add('square')
+    if ((row + col) % 2 === 0) square.classList.add('white')
+    else square.classList.add('black')
+
+    const pieceChar = boardState[row][col]
+    if (pieceChar !== '.') {
+      const color = (pieceChar === pieceChar.toUpperCase()) ? 'w' : 'b'
+      const type = pieceChar.toLowerCase()
+      const img = document.createElement('img')
+      img.src = `images/${color}${type}.svg`
+      img.classList.add('piece')
+      square.appendChild(img)
+    }
+
+    square.dataset.row = row
+    square.dataset.col = col
+
+    if (selectedSquare && selectedSquare.row === row && selectedSquare.col === col) {
+      square.classList.add('selected')
+    }
+
+    square.addEventListener('click', () => handleSquareClick(row, col))
+    boardElement.appendChild(square)
+  }
+
   function handleSquareClick (row, col) {
-    // Basic interaction logic
     const piece = boardState[row][col]
-    const isWhitePiece = (piece !== '.' && piece === piece.toUpperCase())
-    const isBlackPiece = (piece !== '.' && piece === piece.toLowerCase())
-    const isOwnPiece = (turn === 'w' && isWhitePiece) || (turn === 'b' && isBlackPiece)
+    const isOwnPiece = _isOwnPiece(piece, turn)
 
     if (selectedSquare) {
-      // Attempt to move
       if (selectedSquare.row === row && selectedSquare.col === col) {
-        // Deselect
         selectedSquare = null
         renderBoard()
       } else if (isOwnPiece) {
-        // Change selection
         selectedSquare = { row, col }
         renderBoard()
       } else {
-        // Move!
-        const fromRow = selectedSquare.row
-        const fromCol = selectedSquare.col
-        const toRow = row
-        const toCol = col
-
-        const move = coordsToAlgebraic(fromRow, fromCol) + coordsToAlgebraic(toRow, toCol)
-
-        // Check promotion (simplistic: always queen)
-        // White pawn moving to row 0
-        if (boardState[fromRow][fromCol] === 'P' && toRow === 0) {
-          attemptMove(move + 'q')
-        }
-        // Black pawn moving to row 7
-        else if (boardState[fromRow][fromCol] === 'p' && toRow === 7) {
-          attemptMove(move + 'q')
-        } else {
-          attemptMove(move)
-        }
-
-        selectedSquare = null
+        _handleMoveAttempt(row, col)
       }
     } else {
       if (isOwnPiece) {
@@ -294,6 +282,31 @@ document.addEventListener('DOMContentLoaded', () => {
         renderBoard()
       }
     }
+  }
+
+  function _isOwnPiece (piece, turn) {
+    const isWhitePiece = (piece !== '.' && piece === piece.toUpperCase())
+    const isBlackPiece = (piece !== '.' && piece === piece.toLowerCase())
+    return (turn === 'w' && isWhitePiece) || (turn === 'b' && isBlackPiece)
+  }
+
+  function _handleMoveAttempt (row, col) {
+    const fromRow = selectedSquare.row
+    const fromCol = selectedSquare.col
+    const toRow = row
+    const toCol = col
+
+    const move = coordsToAlgebraic(fromRow, fromCol) + coordsToAlgebraic(toRow, toCol)
+
+    if (boardState[fromRow][fromCol] === 'P' && toRow === 0) {
+      attemptMove(move + 'q')
+    } else if (boardState[fromRow][fromCol] === 'p' && toRow === 7) {
+      attemptMove(move + 'q')
+    } else {
+      attemptMove(move)
+    }
+
+    selectedSquare = null
   }
 
   function coordsToAlgebraic (row, col) {
@@ -337,20 +350,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const piece = boardState[from.row][from.col]
 
-    // Castling Logic (simplistic check based on king movement)
+    _handleCastling(piece, from, to)
+    _handleEnPassant(piece, from, to)
+
+    boardState[to.row][to.col] = piece
+    boardState[from.row][from.col] = '.'
+
+    if (promotion) {
+      const newPiece = (piece === 'P') ? promotion.toUpperCase() : promotion.toLowerCase()
+      boardState[to.row][to.col] = newPiece
+    }
+  }
+
+  function _handleCastling (piece, from, to) {
     if (piece.toLowerCase() === 'k' && Math.abs(from.col - to.col) > 1) {
-      // Kingside
       if (to.col > from.col) {
-        // Move rook from h to f
         const rookRow = from.row
         const rookFromCol = 7
         const rookToCol = 5
         boardState[rookRow][rookToCol] = boardState[rookRow][rookFromCol]
         boardState[rookRow][rookFromCol] = '.'
-      }
-      // Queenside
-      else {
-        // Move rook from a to d
+      } else {
         const rookRow = from.row
         const rookFromCol = 0
         const rookToCol = 3
@@ -358,25 +378,12 @@ document.addEventListener('DOMContentLoaded', () => {
         boardState[rookRow][rookFromCol] = '.'
       }
     }
+  }
 
-    // En Passant Logic (simplistic)
-    // If pawn moves diagonally to an empty square, it's en passant capture
+  function _handleEnPassant (piece, from, to) {
     if (piece.toLowerCase() === 'p' && Math.abs(from.col - to.col) === 1 && boardState[to.row][to.col] === '.') {
-      // Capture the pawn behind the destination
-      // White moves up (decreasing row index), captures pawn at row+1
-      // Black moves down (increasing row index), captures pawn at row-1
       const captureRow = (piece === 'P') ? to.row + 1 : to.row - 1
       boardState[captureRow][to.col] = '.'
-    }
-
-    boardState[to.row][to.col] = piece
-    boardState[from.row][from.col] = '.'
-
-    if (promotion) {
-      // Assume queen for now if logic above defaulted, but we should respect 'promotion' char
-      // piece is 'P' or 'p'
-      const newPiece = (piece === 'P') ? promotion.toUpperCase() : promotion.toLowerCase()
-      boardState[to.row][to.col] = newPiece
     }
   }
 

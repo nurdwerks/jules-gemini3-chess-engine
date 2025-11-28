@@ -34,16 +34,22 @@ class SEE {
     const bbRank = Math.floor(sq64 / 8)
     const bbCol = sq64 % 8
 
-    if (side === 'white') {
-      if (bbRank > 0) {
-        if (bbCol > 0 && (pawns & (1n << BigInt(sq64 - 9)))) return { from: SEE.to0x88(sq64 - 9), piece: { type: 'pawn', color: 'white' }, value: 100 }
-        if (bbCol < 7 && (pawns & (1n << BigInt(sq64 - 7)))) return { from: SEE.to0x88(sq64 - 7), piece: { type: 'pawn', color: 'white' }, value: 100 }
-      }
-    } else {
-      if (bbRank < 7) {
-        if (bbCol > 0 && (pawns & (1n << BigInt(sq64 + 7)))) return { from: SEE.to0x88(sq64 + 7), piece: { type: 'pawn', color: 'black' }, value: 100 }
-        if (bbCol < 7 && (pawns & (1n << BigInt(sq64 + 9)))) return { from: SEE.to0x88(sq64 + 9), piece: { type: 'pawn', color: 'black' }, value: 100 }
-      }
+    if (side === 'white') return SEE._getWhitePawnAttacker(pawns, sq64, bbRank, bbCol)
+    return SEE._getBlackPawnAttacker(pawns, sq64, bbRank, bbCol)
+  }
+
+  static _getWhitePawnAttacker (pawns, sq64, bbRank, bbCol) {
+    if (bbRank > 0) {
+      if (bbCol > 0 && (pawns & (1n << BigInt(sq64 - 9)))) return { from: SEE.to0x88(sq64 - 9), piece: { type: 'pawn', color: 'white' }, value: 100 }
+      if (bbCol < 7 && (pawns & (1n << BigInt(sq64 - 7)))) return { from: SEE.to0x88(sq64 - 7), piece: { type: 'pawn', color: 'white' }, value: 100 }
+    }
+    return null
+  }
+
+  static _getBlackPawnAttacker (pawns, sq64, bbRank, bbCol) {
+    if (bbRank < 7) {
+      if (bbCol > 0 && (pawns & (1n << BigInt(sq64 + 7)))) return { from: SEE.to0x88(sq64 + 7), piece: { type: 'pawn', color: 'black' }, value: 100 }
+      if (bbCol < 7 && (pawns & (1n << BigInt(sq64 + 9)))) return { from: SEE.to0x88(sq64 + 9), piece: { type: 'pawn', color: 'black' }, value: 100 }
     }
     return null
   }
@@ -93,7 +99,7 @@ class SEE {
 
     movePiece(move.from, move.to, move.piece)
 
-    let attacker = move.piece
+    const attacker = move.piece
     let attackerValue = SEE.getPieceValue(attacker.type)
     let side = attacker.color === 'white' ? 'black' : 'white'
     const sq = move.to

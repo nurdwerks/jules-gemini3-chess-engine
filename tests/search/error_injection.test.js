@@ -1,6 +1,5 @@
 const Search = require('../../src/Search')
 const Board = require('../../src/Board')
-const UCI = require('../../src/UCI')
 
 describe('Strength Limitation & Error Injection', () => {
   let board

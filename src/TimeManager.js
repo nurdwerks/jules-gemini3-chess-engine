@@ -30,15 +30,21 @@ class TimeManager {
   }
 
   extractGoParams (args) {
+    const paramMap = {
+      wtime: 'wtime',
+      btime: 'btime',
+      winc: 'winc',
+      binc: 'binc',
+      movestogo: 'movestogo',
+      movetime: 'movetime'
+    }
     for (let i = 0; i < args.length; i++) {
       const arg = args[i]
-      if (arg === 'wtime' && i + 1 < args.length) this.wtime = parseInt(args[i + 1], 10)
-      if (arg === 'btime' && i + 1 < args.length) this.btime = parseInt(args[i + 1], 10)
-      if (arg === 'winc' && i + 1 < args.length) this.winc = parseInt(args[i + 1], 10)
-      if (arg === 'binc' && i + 1 < args.length) this.binc = parseInt(args[i + 1], 10)
-      if (arg === 'movestogo' && i + 1 < args.length) this.movestogo = parseInt(args[i + 1], 10)
-      if (arg === 'movetime' && i + 1 < args.length) this.movetime = parseInt(args[i + 1], 10)
-      if (arg === 'infinite') this.infinite = true
+      if (paramMap[arg] && i + 1 < args.length) {
+        this[paramMap[arg]] = parseInt(args[i + 1], 10)
+      } else if (arg === 'infinite') {
+        this.infinite = true
+      }
     }
   }
 

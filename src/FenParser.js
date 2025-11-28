@@ -1,23 +1,24 @@
 const Piece = require('./Piece')
 const Bitboard = require('./Bitboard')
-const Zobrist = require('./Zobrist')
 
 class FenParser {
   static loadFen (board, fen) {
     const parts = fen.split(' ')
     if (parts.length < 4) throw new Error('Invalid FEN string: Must have at least 4 fields.')
 
-    const placement = parts[0]
-    const activeColor = parts[1]
-    const castling = parts[2]
-    const enPassant = parts[3]
-    const halfMove = parts.length > 4 ? parts[4] : '0'
-    const fullMove = parts.length > 5 ? parts[5] : '1'
-
     board.isChess960 = false
-    // Reset Bitboards
     board.bitboards = { white: 0n, black: 0n, pawn: 0n, knight: 0n, bishop: 0n, rook: 0n, queen: 0n, king: 0n }
 
+    const placement = parts[0]
+    FenParser._parsePlacement(board, placement)
+    FenParser._parseMetadata(board, parts)
+
+    board.calculateZobristKey()
+    board.history = []
+    FenParser.validatePosition(board)
+  }
+
+  static _parsePlacement (board, placement) {
     const rows = placement.split('/')
     if (rows.length !== 8) throw new Error('Invalid FEN string: Must have 8 ranks.')
 
@@ -37,22 +38,33 @@ class FenParser {
     }
 
     for (let r = 0; r < 8; r++) {
-      let col = 0
-      const rowString = rows[r]
-      for (let i = 0; i < rowString.length; i++) {
-        const char = rowString[i]
-        if (char >= '1' && char <= '8') {
-          col += parseInt(char, 10)
-        } else if (pieceMap[char]) {
-          if (col > 7) throw new Error('Invalid FEN string: Too many pieces in rank.')
-          board.placePiece(r, col, new Piece(pieceMap[char].color, pieceMap[char].type))
-          col++
-        } else {
-          throw new Error(`Invalid FEN string: Unknown character '${char}'.`)
-        }
-      }
-      if (col !== 8) throw new Error(`Invalid FEN string: Rank ${r} does not sum to 8 columns.`)
+      FenParser._parseRank(board, rows[r], r, pieceMap)
     }
+  }
+
+  static _parseRank (board, rowString, r, pieceMap) {
+    let col = 0
+    for (let i = 0; i < rowString.length; i++) {
+      const char = rowString[i]
+      if (char >= '1' && char <= '8') {
+        col += parseInt(char, 10)
+      } else if (pieceMap[char]) {
+        if (col > 7) throw new Error('Invalid FEN string: Too many pieces in rank.')
+        board.placePiece(r, col, new Piece(pieceMap[char].color, pieceMap[char].type))
+        col++
+      } else {
+        throw new Error(`Invalid FEN string: Unknown character '${char}'.`)
+      }
+    }
+    if (col !== 8) throw new Error(`Invalid FEN string: Rank ${r} does not sum to 8 columns.`)
+  }
+
+  static _parseMetadata (board, parts) {
+    const activeColor = parts[1]
+    const castling = parts[2]
+    const enPassant = parts[3]
+    const halfMove = parts.length > 4 ? parts[4] : '0'
+    const fullMove = parts.length > 5 ? parts[5] : '1'
 
     if (activeColor !== 'w' && activeColor !== 'b') throw new Error('Invalid FEN string: Invalid active color.')
     board.activeColor = activeColor
@@ -61,10 +73,6 @@ class FenParser {
     board.enPassantTarget = enPassant
     board.halfMoveClock = parseInt(halfMove, 10)
     board.fullMoveNumber = parseInt(fullMove, 10)
-
-    board.calculateZobristKey()
-    board.history = []
-    FenParser.validatePosition(board)
   }
 
   static validatePosition (board) {
@@ -122,31 +130,28 @@ class FenParser {
     if (rights === '-') return
 
     for (const char of rights) {
-      if (char === 'K') {
-        board.castling.w.k = true
-        FenParser.addCastlingRook(board, 'white', 7)
-      } else if (char === 'Q') {
-        board.castling.w.q = true
-        FenParser.addCastlingRook(board, 'white', 0)
-      } else if (char === 'k') {
-        board.castling.b.k = true
-        FenParser.addCastlingRook(board, 'black', 7)
-      } else if (char === 'q') {
-        board.castling.b.q = true
-        FenParser.addCastlingRook(board, 'black', 0)
-      } else if (/[A-H]/.test(char) || /[a-h]/.test(char)) {
-        board.isChess960 = true
-        const code = char.charCodeAt(0)
-        if (code >= 65 && code <= 72) {
-          FenParser.addCastlingRook(board, 'white', code - 65)
-        } else if (code >= 97 && code <= 104) {
-          FenParser.addCastlingRook(board, 'black', code - 97)
-        }
-      }
+      FenParser._parseCastlingChar(board, char)
     }
     if (board.isChess960) {
       FenParser.update960CastlingRights(board, 'white')
       FenParser.update960CastlingRights(board, 'black')
+    }
+  }
+
+  static _parseCastlingChar (board, char) {
+    switch (char) {
+      case 'K': board.castling.w.k = true; FenParser.addCastlingRook(board, 'white', 7); break
+      case 'Q': board.castling.w.q = true; FenParser.addCastlingRook(board, 'white', 0); break
+      case 'k': board.castling.b.k = true; FenParser.addCastlingRook(board, 'black', 7); break
+      case 'q': board.castling.b.q = true; FenParser.addCastlingRook(board, 'black', 0); break
+      default:
+        if (/[A-Ha-h]/.test(char)) {
+          board.isChess960 = true
+          const code = char.charCodeAt(0)
+          if (code >= 65 && code <= 72) FenParser.addCastlingRook(board, 'white', code - 65)
+          else if (code >= 97 && code <= 104) FenParser.addCastlingRook(board, 'black', code - 97)
+        }
+        break
     }
   }
 
@@ -178,33 +183,42 @@ class FenParser {
   static generateFen (board) {
     let placement = ''
     for (let r = 0; r < 8; r++) {
-      let emptyCount = 0
-      for (let c = 0; c < 8; c++) {
-        const piece = board.getPiece(board.toIndex(r, c))
-        if (piece) {
-          if (emptyCount > 0) {
-            placement += emptyCount
-            emptyCount = 0
-          }
-          let char = ''
-          switch (piece.type) {
-            case 'pawn': char = 'p'; break
-            case 'knight': char = 'n'; break
-            case 'bishop': char = 'b'; break
-            case 'rook': char = 'r'; break
-            case 'queen': char = 'q'; break
-            case 'king': char = 'k'; break
-          }
-          if (piece.color === 'white') char = char.toUpperCase()
-          placement += char
-        } else {
-          emptyCount++
-        }
-      }
-      if (emptyCount > 0) placement += emptyCount
+      placement += FenParser._generateRankFen(board, r)
       if (r < 7) placement += '/'
     }
     return `${placement} ${board.activeColor} ${board.castlingRights} ${board.enPassantTarget} ${board.halfMoveClock} ${board.fullMoveNumber}`
+  }
+
+  static _generateRankFen (board, r) {
+    let placement = ''
+    let emptyCount = 0
+    for (let c = 0; c < 8; c++) {
+      const piece = board.getPiece(board.toIndex(r, c))
+      if (piece) {
+        if (emptyCount > 0) {
+          placement += emptyCount
+          emptyCount = 0
+        }
+        placement += FenParser._getPieceChar(piece)
+      } else {
+        emptyCount++
+      }
+    }
+    if (emptyCount > 0) placement += emptyCount
+    return placement
+  }
+
+  static _getPieceChar (piece) {
+    let char = ''
+    switch (piece.type) {
+      case 'pawn': char = 'p'; break
+      case 'knight': char = 'n'; break
+      case 'bishop': char = 'b'; break
+      case 'rook': char = 'r'; break
+      case 'queen': char = 'q'; break
+      case 'king': char = 'k'; break
+    }
+    return piece.color === 'white' ? char.toUpperCase() : char
   }
 }
 

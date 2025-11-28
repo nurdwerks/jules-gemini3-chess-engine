@@ -1,5 +1,3 @@
-const Zobrist = require('./Zobrist')
-
 class PawnHash {
   constructor (sizeMB = 16) {
     // Entry size: 8 bytes (key) + 4 bytes (score) + 4 bytes (unused/flags) = 16 bytes

@@ -1,7 +1,6 @@
 const Evaluation = require('./Evaluation')
 const { TranspositionTable, TT_FLAG } = require('./TranspositionTable')
 const { Accumulator } = require('./NNUE')
-const SEE = require('./SEE')
 const Syzygy = require('./Syzygy')
 const SearchHeuristics = require('./SearchHeuristics')
 const MoveSorter = require('./MoveSorter')
@@ -90,26 +89,40 @@ class Search {
   searchIteration (depth, multiPV) {
     const excludedMoves = []
     for (let pvIdx = 0; pvIdx < multiPV; pvIdx++) {
-      let alpha = -Infinity
-      let beta = Infinity
-      const windowSize = this.options.AspirationWindow || 50
-      if (depth > 1 && pvIdx === 0) {
-        alpha = this.bestScore - windowSize
-        beta = this.bestScore + windowSize
-      }
-      const result = this.runAspirationSearch(depth, alpha, beta, excludedMoves)
-      if (this.stopFlag) {
-        if (pvIdx === 0 && result && result.move) this.bestMove = result.move
-        break
-      }
-      if (!result || !result.move) break
-      if (pvIdx === 0) {
-        this.bestMove = result.move
-        this.bestScore = result.score
-      }
-      this.reportPV(depth, pvIdx, result.score, result.move)
-      excludedMoves.push(result.move)
+      if (this._runPVIteration(depth, pvIdx, excludedMoves)) break
     }
+  }
+
+  _runPVIteration (depth, pvIdx, excludedMoves) {
+    const { alpha, beta } = this._getAspirationWindow(depth, pvIdx)
+    const result = this.runAspirationSearch(depth, alpha, beta, excludedMoves)
+    if (this.stopFlag) {
+      if (pvIdx === 0 && result && result.move) this.bestMove = result.move
+      return true
+    }
+    if (!result || !result.move) return true
+    this._handleIterationResult(depth, pvIdx, result, excludedMoves)
+    return false
+  }
+
+  _getAspirationWindow (depth, pvIdx) {
+    let alpha = -Infinity
+    let beta = Infinity
+    const windowSize = this.options.AspirationWindow || 50
+    if (depth > 1 && pvIdx === 0) {
+      alpha = this.bestScore - windowSize
+      beta = this.bestScore + windowSize
+    }
+    return { alpha, beta }
+  }
+
+  _handleIterationResult (depth, pvIdx, result, excludedMoves) {
+    if (pvIdx === 0) {
+      this.bestMove = result.move
+      this.bestScore = result.score
+    }
+    this.reportPV(depth, pvIdx, result.score, result.move)
+    excludedMoves.push(result.move)
   }
 
   runAspirationSearch (depth, alpha, beta, excludedMoves) {
@@ -156,13 +169,9 @@ class Search {
     let limit = this.timeLimits.softLimit
     this.updateStability()
 
-    const newEntry = this.tt.probe(this.board.zobristKey)
-    const currentScore = newEntry && newEntry.depth === depth ? newEntry.score : -Infinity
-    if (depth > 1 && this.bestScore > -10000 && currentScore > -10000) {
-      if (this.bestScore - currentScore > 60) {
-        limit = Math.min(this.timeLimits.hardLimit, limit * 2)
-        this.isStable = false
-      }
+    if (this._shouldExtendSoftLimit(depth)) {
+      limit = Math.min(this.timeLimits.hardLimit, limit * 2)
+      this.isStable = false
     }
 
     if (timeManager) {
@@ -170,6 +179,17 @@ class Search {
     } else {
       if ((elapsed >= limit && this.isStable) || elapsed >= this.timeLimits.hardLimit) this.stopFlag = true
     }
+  }
+
+  _shouldExtendSoftLimit (depth) {
+    const newEntry = this.tt.probe(this.board.zobristKey)
+    const currentScore = newEntry && newEntry.depth === depth ? newEntry.score : -Infinity
+    if (depth > 1 && this.bestScore > -10000 && currentScore > -10000) {
+      if (this.bestScore - currentScore > 60) {
+        return true
+      }
+    }
+    return false
   }
 
   updateStability () {
@@ -216,23 +236,35 @@ class Search {
   }
 
   rootAlphaBeta (depth, alpha, beta, excludedMoves = []) {
-    let bestMove = null
-    let bestScore = -Infinity
     const ttEntry = this.tt.probe(this.board.zobristKey)
     const ttMove = ttEntry ? ttEntry.move : null
-    let moves = this.board.generateMoves()
+    const moves = this._getFilteredRootMoves(excludedMoves)
 
     if (moves.length === 0) return { move: null, score: -Infinity }
+
+    this.orderMoves(moves, ttMove, depth, null)
+
+    return this._searchRootMoves(moves, depth, alpha, beta, excludedMoves)
+  }
+
+  _getFilteredRootMoves (excludedMoves) {
+    let moves = this.board.generateMoves()
+    if (moves.length === 0) return []
+
     if (excludedMoves && excludedMoves.length > 0) {
       moves = moves.filter(m => !excludedMoves.some(em => em.from === m.from && em.to === m.to && em.promotion === m.promotion))
     }
-    if (moves.length === 0) return { move: null, score: -Infinity }
+    if (moves.length === 0) return []
+
     if (this.options.searchMoves && this.options.searchMoves.length > 0) {
       moves = moves.filter(m => this.options.searchMoves.includes(this.moveToString(m)))
-      if (moves.length === 0) return { move: null, score: -Infinity }
     }
+    return moves
+  }
 
-    this.orderMoves(moves, ttMove, depth, null)
+  _searchRootMoves (moves, depth, alpha, beta, excludedMoves) {
+    let bestMove = null
+    let bestScore = -Infinity
 
     for (const move of moves) {
       if (this.checkLimits()) return { move: bestMove, score: bestScore }
@@ -244,6 +276,7 @@ class Search {
       }
       if (score > alpha) alpha = score
     }
+
     if (!this.stopFlag && bestMove && (!excludedMoves || excludedMoves.length === 0)) {
       this.tt.save(this.board.zobristKey, bestScore, depth, TT_FLAG.EXACT, bestMove)
     }
@@ -301,40 +334,71 @@ class Search {
   }
 
   alphaBeta (depth, alpha, beta, prevMove = null, ply = 0, excludedMove = null) {
-    this.nodes++
-    if (this.stopFlag || (this.checkLimits && this.checkLimits())) return alpha
+    if (this._shouldStopSearch()) return alpha
 
-    const mateScore = 20000 - ply
-    if (alpha < mateScore - 1) alpha = Math.max(alpha, -mateScore)
-    if (beta > mateScore) beta = Math.min(beta, mateScore)
-    if (alpha >= beta) return alpha
+    const { alpha: newAlpha, beta: newBeta, returnAlpha } = this._adjustMateScore(alpha, beta, ply)
+    if (returnAlpha) return newAlpha
+    alpha = newAlpha; beta = newBeta
 
-    if (this.board.isDrawBy50Moves() || this.board.isDrawByRepetition()) return -(this.options.Contempt || 0)
+    if (this._isDraw(ply)) return -(this.options.Contempt || 0)
 
     const inCheck = this.board.isInCheck()
-    if (!inCheck) {
-      const nm = SearchPruning.tryNullMovePruning(this, depth, beta, inCheck, ply)
-      if (nm === 'STOP') return alpha
-      if (nm !== null) return nm
-    }
+    const nm = this._tryNullMove(depth, beta, inCheck, ply)
+    if (nm === 'STOP') return alpha
+    if (nm !== null) return nm
 
+    return this._alphaBetaBody(depth, alpha, beta, prevMove, ply, excludedMove, inCheck)
+  }
+
+  _shouldStopSearch () {
+    this.nodes++
+    return this.stopFlag || (this.checkLimits && this.checkLimits())
+  }
+
+  _alphaBetaBody (depth, alpha, beta, prevMove, ply, excludedMove, inCheck) {
     const { ttMove, ttScore } = this.probeTT(depth, alpha, beta)
-    if (ttScore !== null && !excludedMove) return ttScore // Don't return TT score if excludedMove is set (MultiPV)
+    if (ttScore !== null && !excludedMove) return ttScore
 
-    if (depth > 3 && !ttMove) this.alphaBeta(depth - 2, alpha, beta, prevMove, ply, excludedMove)
+    this._performIID(depth, ttMove, alpha, beta, prevMove, ply, excludedMove)
 
-    const staticEval = this.getStaticEval()
-    const pruning = this.applyPruning(depth, alpha, beta, staticEval, inCheck, prevMove, ply)
+    const pruning = this.applyPruning(depth, alpha, beta, this.getStaticEval(), inCheck, prevMove, ply)
     if (pruning !== null) return pruning
 
     const singularExtension = this.checkSingularExtension(depth, ttMove, excludedMove, ply, prevMove)
 
+    return this._generateAndSearch(depth, alpha, beta, ply, inCheck, singularExtension, excludedMove, prevMove, ttMove)
+  }
+
+  _generateAndSearch (depth, alpha, beta, ply, inCheck, singularExtension, excludedMove, prevMove, ttMove) {
     const moves = this.board.generateMoves()
     if (moves.length === 0) return inCheck ? -20000 + ply : 0
     if (depth === 0) return this.quiescence(alpha, beta)
 
     this.orderMoves(moves, ttMove, depth, prevMove)
     return this.searchMoves(moves, depth, alpha, beta, ply, inCheck, singularExtension, excludedMove, prevMove, ttMove)
+  }
+
+  _performIID (depth, ttMove, alpha, beta, prevMove, ply, excludedMove) {
+    if (depth > 3 && !ttMove) this.alphaBeta(depth - 2, alpha, beta, prevMove, ply, excludedMove)
+  }
+
+  _adjustMateScore (alpha, beta, ply) {
+    const mateScore = 20000 - ply
+    if (alpha < mateScore - 1) alpha = Math.max(alpha, -mateScore)
+    if (beta > mateScore) beta = Math.min(beta, mateScore)
+    if (alpha >= beta) return { alpha, beta, returnAlpha: true }
+    return { alpha, beta, returnAlpha: false }
+  }
+
+  _tryNullMove (depth, beta, inCheck, ply) {
+    if (!inCheck) {
+      return SearchPruning.tryNullMovePruning(this, depth, beta, inCheck, ply)
+    }
+    return null
+  }
+
+  _isDraw (ply) {
+    return this.board.isDrawBy50Moves() || this.board.isDrawByRepetition()
   }
 
   checkSingularExtension (depth, ttMove, excludedMove, ply, prevMove) {

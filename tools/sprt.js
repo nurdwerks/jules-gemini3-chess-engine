@@ -45,13 +45,13 @@ async function runSPRT (testEngine, baseEngine) {
     games += (w + l + d)
 
     // Update LLR for W wins, L losses, D draws
-    const llr_win = Math.log(u1 / u0)
-    const llr_loss = Math.log((1 - u1) / (1 - u0))
-    const llr_draw = Math.log((Math.sqrt(u1 * (1 - u1))) / Math.sqrt(u0 * (1 - u0))) // Often approximated?
+    const llrWin = Math.log(u1 / u0)
+    const llrLoss = Math.log((1 - u1) / (1 - u0))
+    const llrDraw = Math.log((Math.sqrt(u1 * (1 - u1))) / Math.sqrt(u0 * (1 - u0))) // Often approximated?
 
-    llr += w * llr_win
-    llr += l * llr_loss
-    llr += d * ((llr_win + llr_loss) / 2)
+    llr += w * llrWin
+    llr += l * llrLoss
+    llr += d * llrDraw
 
     const score = (wins + 0.5 * draws) / games
     const eloDiff = -400 * Math.log10(1 / score - 1)

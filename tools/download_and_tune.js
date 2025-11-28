@@ -10,8 +10,6 @@ const os = require('os')
 const Board = require('../src/Board')
 const Search = require('../src/Search')
 const { TranspositionTable } = require('../src/TranspositionTable')
-const { NNUE } = require('../src/NNUE')
-const SEE = require('../src/SEE')
 
 const EPD_JSON_PATH = path.join(__dirname, 'epd.json')
 const CUMULATIVE_DATA_FILE = path.join(process.cwd(), 'tuning_data_cumulative.epd')
@@ -81,79 +79,126 @@ async function runTunerAndCleanup (sourceFile, shouldCleanup = true) {
 // --- Game Logic ---
 
 function playGame (startFen, tt, nnue) {
+  const board = _setupBoard(startFen)
+  if (!board) return null
+
+  const gamePositions = []
+  gamePositions.push(board.generateFen())
+
+  const options = _getSearchOptions()
+  const search = new Search(board, tt, nnue)
+
+  let moveCount = 0
+  const MAX_MOVES = 200
+  let result = 0.5
+  let gameOver = false
+
+  while (!gameOver && moveCount < MAX_MOVES) {
+    const bestMove = search.search(64, { hardLimit: 100, softLimit: 100 }, options)
+    if (!bestMove) break
+
+    board.applyMove(bestMove)
+    moveCount++
+    gamePositions.push(board.generateFen())
+
+    const gameEnd = _checkGameOver(board)
+    if (gameEnd.gameOver) {
+      result = gameEnd.result
+      gameOver = true
+    }
+  }
+
+  if (!gameOver && moveCount >= MAX_MOVES) {
+    result = 0.5
+  }
+
+  return { result, positions: gamePositions }
+}
+
+function _setupBoard (startFen) {
   const board = new Board()
   try {
     if (startFen === 'startpos') board.loadFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
     else board.loadFen(startFen)
+    return board
   } catch (e) {
     console.error(`Invalid FEN: ${startFen}`, e.message)
     return null
   }
+}
 
-  const gamePositions = []
-  // Store initial position
-  gamePositions.push(board.generateFen())
-
-  // Options for search
-  const options = {
-    Hash: 16, // This is just option passing, actual TT is passed in constructor
+function _getSearchOptions () {
+  return {
+    Hash: 16,
     UCI_UseNNUE: true,
     UCI_LimitStrength: false,
     UCI_Elo: 3000,
     UseHistory: true,
     Contempt: 0,
     AspirationWindow: 50,
-    UCI_NNUE_File: 'nn-46832cfbead3.nnue' // Filename only, assumes loaded or file present
+    UCI_NNUE_File: 'nn-46832cfbead3.nnue'
   }
+}
 
-  const search = new Search(board, tt, nnue)
-
-  let moveCount = 0
-  const MAX_MOVES = 200 // Avoid infinite games
-  let result = 0.5 // Default draw
-  let gameOver = false
-
-  while (!gameOver && moveCount < MAX_MOVES) {
-    // Search
-    // Use hardLimit of 100ms per move (similar to match.js go movetime 100)
-    const bestMove = search.search(64, { hardLimit: 100, softLimit: 100 }, options)
-
-    if (!bestMove) {
-      break
+function _checkGameOver (board) {
+  const legalMoves = board.generateMoves()
+  if (legalMoves.length === 0) {
+    if (board.isInCheck()) {
+      return { gameOver: true, result: (board.activeColor === 'w') ? 0.0 : 1.0 }
+    } else {
+      return { gameOver: true, result: 0.5 }
     }
-
-    board.applyMove(bestMove)
-    moveCount++
-    gamePositions.push(board.generateFen())
-
-    // Check Game Over
-    const legalMoves = board.generateMoves()
-    if (legalMoves.length === 0) {
-      if (board.isInCheck()) {
-        result = (board.activeColor === 'w') ? 0.0 : 1.0
-      } else {
-        result = 0.5
-      }
-      gameOver = true
-    } else if (board.isDrawBy50Moves() || board.isDrawByRepetition()) {
-      result = 0.5
-      gameOver = true
-    }
+  } else if (board.isDrawBy50Moves() || board.isDrawByRepetition()) {
+    return { gameOver: true, result: 0.5 }
   }
-
-  if (!gameOver && moveCount >= MAX_MOVES) {
-    result = 0.5 // Adjudicate draw
-  }
-
-  return { result, positions: gamePositions }
+  return { gameOver: false, result: 0.5 }
 }
 
 // --- Main ---
 
 async function main () {
   const args = process.argv.slice(2)
+  const { destPath, shouldCleanup } = await _prepareDataset(args)
 
-  // Load EPD links
+  const numWorkers = (process.env.TEST_MODE === 'true') ? 3 : (os.cpus().length || 2)
+  console.log(`Using ${numWorkers} worker threads.`)
+
+  const TT_SIZE_MB = 64
+  const masterTT = new TranspositionTable(TT_SIZE_MB)
+  const ttBuffer = masterTT.buffer
+
+  const nnuePath = await _prepareNNUE()
+
+  const fens = _loadFens(destPath)
+  if (fens.length === 0) {
+    console.log('File is empty or no valid FENs. Checking for cumulative data...')
+    await runTunerAndCleanup(destPath)
+    process.exit(0)
+  }
+
+  console.log(`Processing ${fens.length} positions using ${numWorkers} workers...`)
+
+  const tempOut = path.join(process.cwd(), 'temp_batch_results.epd')
+  if (fs.existsSync(tempOut)) fs.unlinkSync(tempOut)
+
+  await _processGames(fens, numWorkers, ttBuffer, TT_SIZE_MB, nnuePath, tempOut)
+
+  console.log('All games finished.')
+
+  if (fs.existsSync(tempOut)) {
+    const data = fs.readFileSync(tempOut, 'utf8')
+    fs.appendFileSync(CUMULATIVE_DATA_FILE, data)
+    fs.unlinkSync(tempOut)
+    if (shouldCleanup) {
+      fs.writeFileSync(destPath, '')
+      console.log('Source file cleared.')
+    }
+  }
+
+  await runTunerAndCleanup(destPath, shouldCleanup)
+}
+
+async function _prepareDataset (args) {
   let epdLinks
   try {
     const content = fs.readFileSync(EPD_JSON_PATH, 'utf8')
@@ -171,58 +216,43 @@ async function main () {
   }
 
   const inputArg = args[0]
-  let destPath
-  let shouldCleanup = true
-
   if (fs.existsSync(inputArg)) {
     console.log(`Using local file: ${inputArg}`)
-    destPath = inputArg
-    shouldCleanup = false
-  } else {
-    const index = parseInt(inputArg, 10)
+    return { destPath: inputArg, shouldCleanup: false }
+  }
 
-    if (isNaN(index) || index < 0 || index >= epdLinks.length) {
-      console.error(`Error: Argument '${inputArg}' is neither a valid index (0-${epdLinks.length - 1}) nor a valid local file path.`)
+  const index = parseInt(inputArg, 10)
+  if (isNaN(index) || index < 0 || index >= epdLinks.length) {
+    console.error(`Error: Argument '${inputArg}' is neither a valid index (0-${epdLinks.length - 1}) nor a valid local file path.`)
+    process.exit(1)
+  }
+
+  const url = epdLinks[index]
+  const filename = path.basename(url)
+  const destPath = path.join(process.cwd(), filename)
+
+  console.log(`Selected Dataset: ${filename}`)
+  console.log(`URL: ${url}`)
+
+  if (fs.existsSync(destPath)) {
+    console.log(`File '${filename}' already exists locally.`)
+  } else {
+    console.log('Downloading...')
+    try {
+      await downloadFile(url, destPath)
+      console.log('Download complete.')
+    } catch (err) {
+      console.error(`Download failed: ${err.message}`)
+      if (fs.existsSync(destPath)) {
+        fs.unlinkSync(destPath)
+      }
       process.exit(1)
     }
-
-    const url = epdLinks[index]
-    const filename = path.basename(url)
-    destPath = path.join(process.cwd(), filename)
-
-    console.log(`Selected Dataset: ${filename}`)
-    console.log(`URL: ${url}`)
-
-    if (fs.existsSync(destPath)) {
-      console.log(`File '${filename}' already exists locally.`)
-    } else {
-      console.log('Downloading...')
-      try {
-        await downloadFile(url, destPath)
-        console.log('Download complete.')
-      } catch (err) {
-        console.error(`Download failed: ${err.message}`)
-        if (fs.existsSync(destPath)) {
-          fs.unlinkSync(destPath)
-        }
-        process.exit(1)
-      }
-    }
   }
+  return { destPath, shouldCleanup: true }
+}
 
-  // Prepare Workers
-  let numWorkers = os.cpus().length || 2
-  if (process.env.TEST_MODE === 'true') {
-    numWorkers = 3
-  }
-  console.log(`Using ${numWorkers} worker threads.`)
-
-  // 1. Prepare TT (Shared)
-  const TT_SIZE_MB = 64
-  const masterTT = new TranspositionTable(TT_SIZE_MB)
-  const ttBuffer = masterTT.buffer
-
-  // 2. Prepare NNUE File
+async function _prepareNNUE () {
   const nnueUrl = 'https://tests.stockfishchess.org/api/nn/nn-46832cfbead3.nnue'
   const nnueFilename = 'nn-46832cfbead3.nnue'
   const nnuePath = path.join(process.cwd(), nnueFilename)
@@ -233,25 +263,16 @@ async function main () {
   } else {
     console.log(`Using existing NNUE file: ${nnuePath}`)
   }
+  return nnuePath
+}
 
-  // 3. Process Lines
+function _loadFens (destPath) {
   const content = fs.readFileSync(destPath, 'utf8')
   const lines = content.split('\n').filter(l => l.trim().length > 0)
-  const fens = lines.map(l => l.split(';')[0].trim()).filter(f => f)
+  return lines.map(l => l.split(';')[0].trim()).filter(f => f)
+}
 
-  if (fens.length === 0) {
-    console.log('File is empty or no valid FENs. Checking for cumulative data...')
-    await runTunerAndCleanup(destPath)
-    process.exit(0)
-  }
-
-  console.log(`Processing ${fens.length} positions using ${numWorkers} workers...`)
-
-  // Clear temp batch results
-  const tempOut = path.join(process.cwd(), 'temp_batch_results.epd')
-  if (fs.existsSync(tempOut)) fs.unlinkSync(tempOut)
-
-  // 4. Distribute Work
+async function _processGames (fens, numWorkers, ttBuffer, TT_SIZE_MB, nnuePath, tempOut) {
   const chunkSize = Math.ceil(fens.length / numWorkers)
   const chunks = []
   for (let i = 0; i < numWorkers; i++) {
@@ -274,11 +295,7 @@ async function main () {
       worker.on('message', (msg) => {
         if (msg.type === 'ready') {
           console.log(`Worker ${chunk.id} ready.`)
-          worker.postMessage({
-            type: 'play',
-            fens: chunk.fens,
-            startIndex: chunk.startIdx
-          })
+          worker.postMessage({ type: 'play', fens: chunk.fens, startIndex: chunk.startIdx })
         } else if (msg.type === 'result') {
           const { result, positions, index } = msg
           let resultStr = '1/2-1/2'
@@ -289,7 +306,6 @@ async function main () {
           fs.appendFileSync(tempOut, outputData)
 
           completedGames++
-
           const elapsed = (Date.now() - startTime) / 1000
           const rate = completedGames / elapsed
           console.log(`[Worker ${chunk.id}] Game ${index} finished (${resultStr}). Progress: ${completedGames}/${totalGames} (${(completedGames / totalGames * 100).toFixed(1)}%). Rate: ${rate.toFixed(2)} g/s.`)
@@ -314,12 +330,7 @@ async function main () {
         }
       })
 
-      worker.postMessage({
-        type: 'init',
-        ttBuffer,
-        ttSizeMB: TT_SIZE_MB,
-        nnueFile: nnuePath
-      })
+      worker.postMessage({ type: 'init', ttBuffer, ttSizeMB: TT_SIZE_MB, nnueFile: nnuePath })
     })
   })
 
@@ -329,20 +340,6 @@ async function main () {
     console.error('Error during worker execution:', e)
     process.exit(1)
   }
-
-  console.log('All games finished.')
-
-  if (fs.existsSync(tempOut)) {
-    const data = fs.readFileSync(tempOut, 'utf8')
-    fs.appendFileSync(CUMULATIVE_DATA_FILE, data)
-    fs.unlinkSync(tempOut)
-    if (shouldCleanup) {
-      fs.writeFileSync(destPath, '')
-      console.log('Source file cleared.')
-    }
-  }
-
-  await runTunerAndCleanup(destPath, shouldCleanup)
 }
 
 if (require.main === module) {

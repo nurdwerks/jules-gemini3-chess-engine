@@ -111,8 +111,8 @@ function NNUE () {
   }
 
   self.readLeb128 = (buffer, offset, count, type) => {
-    const arrayType = type === 'int16' ? Int16Array : Int32Array
-    const result = new arrayType(count)
+    const ArrayType = type === 'int16' ? Int16Array : Int32Array
+    const result = new ArrayType(count)
     const bitLength = type === 'int16' ? 16 : 32
     for (let i = 0; i < count; i++) {
       const { value, newOffset } = self.readLeb128Value(buffer, offset, bitLength)
@@ -175,38 +175,42 @@ function NNUE () {
     }
 
     for (const color of ['white', 'black']) {
-      const kingBb = board.bitboards.king & board.bitboards[color]
-      if (!kingBb) continue
-      let kingSq = Bitboard.lsb(kingBb)
-      if (color === 'black') kingSq ^= 56
-
-      const add = (sq, piece) => {
-        const pSq = (color === 'black') ? sq ^ 56 : sq
-        changes[color].added.push(self.getHalfKPIndex(kingSq, pSq, piece, color))
-      }
-      const remove = (sq, piece) => {
-        const pSq = (color === 'black') ? sq ^ 56 : sq
-        changes[color].removed.push(self.getHalfKPIndex(kingSq, pSq, piece, color))
-      }
-
-      const fromSq64 = Bitboard.to64(move.from)
-      const toSq64 = Bitboard.to64(move.to)
-
-      remove(fromSq64, movingPiece)
-      const arrivalPiece = move.promotion
-        ? new Piece(movingPiece.color, { q: 'queen', r: 'rook', b: 'bishop', n: 'knight' }[move.promotion])
-        : movingPiece
-      add(toSq64, arrivalPiece)
-
-      if (captured) {
-        remove(toSq64, captured)
-      } else if (move.flags === 'e' || move.flags === 'ep') {
-        const capturedPawnSq = Bitboard.to64(movingPiece.color === 'white' ? move.to + 16 : move.to - 16)
-        const capturedPawn = new Piece(movingPiece.color === 'white' ? 'black' : 'white', 'pawn')
-        remove(capturedPawnSq, capturedPawn)
-      }
+      self._processColorChanges(changes, board, color, move, captured, movingPiece)
     }
     return changes
+  }
+
+  self._processColorChanges = (changes, board, color, move, captured, movingPiece) => {
+    const kingBb = board.bitboards.king & board.bitboards[color]
+    if (!kingBb) return
+    let kingSq = Bitboard.lsb(kingBb)
+    if (color === 'black') kingSq ^= 56
+
+    const add = (sq, piece) => {
+      const pSq = (color === 'black') ? sq ^ 56 : sq
+      changes[color].added.push(self.getHalfKPIndex(kingSq, pSq, piece, color))
+    }
+    const remove = (sq, piece) => {
+      const pSq = (color === 'black') ? sq ^ 56 : sq
+      changes[color].removed.push(self.getHalfKPIndex(kingSq, pSq, piece, color))
+    }
+
+    const fromSq64 = Bitboard.to64(move.from)
+    const toSq64 = Bitboard.to64(move.to)
+
+    remove(fromSq64, movingPiece)
+    const arrivalPiece = move.promotion
+      ? new Piece(movingPiece.color, { q: 'queen', r: 'rook', b: 'bishop', n: 'knight' }[move.promotion])
+      : movingPiece
+    add(toSq64, arrivalPiece)
+
+    if (captured) {
+      remove(toSq64, captured)
+    } else if (move.flags === 'e' || move.flags === 'ep') {
+      const capturedPawnSq = Bitboard.to64(movingPiece.color === 'white' ? move.to + 16 : move.to - 16)
+      const capturedPawn = new Piece(movingPiece.color === 'white' ? 'black' : 'white', 'pawn')
+      remove(capturedPawnSq, capturedPawn)
+    }
   }
 
   self.updateAccumulator = (acc, changes) => {

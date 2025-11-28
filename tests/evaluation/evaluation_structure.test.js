@@ -2,12 +2,6 @@ const Evaluation = require('../../src/Evaluation')
 const Board = require('../../src/Board')
 
 describe('Evaluation - Pawn Structure', () => {
-  let board
-
-  beforeEach(() => {
-    board = new Board()
-  })
-
   test('Identifies Passed Pawn bonus', () => {
     // White Pawn on e5.
     // Scenario 1: Blocked by Black Pawn on e6. (Not Passed)

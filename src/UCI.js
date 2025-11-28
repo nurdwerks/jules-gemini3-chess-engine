@@ -179,21 +179,35 @@ class UCI {
   }
 
   handleGo (args) {
-    let searchMoves = null
-    if (args.includes('searchmoves')) {
-      const idx = args.indexOf('searchmoves')
-      searchMoves = args.slice(idx + 1)
-    }
     const isPonder = args.includes('ponder')
     this.pendingBestMove = null
+
+    if (this._handleBookMove(args, isPonder)) return
+
+    const { depth, nodes, timeLimits, searchMoves, tm } = this._parseGoParams(args)
+
+    this.currentSearch = new Search(this.board, this.tt, this.nnue)
+    this._executeSearch(depth, nodes, timeLimits, searchMoves, tm, isPonder)
+  }
+
+  _handleBookMove (args, isPonder) {
     if (!args.includes('infinite') && !isPonder) {
       const bookMove = this.book.findMove(this.board)
       if (bookMove) {
         const fromAlg = this.indexToAlgebraic(bookMove.from)
         const toAlg = this.indexToAlgebraic(bookMove.to)
         this.output(`bestmove ${fromAlg}${toAlg}${bookMove.promotion || ''}`)
-        return
+        return true
       }
+    }
+    return false
+  }
+
+  _parseGoParams (args) {
+    let searchMoves = null
+    if (args.includes('searchmoves')) {
+      const idx = args.indexOf('searchmoves')
+      searchMoves = args.slice(idx + 1)
     }
 
     const tm = new TimeManager(this.board)
@@ -203,18 +217,17 @@ class UCI {
     const nodesIdx = args.indexOf('nodes')
     if (nodesIdx !== -1) nodes = parseInt(args[nodesIdx + 1], 10)
 
-    // Override limits based on fixed depth/nodes
     if (args.includes('depth') || nodes !== null) {
       if (!args.includes('wtime') && !args.includes('movetime')) {
         timeLimits.hardLimit = Infinity
         timeLimits.softLimit = Infinity
       }
-    } else if (!args.includes('wtime') && !args.includes('movetime') && !args.includes('infinite')) {
-      // Default depth if no limits specified
-      // We already set depth=5 default in getSearchDepth if not found, but logic here ensures it applies when NO time is present.
     }
 
-    this.currentSearch = new Search(this.board, this.tt, this.nnue)
+    return { depth, nodes, timeLimits, searchMoves, tm }
+  }
+
+  _executeSearch (depth, nodes, timeLimits, searchMoves, tm, isPonder) {
     const searchOptions = {
       ...this.options,
       searchMoves,
@@ -264,14 +277,18 @@ class UCI {
     }
     if (nameIdx === -1) return
     const name = args.slice(nameIdx + 1, valueIdx !== -1 ? valueIdx : args.length).join(' ')
-    let value = null
+    const value = this._parseOptionValue(args, valueIdx)
+    this.applyOption(name, value)
+  }
+
+  _parseOptionValue (args, valueIdx) {
     if (valueIdx !== -1 && valueIdx + 1 < args.length) {
       const valStr = args[valueIdx + 1]
-      if (valStr === 'true') value = true
-      else if (valStr === 'false') value = false
-      else value = isNaN(parseInt(valStr, 10)) ? valStr : parseInt(valStr, 10)
+      if (valStr === 'true') return true
+      if (valStr === 'false') return false
+      return isNaN(parseInt(valStr, 10)) ? valStr : parseInt(valStr, 10)
     }
-    this.applyOption(name, value)
+    return null
   }
 
   applyOption (name, value) {

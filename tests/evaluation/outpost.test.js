@@ -67,7 +67,6 @@ describe('Evaluation: Outposts', () => {
 
     // Supported, No Enemy
     board.loadFen('4k3/8/8/3N4/4P3/8/8/4K3 w - - 0 1')
-    const scoreSafe = Evaluation.evaluate(board)
 
     // Supported, But Enemy Pawn on e6 (Attacks d5)
     // We add black pawn to scoreSafe scenario (at a7) to equalize material?

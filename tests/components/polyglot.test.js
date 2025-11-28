@@ -44,7 +44,6 @@ describe('Polyglot', () => {
     // We will add an entry for the Start Position.
 
     const key = polyglot.computeKey(board) // Start pos key using OUR constants
-    const moveInt = 0x0000 // a1a1 (invalid) - let's make a valid move e2e4
     // e2e4: from e2 (4,1 -> row 1, col 4). to e4 (4,3 -> row 3, col 4)
     // Polyglot:
     // fromRow: 1, fromCol: 4.
