@@ -13,7 +13,7 @@ const { TranspositionTable } = require('../src/TranspositionTable');
 const { NNUE } = require('../src/NNUE');
 const SEE = require('../src/SEE');
 
-const EPD_JSON_PATH = path.join(__dirname, '..', 'epd.json');
+const EPD_JSON_PATH = path.join(__dirname, 'epd.json');
 const CUMULATIVE_DATA_FILE = path.join(process.cwd(), 'tuning_data_cumulative.epd');
 
 // --- Helper Functions ---

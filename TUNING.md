@@ -58,7 +58,7 @@ This executes `tools/pipeline.js`, which runs self-play matches in parallel, col
 
 ## Option B: Tuning from Opening Book / Rescoring
 
-To generate games starting from specific positions (e.g., an opening book or test suite), use the `tools/download_and_tune.js` script. You can specify an index from `epd.json` OR a local file path.
+To generate games starting from specific positions (e.g., an opening book or test suite), use the `tools/download_and_tune.js` script. You can specify an index from `tools/epd.json` OR a local file path.
 
 **Using a Local EPD File:**
 To tune using a local EPD file (e.g., `my_openings.epd`), pass the file path as an argument:
@@ -76,7 +76,7 @@ The script will:
 *Note: User-provided local files are NOT deleted after processing.*
 
 **Using a Standard Dataset:**
-To use a known dataset (indexed in `epd.json`), pass the index:
+To use a known dataset (indexed in `tools/epd.json`), pass the index:
 
 ```bash
 node tools/download_and_tune.js 0
