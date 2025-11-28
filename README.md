@@ -15,13 +15,13 @@ Benchmarking functions can be written and verified, but performance-critical ben
 1.  **Iterative Root Search (S)**
     *   *Description:* Modify the root search loop to select the top `k` moves instead of just one.
     *   *Acceptance Criteria:*
-        *   [ ] `MultiPV` option controls the number of lines.
-        *   [ ] Moves found in previous PVs are excluded from subsequent searches in the same iteration.
+        *   [x] `MultiPV` option controls the number of lines.
+        *   [x] Moves found in previous PVs are excluded from subsequent searches in the same iteration.
 2.  **UCI Reporting (S)**
     *   *Description:* Report standard `info multipv <id> ...` strings.
     *   *Acceptance Criteria:*
-        *   [ ] Output matches UCI standard.
-        *   [ ] GUI displays multiple lines.
+        *   [x] Output matches UCI standard.
+        *   [x] GUI displays multiple lines.
 
 ### Epic 46: ProbCut Pruning
 **Size:** Small (2-3 days)

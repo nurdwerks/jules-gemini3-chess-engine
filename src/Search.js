@@ -141,82 +141,108 @@ class Search {
     };
 
     // Main Iterative Deepening Loop
+    const multiPV = options.MultiPV || 1;
+
     for (let depth = 1; depth <= maxDepth; depth++) {
         const entry = this.tt.probe(this.board.zobristKey);
-        const score = entry && entry.depth === depth ? entry.score : -Infinity;
+        // Note: With MultiPV, existing TT entry might be from a previous PV line or previous depth.
+        // We use it for move ordering (handled in rootAlphaBeta).
 
         if (this.debugMode) {
              this.debugTree.nodes = [];
              this.debugTree.iteration = depth;
         }
 
-        // Aspiration Windows
-        let alpha = -Infinity;
-        let beta = Infinity;
-        const windowSize = options.AspirationWindow || 50;
+        let excludedMoves = [];
 
-        if (depth > 1) {
-            alpha = bestScore - windowSize;
-            beta = bestScore + windowSize;
-        }
+        for (let pvIdx = 0; pvIdx < multiPV; pvIdx++) {
+            // Aspiration Windows
+            // We only use aspiration windows for the first PV line to keep things simple for now.
+            let alpha = -Infinity;
+            let beta = Infinity;
+            const windowSize = options.AspirationWindow || 50;
 
-        let move = null;
-        let result = null;
+            if (depth > 1 && pvIdx === 0) {
+                alpha = bestScore - windowSize;
+                beta = bestScore + windowSize;
+            }
 
-        while (true) {
-             // Root has no prevMove
-             result = this.rootAlphaBeta(depth, alpha, beta);
-             move = result.move;
+            let move = null;
+            let result = null;
+            let val = -Infinity;
 
-             // Check if stopped during root search
-             if (this.stopFlag) {
-                 if (move) bestMove = move;
-                 // If we stopped, we must break. But we might have a valid partial result.
-                 break;
-             }
+            while (true) {
+                // Root has no prevMove
+                result = this.rootAlphaBeta(depth, alpha, beta, excludedMoves);
+                move = result.move;
+                val = result.score;
 
-             const val = result.score;
+                // Check if stopped during root search
+                if (this.stopFlag) {
+                    if (pvIdx === 0 && move) bestMove = move; // Only update global bestMove if it's the main line
+                    break;
+                }
 
-             // Safety check: if val is null/undefined (e.g. no moves?), break
-             if (val === undefined || val === null) break;
+                // Safety check: if val is null/undefined (e.g. no moves?), break
+                if (val === undefined || val === null) {
+                    // No more moves available (e.g. we excluded all legal moves)
+                    break;
+                }
 
-             // If we found a move, update bestMove (even if we re-search)
-             if (move) bestMove = move;
+                // Fail Low
+                if (val <= alpha) {
+                    if (alpha === -Infinity) {
+                        break;
+                    }
+                    alpha = -Infinity;
+                    continue;
+                }
+                // Fail High
+                if (val >= beta) {
+                    if (beta === Infinity) {
+                        break;
+                    }
+                    beta = Infinity;
+                    continue;
+                }
 
-             // Fail Low
-             if (val <= alpha) {
-                 if (alpha === -Infinity) {
-                     bestMove = move;
-                     bestScore = val;
-                     break;
-                 }
-                 alpha = -Infinity;
-                 continue;
-             }
-             // Fail High
-             if (val >= beta) {
-                 if (beta === Infinity) {
-                     bestMove = move;
-                     bestScore = val;
-                     break;
-                 }
-                 beta = Infinity;
-                 continue;
-             }
+                // Exact
+                break;
+            }
 
-             // Exact
-             bestMove = move;
-             bestScore = val;
-             break;
-        }
+            if (this.stopFlag) break;
 
-        // Ensure we set bestMove if it was set inside the loop (redundant but safe)
-        // Actually bestMove is updated in the loop.
+            if (!result || result.move === null) {
+                // No more moves found (e.g. fewer legal moves than MultiPV)
+                break;
+            }
 
-        // Fallback if loop somehow exited without setting bestMove (e.g. immediate stop)
-        // If we have a result.move, it's the best we found in that partial search.
-        if (!bestMove && result && result.move) {
-            bestMove = result.move;
+            const currentBestMove = result.move;
+            const currentBestScore = result.score;
+
+            // Update global bestMove/bestScore only for the first PV line
+            if (pvIdx === 0) {
+                bestMove = currentBestMove;
+                bestScore = currentBestScore;
+            }
+
+            // Report info string for this PV
+            if (options.onInfo) {
+                const elapsed = Date.now() - startTime;
+                const nps = elapsed > 0 ? Math.floor(this.nodes / (elapsed / 1000)) : 0;
+                const pvLine = this.getPVLine(this.board, depth, currentBestMove);
+                const pvString = pvLine.map(m => this.moveToString(m)).join(' ');
+
+                let scoreString = `cp ${currentBestScore}`;
+                if (Math.abs(currentBestScore) > 10000) {
+                    const mateIn = Math.ceil((20000 - Math.abs(currentBestScore)) / 2) * (currentBestScore > 0 ? 1 : -1);
+                    scoreString = `mate ${mateIn}`;
+                }
+
+                options.onInfo(`depth ${depth} multipv ${pvIdx + 1} score ${scoreString} nodes ${this.nodes} nps ${nps} time ${elapsed} pv ${pvString}`);
+            }
+
+            excludedMoves.push(currentBestMove);
         }
 
         // Safety fallback if bestMove is STILL null (e.g. interrupted before any move found in depth 1?)
@@ -397,7 +423,7 @@ class Search {
     return persistentBestMove || bestMove;
   }
 
-  rootAlphaBeta(depth, alpha, beta) {
+  rootAlphaBeta(depth, alpha, beta, excludedMoves = []) {
       // Similar to alphaBeta but returns object { move, score }
       let bestMove = null;
       let bestScore = -Infinity;
@@ -409,63 +435,25 @@ class Search {
       const moves = this.board.generateMoves();
       if (moves.length === 0) return { move: null, score: -Infinity };
 
-      // Epic 29: Searchmoves Support
-      // Filter moves if restricted
-      // Ensure options is defined (default to empty object if not)
-      // Actually `this.options` is set in `search`?
-      // Yes, but in Bench execution, it might not be set if search() sets it but rootAlphaBeta accesses it?
-      // Wait, `search` calls `this.options = options` (modified in previous step).
-      // `search` calls `rootAlphaBeta`.
-      // `this.options` should be set.
-      // ERROR says `TypeError: Cannot read properties of undefined (reading 'searchMoves')`.
-      // `this.options` is undefined.
-      // Why?
-      // `search` sets `this.options = options`.
-      // `Bench.run` calls `search.search(depth, ..., { ...uci.options })`.
-      // `search.search` sets `this.options`.
-      // Then it calls `rootAlphaBeta`.
-      // `rootAlphaBeta` tries to read `this.options.searchMoves`.
-
-      // Wait. `search` definition in previous step:
-      /*
-      search(maxDepth = 5, timeLimits = { hardLimit: 1000, softLimit: 1000 }, options = {}) {
-        this.options = options; // Store for alphaBeta usage (Epic 26)
-        ...
-      }
-      */
-      // I verified this patch was applied.
-
-      // Why is `this.options` undefined?
-      // Maybe context?
-      // `this` in `rootAlphaBeta` refers to `Search` instance.
-      // Maybe `options` passed to `search` was undefined/null?
-      // Bench calls: `search.search(depth, { hardLimit: Infinity }, { ...uci.options });`
-      // `options` is an object.
-      // So `this.options` should be an object.
-
-      // Let's wrap access safely.
-      let searchMoves = this.options && this.options.searchMoves;
       let filteredMoves = moves;
 
+      // Filter out excluded moves (MultiPV)
+      if (excludedMoves && excludedMoves.length > 0) {
+          filteredMoves = filteredMoves.filter(m => !excludedMoves.some(em => em.from === m.from && em.to === m.to && em.promotion === m.promotion));
+      }
+
+      if (filteredMoves.length === 0) return { move: null, score: -Infinity };
+
+      let searchMoves = this.options && this.options.searchMoves;
+
       if (searchMoves && searchMoves.length > 0) {
-          filteredMoves = moves.filter(m => {
+          filteredMoves = filteredMoves.filter(m => {
               const alg = this.moveToString(m);
               return searchMoves.includes(alg);
           });
           if (filteredMoves.length === 0) {
-              // If no moves match, should we return null or best legal?
-              // Return null, handled by fallback.
               return { move: null, score: -Infinity };
           }
-      } else if (searchMoves) {
-          // If searchMoves is defined but empty (e.g. empty array), usually means "search any move"?
-          // UCI "searchmoves" is followed by moves. If none, "searchmoves" keyword usually implies filtering.
-          // But if the array is empty, it might mean the parser saw "searchmoves" but no moves?
-          // Or it defaults to no filtering.
-          // Let's assume empty array means NO FILTERING (search all).
-          // But usually "searchmoves e2e4" -> ['e2e4'].
-          // If user sends "go searchmoves", usually it's invalid uci or empty list.
-          // Let's safe-guard: if list is empty, ignore it.
       }
 
       // Move Ordering (Root has no prevMove)
@@ -515,8 +503,9 @@ class Search {
               alpha = score;
           }
       }
-      // Store Root in TT? Yes
-      if (!this.stopFlag && bestMove) {
+      // Store Root in TT? Yes, but only if we are searching the main line (no excluded moves)
+      // If we are searching for the 2nd best move, we don't want to overwrite the primary best move in the TT.
+      if (!this.stopFlag && bestMove && (!excludedMoves || excludedMoves.length === 0)) {
           this.tt.save(this.board.zobristKey, bestScore, depth, TT_FLAG.EXACT, bestMove);
       }
 
@@ -999,30 +988,53 @@ class Search {
       return `${fromAlg}${toAlg}${promo}`;
   }
 
-  getPV(board, depth) {
-      // Extract PV from TT
+  getPVLine(board, depth, firstMove) {
       const pv = [];
-      let currentKey = board.zobristKey;
-      // Clone board to simulate moves? Or just trust TT keys?
-      // We need to make moves to update key.
-      // BUT we cannot modify the actual board passed in search freely without undo.
-      // We should use a clone or make/unmake carefully.
-      // Actually, checking PV is best done by making moves.
+      const movesMade = [];
+      try {
+          if (firstMove) {
+              pv.push(firstMove);
+              const state = board.applyMove(firstMove);
+              movesMade.push({ move: firstMove, state });
+          }
 
-      // Simple PV extraction (just for verification logic test)
-      // This requires simulating the game forward.
-      // Since this is debug/diag, we can assume it's expensive.
+          let currentDepth = firstMove ? 1 : 0;
+          const seenKeys = new Set();
+          seenKeys.add(board.zobristKey);
 
-      // NOTE: We can't easily clone 'board' fully if it has complex state.
-      // But we can use makeMove/unmakeMove if we track them.
+          while (currentDepth < depth) {
+              const entry = this.tt.probe(board.zobristKey);
+              if (!entry || !entry.move) break;
 
-      // For now, let's just try to retrieve the move sequence from TT
-      // This is tricky without modifying board state to get next Zobrist key.
+              const move = entry.move;
 
-      // Placeholder: Just return the root move for now as PV[0]
-      const entry = this.tt.probe(board.zobristKey);
-      if (entry && entry.move) pv.push(entry.move);
+              // Validate legality
+              const legalMoves = board.generateMoves();
+              const realMove = legalMoves.find(m => m.from === move.from && m.to === move.to && m.promotion === move.promotion);
+
+              if (!realMove) break;
+
+              pv.push(realMove);
+              const state = board.applyMove(realMove);
+              movesMade.push({ move: realMove, state });
+
+              if (seenKeys.has(board.zobristKey)) break; // Loop detection
+              seenKeys.add(board.zobristKey);
+
+              currentDepth++;
+          }
+      } finally {
+           while(movesMade.length > 0) {
+              const { move, state } = movesMade.pop();
+              board.undoApplyMove(move, state);
+          }
+      }
       return pv;
+  }
+
+  getPV(board, depth) {
+      // Wrapper for backward compatibility / debug check
+      return this.getPVLine(board, depth, null);
   }
 
   checkPV(pv) {
