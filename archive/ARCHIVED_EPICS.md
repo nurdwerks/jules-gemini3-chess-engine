@@ -878,3 +878,16 @@ The following Epics were part of the initial development phase and are either co
     *   *Description:* Support SVG-based piece sets alongside the Unicode default.
     *   *Acceptance Criteria:*
         *   [x] Users can toggle between Unicode and SVG pieces.
+
+### Epic 60: PGN and FEN Import/Export
+**Size:** Medium (3 days)
+**Description:** Facilitate game sharing and custom position setup.
+**User Stories:**
+1.  **FEN Handling (S)**
+    *   *Description:* Add a "Copy FEN" button and a "Paste FEN" input to set the board state.
+    *   *Acceptance Criteria:*
+        *   [x] Board updates correctly from a valid FEN string.
+2.  **PGN Export (S)**
+    *   *Description:* Add a button to download the current game as a PGN file.
+    *   *Acceptance Criteria:*
+        *   [x] A valid .pgn file is generated and downloaded.

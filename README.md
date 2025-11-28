@@ -12,19 +12,6 @@ Benchmarking functions can be written and verified, but performance-critical ben
 
 ## Active Roadmap
 
-### Epic 60: PGN and FEN Import/Export
-**Size:** Medium (3 days)
-**Description:** Facilitate game sharing and custom position setup.
-**User Stories:**
-1.  **FEN Handling (S)**
-    *   *Description:* Add a "Copy FEN" button and a "Paste FEN" input to set the board state.
-    *   *Acceptance Criteria:*
-        *   [ ] Board updates correctly from a valid FEN string.
-2.  **PGN Export (S)**
-    *   *Description:* Add a button to download the current game as a PGN file.
-    *   *Acceptance Criteria:*
-        *   [ ] A valid .pgn file is generated and downloaded.
-
 ### Epic 61: Engine Analysis Mode
 **Size:** Medium (3 days)
 **Description:** Enable continuous engine analysis without auto-playing moves.

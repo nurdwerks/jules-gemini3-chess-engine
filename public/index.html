@@ -40,6 +40,21 @@
                      </div>
                 </div>
             </div>
+            <div class="panel import-export-panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">Import / Export</h2>
+                </div>
+                <div class="panel-content">
+                    <div class="input-group">
+                        <input type="text" id="fen-input" placeholder="Paste FEN here..." />
+                        <button id="load-fen-btn">Load</button>
+                    </div>
+                    <div class="button-group mt-10">
+                        <button id="copy-fen-btn">Copy FEN</button>
+                        <button id="export-pgn-btn">Export PGN</button>
+                    </div>
+                </div>
+            </div>
             <div class="panel history-panel">
                 <div class="panel-header">
                     <h2 class="panel-title">Game History</h2>
@@ -117,5 +132,6 @@
   </div>
   <script src="libs/chess.js"></script>
   <script src="client.js"></script>
+  <div id="toast-container"></div>
 </body>
 </html>
