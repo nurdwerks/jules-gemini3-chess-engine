@@ -267,3 +267,44 @@ button:hover {
     word-break: break-all;
     line-height: 1.4;
 }
+
+/* Move History Panel */
+.move-history-list {
+    height: 150px;
+    overflow-y: auto;
+    background-color: var(--grafana-input-bg);
+    border: 1px solid var(--grafana-border);
+    padding: 5px;
+    font-size: 13px;
+    display: grid;
+    grid-template-columns: 40px 1fr 1fr;
+    gap: 2px;
+    align-content: start;
+}
+
+.move-number {
+    color: var(--grafana-text-secondary);
+    padding: 2px 5px;
+    text-align: right;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.move-san {
+    cursor: pointer;
+    padding: 2px 5px;
+    color: var(--grafana-text-primary);
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+}
+
+.move-san:hover {
+    background-color: var(--grafana-border);
+}
+
+.move-san.active {
+    background-color: var(--grafana-accent-blue);
+    color: white;
+}

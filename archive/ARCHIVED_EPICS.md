@@ -839,3 +839,16 @@ The following Epics were part of the initial development phase and are either co
     *   *Description:* Display depth, nodes per second, and current evaluation score in dedicated statistic cards.
     *   *Acceptance Criteria:*
         *   [x] Key metrics are prominent and easy to read.
+
+### Epic 57: Game History and Notation Panel
+**Size:** Small (2 days)
+**Description:** Display the game's move history in standard chess notation.
+**User Stories:**
+1.  **SAN Display (S)**
+    *   *Description:* Record and list moves in Standard Algebraic Notation (e.g., Nf3, e5).
+    *   *Acceptance Criteria:*
+        *   [x] Moves are listed sequentially in a scrollable panel.
+2.  **Interactive History (S)**
+    *   *Description:* Allow clicking on past moves to view the board state at that point.
+    *   *Acceptance Criteria:*
+        *   [x] Clicking a previous move updates the board to that position (read-only view).
