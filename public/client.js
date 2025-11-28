@@ -10,6 +10,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const newGameBtn = document.getElementById('new-game-btn')
   const flipBoardBtn = document.getElementById('flip-board-btn')
 
+  const boardThemeSelect = document.getElementById('board-theme')
+  const pieceSetSelect = document.getElementById('piece-set')
+
   const evalValueElement = document.getElementById('eval-value')
   const depthValueElement = document.getElementById('depth-value')
   const npsValueElement = document.getElementById('nps-value')
@@ -28,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let isFlipped = false
   let gameStarted = false
   let currentViewIndex = -1 // -1 means live view
+  let currentPieceSet = 'svg' // 'svg' or 'unicode'
   let legalMovesForSelectedPiece = [] // Array of move objects from chess.js
 
   let whiteTime = 300000 // 5 minutes in ms
@@ -503,10 +507,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (pieceObj) {
       const color = pieceObj.color
       const type = pieceObj.type
-      const img = document.createElement('img')
-      img.src = `images/${color}${type}.svg`
-      img.classList.add('piece')
-      square.appendChild(img)
+      if (currentPieceSet === 'unicode') {
+        const div = document.createElement('div')
+        div.classList.add('piece', 'piece-text')
+        div.classList.add(color === 'w' ? 'white-piece' : 'black-piece')
+        div.textContent = getUnicodePiece(color, type)
+        square.appendChild(div)
+      } else {
+        const img = document.createElement('img')
+        img.src = `images/${color}${type}.svg`
+        img.classList.add('piece')
+        square.appendChild(img)
+      }
     }
 
     square.dataset.row = row
@@ -598,6 +610,34 @@ document.addEventListener('DOMContentLoaded', () => {
     renderBoard()
     renderClocks()
   })
+
+  boardThemeSelect.addEventListener('change', (e) => {
+    setBoardTheme(e.target.value)
+  })
+
+  pieceSetSelect.addEventListener('change', (e) => {
+    currentPieceSet = e.target.value
+    renderBoard()
+  })
+
+  function setBoardTheme (theme) {
+    // Remove existing theme classes
+    ['theme-green', 'theme-blue', 'theme-wood'].forEach(cls => {
+        boardElement.classList.remove(cls)
+    })
+
+    if (theme !== 'classic') {
+      boardElement.classList.add(`theme-${theme}`)
+    }
+  }
+
+  function getUnicodePiece (color, type) {
+    const map = {
+      w: { p: '♙', n: '♘', b: '♗', r: '♖', q: '♕', k: '♔' },
+      b: { p: '♟', n: '♞', b: '♝', r: '♜', q: '♛', k: '♚' }
+    }
+    return map[color][type]
+  }
 
   connect()
 })

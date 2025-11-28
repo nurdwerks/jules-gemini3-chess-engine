@@ -865,3 +865,16 @@ The following Epics were part of the initial development phase and are either co
     *   *Description:* Implement countdown logic that syncs with the engine's time usage.
     *   *Acceptance Criteria:*
         *   [x] Clocks count down while the respective side is thinking.
+
+### Epic 59: Interactive Board Customization
+**Size:** Small (1-2 days)
+**Description:** Allow users to personalize the board's appearance.
+**User Stories:**
+1.  **Theme Selection (S)**
+    *   *Description:* Provide a dropdown to select different board color themes (e.g., Green, Blue, Wood).
+    *   *Acceptance Criteria:*
+        *   [x] Board colors change immediately upon selection.
+2.  **Piece Sets (S)**
+    *   *Description:* Support SVG-based piece sets alongside the Unicode default.
+    *   *Acceptance Criteria:*
+        *   [x] Users can toggle between Unicode and SVG pieces.
