@@ -244,20 +244,20 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* Show a panel listing pieces captured by each side.
     *   *Implementation:* Calculate difference in starting vs current material. Render piece icons.
     *   *Tasks:*
-        - [ ] Update logic in `client.js`.
-        - [ ] UI container for "Graveyard".
+        - [x] Update logic in `client.js`.
+        - [x] UI container for "Graveyard".
     *   *Testing Plan:* Capture piece.
     *   *Acceptance Criteria:*
-        - [ ] Captured piece appears in list.
+        - [x] Captured piece appears in list.
 
 88. **Piece Jail (S)**
     *   *Description:* Show captured pieces in a "jail" area instead of a simple count.
     *   *Implementation:* Visual styling for the captured piece container (bars?).
     *   *Tasks:*
-        - [ ] CSS styling.
+        - [x] CSS styling.
     *   *Testing Plan:* Visual check.
     *   *Acceptance Criteria:*
-        - [ ] Distinct visual style.
+        - [x] Distinct visual style.
 
 89. **Material Balance Bar (S)**
     *   *Description:* A simple visual bar showing who is ahead based on material values.
@@ -273,30 +273,30 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* Just show "+1", "-3" next to the player names.
     *   *Implementation:* Text update in player info panel.
     *   *Tasks:*
-        - [ ] Update DOM element.
+        - [x] Update DOM element.
     *   *Testing Plan:* Verify math.
     *   *Acceptance Criteria:*
-        - [ ] Correct score shown.
+        - [x] Correct score shown.
 
 91. **Evaluation Graph (S)**
     *   *Description:* Display a line chart showing the engine's evaluation score over the course of the game.
     *   *Implementation:* Use `chart.js` or SVG. Push eval to array on each move.
     *   *Tasks:*
-        - [ ] Integrate charting library.
-        - [ ] Data collection loop.
+        - [x] Integrate charting library.
+        - [x] Data collection loop.
     *   *Testing Plan:* Play game.
     *   *Acceptance Criteria:*
-        - [ ] Chart updates per move.
+        - [x] Chart updates per move.
 
 92. **Vertical Evaluation Bar (S)**
     *   *Description:* A gauge next to the board visualizing the current advantage.
     *   *Implementation:* Tall div with internal colored div. Height % = (Eval + Cap) / 2*Cap.
     *   *Tasks:*
-        - [ ] CSS layout.
-        - [ ] Update logic.
+        - [x] CSS layout.
+        - [x] Update logic.
     *   *Testing Plan:* Check mate score.
     *   *Acceptance Criteria:*
-        - [ ] Full bar for white/black win.
+        - [x] Full bar for white/black win.
 
 93. **Move Time Histogram (S)**
     *   *Description:* A chart showing the time spent thinking on each move of the game.
