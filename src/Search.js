@@ -7,7 +7,8 @@ const MoveSorter = require('./MoveSorter')
 const Quiescence = require('./Quiescence')
 const SearchPruning = require('./SearchPruning')
 const StrengthLimiter = require('./StrengthLimiter')
-const fs = require('fs')
+const SearchUtils = require('./SearchUtils')
+const SearchDebug = require('./SearchDebug')
 
 class Search {
   constructor (board, tt = null, nnue = null) {
@@ -94,9 +95,9 @@ class Search {
       this.checkTimeSoftLimit(depth, timeManager)
       if (this.bestMove) this.persistentBestMove = this.bestMove
       if (this.stopFlag) break
-      this.injectError()
-      this.writeDebugTree()
-      this.verifyPV(depth)
+      StrengthLimiter.injectError(this)
+      SearchDebug.writeDebugTree(this)
+      SearchDebug.verifyPV(this, depth)
     }
     if (this.debugMode) console.log(`Search Stats: Nodes=${this.nodes} NullMove=${this.stats.pruning.nullMove}`)
     return this.persistentBestMove || this.bestMove
@@ -166,8 +167,8 @@ class Search {
     if (this.options.onInfo) {
       const elapsed = Date.now() - this.startTime
       const nps = elapsed > 0 ? Math.floor(this.nodes / (elapsed / 1000)) : 0
-      const pvLine = this.getPVLine(this.board, depth, move)
-      const pvString = pvLine.map(m => this.moveToString(m)).join(' ')
+      const pvLine = SearchUtils.getPVLine(this.board, this.tt, depth, move)
+      const pvString = pvLine.map(m => SearchUtils.moveToString(this.board, m)).join(' ')
       let scoreString = `cp ${score}`
       if (Math.abs(score) > 10000) {
         const mateIn = Math.ceil((20000 - Math.abs(score)) / 2) * (score > 0 ? 1 : -1)
@@ -218,39 +219,6 @@ class Search {
     this.isStable = this.stableMoveCount >= 2
   }
 
-  injectError () {
-    if (this.options.UCI_LimitStrength && this.options.UCI_Elo && this.bestMove) {
-      const elo = this.options.UCI_Elo
-      if (elo < 2500) {
-        const blunderChance = Math.max(0, (2500 - elo) / 5000)
-        if (Math.random() < blunderChance) {
-          const moves = this.board.generateMoves()
-          if (moves.length > 1) {
-            const otherMoves = moves.filter(m => !(m.from === this.bestMove.from && m.to === this.bestMove.to))
-            if (otherMoves.length > 0) this.bestMove = otherMoves[Math.floor(Math.random() * otherMoves.length)]
-          }
-        }
-      }
-    }
-  }
-
-  writeDebugTree () {
-    if (this.debugMode) {
-      try {
-        fs.writeFileSync(this.debugFile, JSON.stringify(this.debugTree, null, 2))
-      } catch (e) {
-        console.error('Failed to write debug tree:', e)
-      }
-    }
-  }
-
-  verifyPV (depth) {
-    if (this.debugMode) {
-      const pv = this.getPV(this.board, depth)
-      this.checkPV(pv)
-    }
-  }
-
   rootAlphaBeta (depth, alpha, beta, excludedMoves = []) {
     const ttEntry = this.tt.probe(this.board.zobristKey)
     const ttMove = ttEntry ? ttEntry.move : null
@@ -273,7 +241,7 @@ class Search {
     if (moves.length === 0) return []
 
     if (this.options.searchMoves && this.options.searchMoves.length > 0) {
-      moves = moves.filter(m => this.options.searchMoves.includes(this.moveToString(m)))
+      moves = moves.filter(m => this.options.searchMoves.includes(SearchUtils.moveToString(this.board, m)))
     }
     return moves
   }
@@ -303,19 +271,14 @@ class Search {
     let extension = this._getPassedPawnExtension(move)
     const state = this.board.applyMove(move)
     if (this.board.isInCheck()) extension = Math.max(extension, 1)
-    let debugNode = null
-    const prevDebugNode = this.currentDebugNode
-    if (this.debugMode) {
-      debugNode = { move: this.moveToString(move), score: null, children: [], alpha, beta, depth }
-      this.debugTree.nodes.push(debugNode)
-      this.currentDebugNode = debugNode
-    }
+
+    const { debugNode, prevDebugNode } = SearchDebug.startRootMoveDebug(this, move, alpha, beta, depth)
+
     const score = -this.alphaBeta(depth - 1 + extension, -beta, -alpha, move, 1, null)
     this.board.undoApplyMove(move, state)
-    if (this.debugMode) {
-      debugNode.score = score
-      this.currentDebugNode = prevDebugNode
-    }
+
+    SearchDebug.endMoveDebug(this, debugNode, prevDebugNode, score)
+
     return score
   }
 
@@ -437,7 +400,7 @@ class Search {
     let movesSearched = 0
 
     for (const move of moves) {
-      if (excludedMove && this.isSameMove(move, excludedMove)) continue
+      if (excludedMove && SearchUtils.isSameMove(move, excludedMove)) continue
       if (this.shouldPruneLateMove(depth, movesSearched, inCheck, move)) continue
 
       const score = this.searchMove(move, depth, alpha, beta, ply, inCheck, singularExtension, movesSearched, ttMove)
@@ -483,10 +446,6 @@ class Search {
     return { cutoff: false, bestScore, bestMove, alpha, flag }
   }
 
-  isSameMove (m1, m2) {
-    return m1.from === m2.from && m1.to === m2.to && m1.promotion === m2.promotion
-  }
-
   updateHeuristics (move, depth, prevMove, capturedPiece) {
     const isCapture = move.flags.includes('c')
     if (!isCapture) {
@@ -501,13 +460,7 @@ class Search {
   }
 
   searchMove (move, depth, alpha, beta, ply, inCheck, singularExtension, movesSearched, ttMove) {
-    const prevDebugNode = this.currentDebugNode
-    let debugNode = null
-    if (this.debugMode && depth > 0) {
-      debugNode = { move: this.moveToString(move), score: null, children: [], alpha, beta, depth }
-      this.currentDebugNode.children.push(debugNode)
-      this.currentDebugNode = debugNode
-    }
+    const { debugNode, prevDebugNode } = SearchDebug.startMoveDebug(this, move, depth, alpha, beta)
 
     const state = this.board.applyMove(move)
     this.updateNNUE(move, state.capturedPiece)
@@ -519,10 +472,8 @@ class Search {
     this.restoreNNUE()
     this.board.undoApplyMove(move, state)
 
-    if (this.debugMode && debugNode) {
-      debugNode.score = score
-      this.currentDebugNode = prevDebugNode
-    }
+    SearchDebug.endMoveDebug(this, debugNode, prevDebugNode, score)
+
     return score
   }
 
@@ -550,7 +501,7 @@ class Search {
   calculateExtension (move, inCheck, singularExtension, ttMove) {
     let extension = inCheck ? 1 : 0
     extension = Math.max(extension, this._getPassedPawnExtension(move))
-    if (singularExtension > 0 && ttMove && this.isSameMove(move, ttMove)) {
+    if (singularExtension > 0 && ttMove && SearchUtils.isSameMove(move, ttMove)) {
       extension += singularExtension
     }
     return extension
@@ -611,76 +562,6 @@ class Search {
 
   quiescence (alpha, beta) {
     return Quiescence(this, alpha, beta)
-  }
-
-  moveToString (move) {
-    const { row: fromRow, col: fromCol } = this.board.toRowCol(move.from)
-    const { row: toRow, col: toCol } = this.board.toRowCol(move.to)
-    const fromAlg = `${String.fromCharCode('a'.charCodeAt(0) + fromCol)}${8 - fromRow}`
-    const toAlg = `${String.fromCharCode('a'.charCodeAt(0) + toCol)}${8 - toRow}`
-    const promo = move.promotion ? move.promotion : ''
-    return `${fromAlg}${toAlg}${promo}`
-  }
-
-  getPVLine (board, depth, firstMove) {
-    const pv = []
-    const movesMade = []
-    try {
-      if (firstMove) {
-        pv.push(firstMove)
-        const state = board.applyMove(firstMove)
-        movesMade.push({ move: firstMove, state })
-      }
-      let currentDepth = firstMove ? 1 : 0
-      const seenKeys = new Set()
-      seenKeys.add(board.zobristKey)
-      while (currentDepth < depth) {
-        const entry = this.tt.probe(board.zobristKey)
-        if (!entry || !entry.move) break
-        const move = entry.move
-        const legalMoves = board.generateMoves()
-        const realMove = legalMoves.find(m => m.from === move.from && m.to === move.to && m.promotion === move.promotion)
-        if (!realMove) break
-        pv.push(realMove)
-        const state = board.applyMove(realMove)
-        movesMade.push({ move: realMove, state })
-        if (seenKeys.has(board.zobristKey)) break
-        seenKeys.add(board.zobristKey)
-        currentDepth++
-      }
-    } finally {
-      while (movesMade.length > 0) {
-        const { move, state } = movesMade.pop()
-        board.undoApplyMove(move, state)
-      }
-    }
-    return pv
-  }
-
-  getPV (board, depth) {
-    return this.getPVLine(board, depth, null)
-  }
-
-  checkPV (pv) {
-    const movesMade = []
-    let valid = true
-    for (const move of pv) {
-      const legalMoves = this.board.generateMoves()
-      const isLegal = legalMoves.some(m => m.from === move.from && m.to === move.to && m.promotion === move.promotion)
-      if (!isLegal) {
-        console.error(`PV Consistency Error: Illegal move ${this.moveToString(move)}`)
-        valid = false
-        break
-      }
-      const realMove = legalMoves.find(m => m.from === move.from && m.to === move.to && m.promotion === move.promotion)
-      const state = this.board.applyMove(realMove)
-      movesMade.push({ move: realMove, state })
-    }
-    while (movesMade.length > 0) {
-      const { move, state } = movesMade.pop()
-      this.board.undoApplyMove(move, state)
-    }
-    if (!valid) throw new Error('PV Consistency Check Failed')
   }
 }
 

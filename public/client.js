@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 /* eslint-env browser */
 /* global Chess */
 
