@@ -8,6 +8,10 @@ describe('Tuning Infrastructure (Stories 5.3a/5.3b)', () => {
     uci = new UCI(() => {}) // No-op output
   })
 
+  afterEach(async () => {
+    if (uci) await uci.stopWorkers()
+  })
+
   test('setoption command updates Piece Values', () => {
     // Initial Pawn Value: 100
     // We can't easily read private vars of Evaluation via UCI, but we can check Evaluation.evaluate outcome.
