@@ -891,3 +891,16 @@ The following Epics were part of the initial development phase and are either co
     *   *Description:* Add a button to download the current game as a PGN file.
     *   *Acceptance Criteria:*
         *   [x] A valid .pgn file is generated and downloaded.
+
+### Epic 61: Engine Analysis Mode
+**Size:** Medium (3 days)
+**Description:** Enable continuous engine analysis without auto-playing moves.
+**User Stories:**
+1.  **Analysis Toggle (S)**
+    *   *Description:* Add a switch to enable "Analysis Mode".
+    *   *Acceptance Criteria:*
+        *   [x] When enabled, the engine analyzes the current position indefinitely (`go infinite`).
+2.  **Interactive Exploration (S)**
+    *   *Description:* Allow the user to make moves on the board during analysis to see how the evaluation changes.
+    *   *Acceptance Criteria:*
+        *   [x] Making a move updates the position and restarts the analysis automatically.

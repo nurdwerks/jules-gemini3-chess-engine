@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const moveHistoryElement = document.getElementById('move-history')
   const newGameBtn = document.getElementById('new-game-btn')
   const flipBoardBtn = document.getElementById('flip-board-btn')
+  const analysisModeCheckbox = document.getElementById('analysis-mode')
   const fenInput = document.getElementById('fen-input')
   const loadFenBtn = document.getElementById('load-fen-btn')
   const copyFenBtn = document.getElementById('copy-fen-btn')
@@ -39,6 +40,10 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentPieceSet = 'svg' // 'svg' or 'unicode'
   let legalMovesForSelectedPiece = [] // Array of move objects from chess.js
   let startingFen = 'startpos' // Track the initial position
+  let isAnalysisMode = false
+  let ignoreNextBestMove = false
+  let isAnalyzing = false
+  let pendingAnalysisCmd = null
 
   let whiteTime = 300000 // 5 minutes in ms
   let blackTime = 300000
@@ -81,6 +86,22 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function _handleBestMoveMsg (parts) {
+    isAnalyzing = false
+    if (isAnalysisMode && pendingAnalysisCmd) {
+      ignoreNextBestMove = false
+      socket.send(pendingAnalysisCmd)
+      socket.send('go infinite')
+      isAnalyzing = true
+      pendingAnalysisCmd = null
+      return
+    }
+
+    if (ignoreNextBestMove) {
+      ignoreNextBestMove = false
+      return
+    }
+    if (isAnalysisMode) return
+
     const move = parts[1]
     if (move && move !== '(none)') {
       // Engine sends long algebraic (e.g., e2e4, a7a8q)
@@ -612,8 +633,19 @@ document.addEventListener('DOMContentLoaded', () => {
       cmd += ` moves ${uciMoves.join(' ')}`
     }
 
-    socket.send(cmd)
-    socket.send(`go wtime ${Math.floor(whiteTime)} btime ${Math.floor(blackTime)}`)
+    if (isAnalysisMode) {
+      if (isAnalyzing) {
+        pendingAnalysisCmd = cmd
+        socket.send('stop')
+      } else {
+        socket.send(cmd)
+        socket.send('go infinite')
+        isAnalyzing = true
+      }
+    } else {
+      socket.send(cmd)
+      socket.send(`go wtime ${Math.floor(whiteTime)} btime ${Math.floor(blackTime)}`)
+    }
   }
 
   newGameBtn.addEventListener('click', () => {
@@ -624,6 +656,18 @@ document.addEventListener('DOMContentLoaded', () => {
     isFlipped = !isFlipped
     renderBoard()
     renderClocks()
+  })
+
+  analysisModeCheckbox.addEventListener('change', () => {
+    isAnalysisMode = analysisModeCheckbox.checked
+    if (isAnalysisMode) {
+      sendPositionAndGo()
+    } else {
+      if (isAnalyzing) {
+        socket.send('stop')
+        ignoreNextBestMove = true
+      }
+    }
   })
 
   boardThemeSelect.addEventListener('change', (e) => {

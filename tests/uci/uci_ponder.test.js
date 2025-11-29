@@ -12,38 +12,61 @@ describe('UCI Ponder Logic', () => {
     uci = new UCI(mockOutput)
   })
 
-  test('go ponder starts search but suppresses bestmove', () => {
+  afterEach(async () => {
+    await uci.stopWorkers()
+  })
+
+  test('go ponder starts search but suppresses bestmove', async () => {
     // Setup a simple position
     uci.processCommand('position startpos')
 
     // Go ponder with shallow depth so it finishes quickly
     uci.processCommand('go ponder depth 1')
 
-    // Search should run (producing info lines probably, but not checked here)
-    // But NO bestmove should be printed yet
+    // Wait for search to likely finish (depth 1 is sub-ms usually)
+    await new Promise(resolve => setTimeout(resolve, 200))
+
+    // Search should have run, but NO bestmove should be printed yet
     expect(output.some(line => line.startsWith('bestmove'))).toBe(false)
   })
 
-  test('ponderhit triggers bestmove after search finishes', () => {
+  test('ponderhit triggers bestmove', async () => {
     uci.processCommand('position startpos')
     uci.processCommand('go ponder depth 1')
 
-    // Clear output to verify what happens on ponderhit
-    output = []
+    // Wait a bit to ensure search finishes and bestmove is pending
+    await new Promise(resolve => setTimeout(resolve, 200))
 
-    // Verify state is "pending bestmove" (internal check or just behavior)
-    uci.processCommand('ponderhit')
+    const promise = new Promise(resolve => {
+      const originalLog = uci.output
+      uci.output = (msg) => {
+        originalLog(msg)
+        if (msg.startsWith('bestmove')) resolve()
+      }
+      // If it was already pending, ponderhit should trigger it immediately
+      uci.processCommand('ponderhit')
+    })
 
+    await promise
     expect(output.some(line => line.startsWith('bestmove'))).toBe(true)
   })
 
-  test('stop during ponder sends bestmove', () => {
+  test('stop during ponder sends bestmove', async () => {
     uci.processCommand('position startpos')
     uci.processCommand('go ponder depth 1')
 
-    output = []
-    uci.processCommand('stop')
+    await new Promise(resolve => setTimeout(resolve, 200))
 
+    const promise = new Promise(resolve => {
+      const originalLog = uci.output
+      uci.output = (msg) => {
+        originalLog(msg)
+        if (msg.startsWith('bestmove')) resolve()
+      }
+      uci.processCommand('stop')
+    })
+
+    await promise
     expect(output.some(line => line.startsWith('bestmove'))).toBe(true)
   })
 })

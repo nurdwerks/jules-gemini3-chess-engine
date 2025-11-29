@@ -12,6 +12,10 @@ describe('UCI Limit Strength Options', () => {
     uci = new UCI(mockOutput)
   })
 
+  afterEach(async () => {
+    await uci.stopWorkers()
+  })
+
   test('uci command reports LimitStrength and Elo options', () => {
     uci.processCommand('uci')
 

@@ -25,18 +25,14 @@ class Search {
 
   resetSearchState (options, timeLimits) {
     this.options = options
+    this.stopSignal = options.stopSignal || null
     this.isStable = false
     this.timeLimits = typeof timeLimits === 'number' ? { hardLimit: timeLimits, softLimit: timeLimits } : timeLimits
     this.startTime = Date.now()
     this.stopFlag = false
     this.nodes = 0
-    if (this.options.UCI_UseNNUE && this.nnue && this.nnue.network) {
-      this.accumulatorStack = [new Accumulator()]
-      this.nnue.refreshAccumulator(this.accumulatorStack[0], this.board)
-    }
-    this.maxNodes = Infinity
-    if (options.nodes) this.maxNodes = options.nodes
-    else if (options.UCI_LimitStrength && options.UCI_Elo) this.maxNodes = StrengthLimiter.getNodesForElo(options.UCI_Elo)
+    this._initNNUE()
+    this._initMaxNodes(options)
 
     this.debugMode = options.debug || false
     this.debugTree = { depth: 0, nodes: [] }
@@ -51,7 +47,27 @@ class Search {
     this.stableMoveCount = 0
   }
 
+  _initNNUE () {
+    if (this.options.UCI_UseNNUE && this.nnue && this.nnue.network) {
+      this.accumulatorStack = [new Accumulator()]
+      this.nnue.refreshAccumulator(this.accumulatorStack[0], this.board)
+    }
+  }
+
+  _initMaxNodes (options) {
+    this.maxNodes = Infinity
+    if (options.nodes) {
+      this.maxNodes = options.nodes
+    } else if (options.UCI_LimitStrength && options.UCI_Elo) {
+      this.maxNodes = StrengthLimiter.getNodesForElo(options.UCI_Elo)
+    }
+  }
+
   checkLimits () {
+    if (this.stopSignal && Atomics.load(this.stopSignal, 0) === 1) {
+      this.stopFlag = true
+      return true
+    }
     if (this.nodes >= this.maxNodes) {
       this.stopFlag = true
       return true

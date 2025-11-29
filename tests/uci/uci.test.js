@@ -12,6 +12,10 @@ describe('UCI Protocol', () => {
     uci = new UCI(mockLog)
   })
 
+  afterEach(async () => {
+    await uci.stopWorkers()
+  })
+
   test('Command: uci', () => {
     uci.processCommand('uci')
     expect(output).toContain('id name JulesGemini')
@@ -64,12 +68,19 @@ describe('UCI Protocol', () => {
     expect(uci.board.activeColor).toBe('w')
   })
 
-  test('Command: go', () => {
-    // For now, go should just return a bestmove (random or first legal)
-    // Since search isn't implemented, we just check for output
+  test('Command: go', async () => {
     uci.processCommand('position startpos')
+
+    const promise = new Promise(resolve => {
+      const originalLog = uci.output
+      uci.output = (msg) => {
+        originalLog(msg)
+        if (msg.startsWith('bestmove')) resolve()
+      }
+    })
+
     uci.processCommand('go depth 1')
-    // output should contain "bestmove ..."
+    await promise
     expect(output.some(line => line.startsWith('bestmove'))).toBe(true)
   })
 })

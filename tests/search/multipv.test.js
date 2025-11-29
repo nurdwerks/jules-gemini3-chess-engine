@@ -14,16 +14,26 @@ describe('MultiPV Search', () => {
     uci.book.findMove = () => null
   })
 
-  afterEach(() => {
+  afterEach(async () => {
     if (uci) {
-      uci.stopWorkers()
+      await uci.stopWorkers()
     }
   })
 
-  test('Should report multiple PV lines when MultiPV > 1', () => {
+  test('Should report multiple PV lines when MultiPV > 1', async () => {
     uci.processCommand('setoption name MultiPV value 2')
     uci.processCommand('position startpos')
+
+    const promise = new Promise(resolve => {
+      const originalLog = uci.output
+      uci.output = (msg) => {
+        originalLog(msg)
+        if (msg.startsWith('bestmove')) resolve()
+      }
+    })
+
     uci.processCommand('go depth 2')
+    await promise
 
     // console.log('Outputs:', outputs);
 
@@ -43,10 +53,20 @@ describe('MultiPV Search', () => {
     expect(depth2pv2).toBeDefined()
   })
 
-  test('Should exclude first PV move from second PV search', () => {
+  test('Should exclude first PV move from second PV search', async () => {
     uci.processCommand('setoption name MultiPV value 2')
     uci.processCommand('position startpos')
+
+    const promise = new Promise(resolve => {
+      const originalLog = uci.output
+      uci.output = (msg) => {
+        originalLog(msg)
+        if (msg.startsWith('bestmove')) resolve()
+      }
+    })
+
     uci.processCommand('go depth 2')
+    await promise
 
     const depth2Lines = outputs.filter(line => line.includes('info') && line.includes('depth 2') && line.includes('multipv'))
 

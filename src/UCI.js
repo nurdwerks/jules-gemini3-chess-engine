@@ -14,6 +14,8 @@ class UCI {
     this.output = outputCallback
     this.currentSearch = null
 
+    this.stopSignal = new Int32Array(new SharedArrayBuffer(4))
+
     this.options = {
       Hash: 16,
       Threads: 1,
@@ -46,14 +48,17 @@ class UCI {
 
   startWorkers () {
     const sharedBuffer = this.tt.getSharedBuffer()
-    for (let i = 0; i < this.options.Threads - 1; i++) {
+    const numWorkers = Math.max(1, this.options.Threads)
+    for (let i = 0; i < numWorkers; i++) {
       const worker = new Worker('./src/Worker.js', {
         workerData: {
           sharedBuffer,
+          stopSignalBuffer: this.stopSignal.buffer,
           hashSize: this.options.Hash,
           options: this.options
         }
       })
+      worker.on('message', (msg) => this.handleWorkerMessage(msg))
       this.workers.push(worker)
     }
   }
@@ -62,6 +67,25 @@ class UCI {
     const promises = this.workers.map(worker => worker.terminate())
     this.workers = []
     return Promise.all(promises)
+  }
+
+  handleWorkerMessage (msg) {
+    if (msg.type === 'info') {
+      this.output(`info ${msg.data}`)
+    } else if (msg.type === 'bestmove') {
+      const bestMove = msg.move
+      let bestMoveStr = 'bestmove 0000'
+      if (bestMove) {
+        const fromAlg = this.indexToAlgebraic(bestMove.from)
+        const toAlg = this.indexToAlgebraic(bestMove.to)
+        bestMoveStr = `bestmove ${fromAlg}${toAlg}${bestMove.promotion || ''}`
+      }
+      if (this.pendingPonder) {
+        this.pendingBestMove = bestMoveStr
+      } else {
+        this.output(bestMoveStr)
+      }
+    }
   }
 
   processCommand (command) {
@@ -114,8 +138,11 @@ class UCI {
   }
 
   cmdStop () {
-    if (this.currentSearch) this.currentSearch.stopFlag = true
-    this.stopWorkers()
+    this.pendingPonder = false
+    Atomics.store(this.stopSignal, 0, 1)
+    for (const worker of this.workers) {
+      worker.postMessage({ type: 'stop' })
+    }
     if (this.pendingBestMove) {
       this.output(this.pendingBestMove)
       this.pendingBestMove = null
@@ -123,6 +150,7 @@ class UCI {
   }
 
   cmdPonderHit () {
+    this.pendingPonder = false
     if (this.pendingBestMove) {
       this.output(this.pendingBestMove)
       this.pendingBestMove = null
@@ -228,29 +256,24 @@ class UCI {
   }
 
   _executeSearch (depth, nodes, timeLimits, searchMoves, tm, isPonder) {
+    Atomics.store(this.stopSignal, 0, 0)
+    this.pendingPonder = isPonder
     const searchOptions = {
       ...this.options,
       searchMoves,
-      nodes,
-      onInfo: (info) => this.output(`info ${info}`)
+      nodes
     }
-    for (const worker of this.workers) {
-      worker.postMessage({ type: 'search', fen: this.board.generateFen(), depth, limits: timeLimits, options: this.options })
-    }
-    const bestMove = this.currentSearch.search(depth, timeLimits, searchOptions, tm)
-    this.currentSearch = null
-    this.stopWorkers()
-    let bestMoveStr = 'bestmove 0000'
-    if (bestMove) {
-      const fromAlg = this.indexToAlgebraic(bestMove.from)
-      const toAlg = this.indexToAlgebraic(bestMove.to)
-      bestMoveStr = `bestmove ${fromAlg}${toAlg}${bestMove.promotion || ''}`
-    }
-    if (isPonder) {
-      this.pendingBestMove = bestMoveStr
-    } else {
-      this.output(bestMoveStr)
-    }
+
+    this.workers.forEach((worker, index) => {
+      worker.postMessage({
+        type: 'search',
+        fen: this.board.generateFen(),
+        depth,
+        limits: timeLimits,
+        options: searchOptions,
+        isMain: index === 0
+      })
+    })
   }
 
   getSearchDepth (args) {
