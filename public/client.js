@@ -10,6 +10,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const moveHistoryElement = document.getElementById('move-history')
   const newGameBtn = document.getElementById('new-game-btn')
   const flipBoardBtn = document.getElementById('flip-board-btn')
+  const fullscreenBtn = document.getElementById('fullscreen-btn')
+  const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn')
+  const zenModeCheckbox = document.getElementById('zen-mode')
+  const streamerModeBtn = document.getElementById('streamer-mode-btn')
+  const showCoordsCheckbox = document.getElementById('show-coords')
+  const coordsOutsideCheckbox = document.getElementById('coords-outside')
   const analysisModeCheckbox = document.getElementById('analysis-mode')
   const fenInput = document.getElementById('fen-input')
   const loadFenBtn = document.getElementById('load-fen-btn')
@@ -36,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const depthValueElement = document.getElementById('depth-value')
   const npsValueElement = document.getElementById('nps-value')
   const pvLinesElement = document.getElementById('pv-lines')
+  const systemLogElement = document.getElementById('system-log')
 
   const topPlayerName = document.getElementById('top-player-name')
   const topPlayerClock = document.getElementById('top-player-clock')
@@ -165,6 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     socket.onopen = () => {
       statusElement.textContent = 'Status: Connected'
+      logSystemMessage('Connected to server', 'success')
       socket.send('uci')
     }
 
@@ -175,6 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     socket.onclose = () => {
       statusElement.textContent = 'Status: Disconnected'
+      logSystemMessage('Disconnected from server', 'error')
     }
   }
 
@@ -698,6 +707,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if ((row + col) % 2 === 0) square.classList.add('white')
     else square.classList.add('black')
 
+    _addCoordinates(square, row, col)
     _addLegalMoveHints(square, alg)
 
     const pieceObj = board[row][col]
@@ -735,6 +745,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     square.addEventListener('click', () => handleSquareClick(row, col))
     boardElement.appendChild(square)
+  }
+
+  function _addCoordinates (square, row, col) {
+    if (!showCoordsCheckbox || !showCoordsCheckbox.checked) return
+    _addRankCoordinate(square, row, col)
+    _addFileCoordinate(square, row, col)
+  }
+
+  function _addRankCoordinate (square, row, col) {
+    const isLeftEdge = (!isFlipped && col === 0) || (isFlipped && col === 7)
+    if (isLeftEdge) {
+      const rank = 8 - row
+      const rankSpan = document.createElement('span')
+      rankSpan.classList.add('coordinate', 'rank')
+      rankSpan.textContent = rank
+      square.appendChild(rankSpan)
+    }
+  }
+
+  function _addFileCoordinate (square, row, col) {
+    const isBottomEdge = (!isFlipped && row === 7) || (isFlipped && row === 0)
+    if (isBottomEdge) {
+      const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+      const file = files[col]
+      const fileSpan = document.createElement('span')
+      fileSpan.classList.add('coordinate', 'file')
+      fileSpan.textContent = file
+      square.appendChild(fileSpan)
+    }
   }
 
   function handleSquareClick (row, col) {
@@ -877,6 +916,65 @@ document.addEventListener('DOMContentLoaded', () => {
       boardElement.classList.remove('flipped')
     }
     renderClocks()
+    renderBoard() // Re-render for coordinates
+  })
+
+  fullscreenBtn.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        showToast(`Error attempting to enable fullscreen: ${err.message}`, 'error')
+      })
+    } else {
+      document.exitFullscreen()
+    }
+  })
+
+  sidebarToggleBtn.addEventListener('click', () => {
+    document.body.classList.toggle('sidebar-collapsed')
+    // Trigger resize event to help canvas/charts resize if they existed
+    window.dispatchEvent(new Event('resize'))
+  })
+
+  zenModeCheckbox.addEventListener('change', () => {
+    toggleZenMode(zenModeCheckbox.checked)
+  })
+
+  // Exit Zen Mode on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (document.body.classList.contains('zen-mode')) {
+        toggleZenMode(false)
+        zenModeCheckbox.checked = false
+      }
+      if (document.fullscreenElement) {
+        document.exitFullscreen()
+      }
+    }
+  })
+
+  function toggleZenMode (enable) {
+    if (enable) {
+      document.body.classList.add('zen-mode')
+    } else {
+      document.body.classList.remove('zen-mode')
+    }
+  }
+
+  streamerModeBtn.addEventListener('click', () => {
+    document.body.classList.toggle('streamer-mode')
+    showToast('Toggled Streamer Mode', 'info')
+  })
+
+  showCoordsCheckbox.addEventListener('change', () => {
+    renderBoard()
+  })
+
+  coordsOutsideCheckbox.addEventListener('change', () => {
+    if (coordsOutsideCheckbox.checked) {
+      boardElement.classList.add('coords-outside')
+    } else {
+      boardElement.classList.remove('coords-outside')
+    }
   })
 
   analysisModeCheckbox.addEventListener('change', () => {
@@ -1197,6 +1295,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (toast.parentNode) toast.parentNode.removeChild(toast)
       })
     }, 3000)
+
+    // Also log to system panel
+    logSystemMessage(message, type)
+  }
+
+  function logSystemMessage (msg, type = 'info') {
+    if (!systemLogElement) return
+
+    const now = new Date()
+    const time = now.toLocaleTimeString()
+    const line = document.createElement('div')
+    line.textContent = `[${time}] ${msg}`
+    if (type === 'error') line.style.color = '#F2495C'
+    else if (type === 'success') line.style.color = '#9AC42A'
+
+    systemLogElement.prepend(line)
   }
 
   connect()

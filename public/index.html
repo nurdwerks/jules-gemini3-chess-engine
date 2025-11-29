@@ -11,10 +11,12 @@
 </head>
 <body>
   <div class="container">
+    <button id="sidebar-toggle-btn" class="sidebar-toggle" title="Toggle Sidebar">☰</button>
     <main id="dashboard">
         <div class="panel chessboard-panel">
             <div class="panel-header">
                 <h2 class="panel-title">Board</h2>
+                <button id="fullscreen-btn" class="icon-btn" title="Fullscreen">⛶</button>
             </div>
             <div class="panel-content">
                 <div class="player-info" id="top-player">
@@ -78,6 +80,22 @@
                     <h2 class="panel-title">Board Settings</h2>
                 </div>
                 <div class="panel-content">
+                     <div class="option-item">
+                        <label for="zen-mode">Zen Mode:</label>
+                        <input type="checkbox" id="zen-mode">
+                     </div>
+                     <div class="option-item">
+                         <button id="streamer-mode-btn">Streamer Mode</button>
+                     </div>
+                     <div class="option-item">
+                        <label for="show-coords">Show Coordinates:</label>
+                        <input type="checkbox" id="show-coords" checked>
+                     </div>
+                     <div class="option-item">
+                        <label for="coords-outside">Coordinates Outside:</label>
+                        <input type="checkbox" id="coords-outside">
+                     </div>
+                     <hr class="separator">
                      <div class="option-item">
                         <label for="ui-theme">UI Theme:</label>
                         <select id="ui-theme">
@@ -193,6 +211,14 @@
                     <div id="engine-output"></div>
                 </div>
             </div>
+            <div class="panel system-log-panel">
+                <div class="panel-header">
+                   <h2 class="panel-title">System Log</h2>
+               </div>
+               <div class="panel-content">
+                   <div id="system-log"></div>
+               </div>
+           </div>
         </div>
     </main>
   </div>
