@@ -1,0 +1,17 @@
+[
+  {
+    "fen": "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4",
+    "moves": ["h5f7"],
+    "description": "White to move. Mate in 1."
+  },
+  {
+    "fen": "rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2",
+    "moves": ["d8h4"],
+    "description": "Black to move. Mate in 1."
+  },
+  {
+    "fen": "5rk1/pp4pp/4p3/2p3Q1/3n4/2q5/P1P2PPP/2RR2K1 b - - 0 1",
+    "moves": ["d4e2", "g1h1", "e2c1"],
+    "description": "Black to move. Fork!"
+  }
+]

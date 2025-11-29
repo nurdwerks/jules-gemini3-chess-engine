@@ -78,6 +78,56 @@
                      </div>
                 </div>
             </div>
+            <div class="panel training-panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">Training</h2>
+                </div>
+                <div class="panel-content">
+                    <div class="button-group">
+                        <button id="memory-training-btn">Memory Training</button>
+                        <button id="tactics-trainer-btn">Tactics Trainer</button>
+                        <button id="endgame-trainer-btn">Endgame Trainer</button>
+                        <button id="daily-puzzle-btn">Daily Puzzle</button>
+                        <button id="repertoire-builder-btn">Opening Builder</button>
+                    </div>
+                    <div id="repertoire-controls" style="display: none;" class="mt-10">
+                        <div class="input-group">
+                            <input type="text" id="repertoire-name" placeholder="Line Name (e.g. Najdorf)">
+                            <button id="save-repertoire-btn">Save Line</button>
+                        </div>
+                        <div class="repertoire-list mt-10" id="repertoire-list">
+                            <!-- Items -->
+                        </div>
+                    </div>
+                    <div id="endgame-controls" style="display: none;" class="mt-10">
+                        <label>Select Endgame:</label>
+                        <select id="endgame-select">
+                            <option value="kp-vs-k">King + Pawn vs King</option>
+                            <option value="kq-vs-k">King + Queen vs King</option>
+                            <option value="kr-vs-k">King + Rook vs King</option>
+                            <option value="lucena">Lucena Position (Rook)</option>
+                            <option value="philidor">Philidor Position (Rook)</option>
+                        </select>
+                        <button id="start-endgame-btn">Start Practice</button>
+                    </div>
+                    <div id="tactics-controls" style="display: none;" class="mt-10">
+                        <div class="option-item">
+                            <span id="tactics-desc">Find the best move!</span>
+                        </div>
+                        <button id="tactics-next-btn">Next Puzzle</button>
+                    </div>
+                    <div id="memory-training-controls" style="display: none;" class="mt-10">
+                        <div class="option-item">
+                            <span id="memory-timer">Time: 5</span>
+                        </div>
+                        <button id="memory-submit-btn">Check Result</button>
+                        <button id="memory-give-up-btn">Give Up</button>
+                    </div>
+                    <div id="piece-palette" class="piece-palette" style="display: none;">
+                        <!-- Pieces will be injected here -->
+                    </div>
+                </div>
+            </div>
             <div class="panel import-export-panel">
                 <div class="panel-header">
                     <h2 class="panel-title">Import / Export</h2>
@@ -114,6 +164,10 @@
                      <div class="option-item">
                         <label for="blindfold-mode">Blindfold Mode:</label>
                         <input type="checkbox" id="blindfold-mode">
+                     </div>
+                     <div class="option-item">
+                        <label for="blindfold-training">Disappearing Pieces:</label>
+                        <input type="checkbox" id="blindfold-training">
                      </div>
                      <div class="option-item">
                          <button id="streamer-mode-btn">Streamer Mode</button>

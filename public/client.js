@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn')
   const zenModeCheckbox = document.getElementById('zen-mode')
   const blindfoldModeCheckbox = document.getElementById('blindfold-mode')
+  const blindfoldTrainingCheckbox = document.getElementById('blindfold-training')
   const streamerModeBtn = document.getElementById('streamer-mode-btn')
   const showCoordsCheckbox = document.getElementById('show-coords')
   const coordsOutsideCheckbox = document.getElementById('coords-outside')
@@ -76,6 +77,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const handicapSelect = document.getElementById('handicap-select')
   const armageddonBtn = document.getElementById('armageddon-btn')
+
+  const memoryTrainingBtn = document.getElementById('memory-training-btn')
+  const memoryControls = document.getElementById('memory-training-controls')
+  const memoryTimerElement = document.getElementById('memory-timer')
+  const memorySubmitBtn = document.getElementById('memory-submit-btn')
+  const memoryGiveUpBtn = document.getElementById('memory-give-up-btn')
+  const piecePaletteElement = document.getElementById('piece-palette')
+
+  const tacticsTrainerBtn = document.getElementById('tactics-trainer-btn')
+  const tacticsControls = document.getElementById('tactics-controls')
+  const tacticsDesc = document.getElementById('tactics-desc')
+  const tacticsNextBtn = document.getElementById('tactics-next-btn')
+
+  const endgameTrainerBtn = document.getElementById('endgame-trainer-btn')
+  const endgameControls = document.getElementById('endgame-controls')
+  const endgameSelect = document.getElementById('endgame-select')
+  const startEndgameBtn = document.getElementById('start-endgame-btn')
+  const dailyPuzzleBtn = document.getElementById('daily-puzzle-btn')
+
+  const repertoireBuilderBtn = document.getElementById('repertoire-builder-btn')
+  const repertoireControls = document.getElementById('repertoire-controls')
+  const repertoireNameInput = document.getElementById('repertoire-name')
+  const saveRepertoireBtn = document.getElementById('save-repertoire-btn')
+  const repertoireList = document.getElementById('repertoire-list')
 
   // Initialize chess.js
   const game = new Chess()
@@ -204,6 +229,16 @@ document.addEventListener('DOMContentLoaded', () => {
   let isAnalyzing = false
   let pendingAnalysisCmd = null
   let onGameEndCallback = null
+
+  let isMemoryTraining = false
+  let memoryTargetFen = ''
+  let selectedPalettePiece = null
+  let memoryTimerInterval = null
+
+  let isTacticsMode = false
+  let currentPuzzle = null
+  let currentPuzzleMoveIndex = 0
+  let tacticsPuzzles = []
 
   let whiteTime = 300000 // 5 minutes in ms
   let blackTime = 300000
@@ -644,6 +679,16 @@ document.addEventListener('DOMContentLoaded', () => {
     })
   }
 
+  if (blindfoldTrainingCheckbox) {
+    blindfoldTrainingCheckbox.addEventListener('change', () => {
+      if (blindfoldTrainingCheckbox.checked) {
+        boardElement.classList.add('blindfold-training')
+      } else {
+        boardElement.classList.remove('blindfold-training')
+      }
+    })
+  }
+
   if (startDuelBtn) {
     startDuelBtn.addEventListener('click', () => {
       engineAConfig = {
@@ -1049,6 +1094,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function handleSquareClick (row, col) {
+    if (isMemoryTraining && piecePaletteElement.style.display !== 'none') {
+      _handleMemoryClick(row, col)
+      return
+    }
+
     if (currentViewIndex !== -1) return
 
     const board = game.board()
@@ -1077,6 +1127,20 @@ document.addEventListener('DOMContentLoaded', () => {
       selectedSquare = null
       legalMovesForSelectedPiece = []
       renderBoard()
+    }
+  }
+
+  function _handleMemoryClick (row, col) {
+    const alg = coordsToAlgebraic(row, col)
+    if (selectedPalettePiece) {
+      game.put({ type: selectedPalettePiece.type, color: selectedPalettePiece.color }, alg)
+      renderBoard()
+    } else {
+      const piece = game.get(alg)
+      if (piece) {
+        game.remove(alg)
+        renderBoard()
+      }
     }
   }
 
@@ -1132,6 +1196,57 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       } else {
         showToast('Incorrect move. Try again.', 'error')
+      }
+
+      selectedSquare = null
+      legalMovesForSelectedPiece = []
+      renderBoard()
+      return
+    }
+
+    if (isTacticsMode && currentPuzzle) {
+      const expected = currentPuzzle.moves[currentPuzzleMoveIndex]
+      let uci = targetMove.from + targetMove.to
+      if (targetMove.promotion) uci += targetMove.promotion
+
+      if (uci === expected) {
+        const speed = animationSpeedSelect ? parseInt(animationSpeedSelect.value) : 0
+        if (speed > 0) await animateMove(targetMove.from, targetMove.to, speed)
+
+        const result = game.move(targetMove)
+        if (result) SoundManager.playSound(result, game)
+
+        renderBoard()
+        renderHistory()
+
+        currentPuzzleMoveIndex++
+
+        if (currentPuzzleMoveIndex < currentPuzzle.moves.length) {
+          setTimeout(async () => {
+            const oppMoveStr = currentPuzzle.moves[currentPuzzleMoveIndex]
+            const oppMove = {
+              from: oppMoveStr.substring(0, 2),
+              to: oppMoveStr.substring(2, 4),
+              promotion: oppMoveStr.length > 4 ? oppMoveStr[4] : undefined
+            }
+
+            if (speed > 0) await animateMove(oppMove.from, oppMove.to, speed)
+            const res = game.move(oppMove)
+            if (res) SoundManager.playSound(res, game)
+            renderBoard()
+            renderHistory()
+            currentPuzzleMoveIndex++
+
+            if (currentPuzzleMoveIndex >= currentPuzzle.moves.length) {
+              showToast('Puzzle Solved!', 'success')
+              // Enable next button? It's always visible in my design, but maybe highlight it?
+            }
+          }, 500)
+        } else {
+          showToast('Puzzle Solved!', 'success')
+        }
+      } else {
+        showToast('Incorrect move', 'error')
       }
 
       selectedSquare = null
@@ -1822,6 +1937,371 @@ document.addEventListener('DOMContentLoaded', () => {
     else if (type === 'success') line.style.color = '#9AC42A'
 
     systemLogElement.prepend(line)
+  }
+
+  const MEMORY_FENS = [
+    'r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3', // Ruy Lopez
+    'rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2', // Caro-Kann
+    'rnbqkb1r/pppppppp/5n2/8/2PP4/8/PP2PPPP/RNBQKBNR b KQkq - 0 2', // Indian
+    'r1bq1rk1/ppp2ppp/2n2n2/3pp3/1b1P4/2N1PN2/PPP1BPPP/R1BQ1RK1 w - - 0 7' // Random position
+  ]
+
+  if (memoryTrainingBtn) {
+    memoryTrainingBtn.addEventListener('click', startMemoryTraining)
+  }
+
+  if (memorySubmitBtn) {
+    memorySubmitBtn.addEventListener('click', checkMemoryResult)
+  }
+
+  if (memoryGiveUpBtn) {
+    memoryGiveUpBtn.addEventListener('click', () => {
+      stopMemoryTraining()
+      game.load(memoryTargetFen)
+      renderBoard()
+      showToast('Solution shown.', 'info')
+    })
+  }
+
+  function startMemoryTraining () {
+    isMemoryTraining = true
+    memoryControls.style.display = 'block'
+    piecePaletteElement.style.display = 'none' // Hide initially
+    selectedPalettePiece = null
+
+    // Pick random FEN
+    const fen = MEMORY_FENS[Math.floor(Math.random() * MEMORY_FENS.length)]
+    memoryTargetFen = fen
+
+    game.load(fen)
+    renderBoard()
+    showToast('Memorize this position!', 'info')
+
+    let timeLeft = 5
+    memoryTimerElement.textContent = `Time: ${timeLeft}`
+
+    if (memoryTimerInterval) clearInterval(memoryTimerInterval)
+
+    memoryTimerInterval = setInterval(() => {
+      timeLeft--
+      memoryTimerElement.textContent = `Time: ${timeLeft}`
+      if (timeLeft <= 0) {
+        clearInterval(memoryTimerInterval)
+        startMemoryReconstruction()
+      }
+    }, 1000)
+  }
+
+  function startMemoryReconstruction () {
+    game.clear()
+    renderBoard()
+    showToast('Reconstruct the position!', 'info')
+    piecePaletteElement.style.display = 'flex'
+    renderPalette()
+  }
+
+  function renderPalette () {
+    piecePaletteElement.innerHTML = ''
+    const pieces = ['wP', 'wN', 'wB', 'wR', 'wQ', 'wK', 'bP', 'bN', 'bB', 'bR', 'bQ', 'bK']
+    pieces.forEach(p => {
+      const color = p[0]
+      const type = p[1].toLowerCase()
+      const div = document.createElement('div')
+      div.classList.add('palette-piece')
+      const img = document.createElement('img')
+      img.src = `images/${currentPieceSet}/${color}${type}.svg`
+      img.style.width = '100%'
+      img.style.height = '100%'
+      div.appendChild(img)
+
+      div.addEventListener('click', () => {
+        document.querySelectorAll('.palette-piece').forEach(el => el.classList.remove('selected'))
+        div.classList.add('selected')
+        selectedPalettePiece = { color, type }
+      })
+
+      piecePaletteElement.appendChild(div)
+    })
+  }
+
+  function stopMemoryTraining () {
+    isMemoryTraining = false
+    memoryControls.style.display = 'none'
+    piecePaletteElement.style.display = 'none'
+    if (memoryTimerInterval) clearInterval(memoryTimerInterval)
+  }
+
+  function checkMemoryResult () {
+    const currentBoard = game.board()
+    // Calculate score logic needs comparison with memoryTargetFen
+    // We need to load targetFen into a temp game to get the board array
+    const targetGame = new Chess(memoryTargetFen)
+    const targetBoard = targetGame.board()
+
+    let correct = 0
+    let total = 0
+
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const t = targetBoard[r][c]
+        const cur = currentBoard[r][c]
+
+        if (t) {
+          total++
+          if (cur && cur.type === t.type && cur.color === t.color) {
+            correct++
+          }
+        }
+      }
+    }
+
+    // What if user placed extra pieces?
+    // Total should probably be max(target pieces, current pieces) or just target pieces.
+    // Let's stick to target pieces found.
+
+    const score = total > 0 ? Math.round((correct / total) * 100) : 0
+    showToast(`Score: ${score}% (${correct}/${total} correct)`, score === 100 ? 'success' : 'info')
+
+    if (score === 100) {
+      stopMemoryTraining()
+    }
+  }
+
+  if (tacticsTrainerBtn) {
+    tacticsTrainerBtn.addEventListener('click', startTacticsTrainer)
+  }
+
+  if (tacticsNextBtn) {
+    tacticsNextBtn.addEventListener('click', nextTacticsPuzzle)
+  }
+
+  async function startTacticsTrainer () {
+    if (tacticsPuzzles.length === 0) {
+      try {
+        const res = await fetch('puzzles.json')
+        if (!res.ok) throw new Error('Failed to load puzzles')
+        tacticsPuzzles = await res.json()
+      } catch (e) {
+        showToast('Error loading puzzles: ' + e.message, 'error')
+        return
+      }
+    }
+
+    isTacticsMode = true
+    isMemoryTraining = false
+    stopMemoryTraining() // Ensure memory mode is off
+
+    tacticsControls.style.display = 'block'
+
+    nextTacticsPuzzle()
+  }
+
+  function nextTacticsPuzzle () {
+    if (tacticsPuzzles.length === 0) return
+
+    const puzzle = tacticsPuzzles[Math.floor(Math.random() * tacticsPuzzles.length)]
+    currentPuzzle = puzzle
+    currentPuzzleMoveIndex = 0
+
+    game.load(puzzle.fen)
+    renderBoard()
+    renderHistory()
+
+    tacticsDesc.textContent = puzzle.description
+    showToast('Tactics: ' + puzzle.description, 'info')
+
+    // Auto-flip board to side to move
+    const turn = game.turn()
+    if (turn === 'w' && isFlipped) {
+      // flip back to white
+      isFlipped = false
+      boardElement.classList.remove('flipped')
+    } else if (turn === 'b' && !isFlipped) {
+      isFlipped = true
+      boardElement.classList.add('flipped')
+    }
+    renderClocks()
+    renderBoard()
+  }
+
+  const ENDGAME_CONFIGS = {
+    'kp-vs-k': { fen: '8/4k3/8/8/4P3/8/4K3/8 w - - 0 1', userColor: 'w' },
+    'kq-vs-k': { fen: '8/8/8/8/8/8/Q7/4k2K w - - 0 1', userColor: 'w' },
+    'kr-vs-k': { fen: '8/8/8/8/8/8/R7/4k2K w - - 0 1', userColor: 'w' },
+    lucena: { fen: '1r6/4P3/3K4/8/8/8/k7/8 w - - 0 1', userColor: 'w' },
+    philidor: { fen: '8/8/1k6/2P5/8/2R5/8/4K3 w - - 0 1', userColor: 'b' }
+  }
+
+  if (endgameTrainerBtn) {
+    endgameTrainerBtn.addEventListener('click', () => {
+      endgameControls.style.display = 'block'
+      tacticsControls.style.display = 'none'
+      memoryControls.style.display = 'none'
+      piecePaletteElement.style.display = 'none'
+      stopMemoryTraining()
+      isTacticsMode = false
+      isMemoryTraining = false
+    })
+  }
+
+  if (startEndgameBtn) {
+    startEndgameBtn.addEventListener('click', () => {
+      const type = endgameSelect.value
+      const config = ENDGAME_CONFIGS[type]
+      if (config) {
+        game.load(config.fen)
+        startingFen = config.fen
+        gameMode = 'pve'
+        isSelfPlay = false
+
+        if (config.userColor === 'w') {
+          isFlipped = false
+          boardElement.classList.remove('flipped')
+        } else {
+          isFlipped = true
+          boardElement.classList.add('flipped')
+        }
+
+        renderBoard()
+        renderClocks()
+        renderHistory()
+
+        showToast(`Endgame Practice: ${type}. User plays ${config.userColor === 'w' ? 'White' : 'Black'}`)
+
+        if (game.turn() !== config.userColor) {
+          sendPositionAndGo()
+        }
+      }
+    })
+  }
+
+  if (dailyPuzzleBtn) {
+    dailyPuzzleBtn.addEventListener('click', startDailyPuzzle)
+  }
+
+  async function startDailyPuzzle () {
+    try {
+      const res = await fetch('https://lichess.org/api/puzzle/daily')
+      if (!res.ok) throw new Error('Failed to fetch daily puzzle')
+      const data = await res.json()
+
+      // Parse PGN to get FEN
+      // Note: chess.js load_pgn handles PGN parsing
+      game.load_pgn(data.game.pgn)
+      const history = game.history({ verbose: true })
+
+      game.reset()
+      for (let i = 0; i < data.puzzle.initialPly; i++) {
+        game.move(history[i])
+      }
+      const fen = game.fen()
+
+      const puzzle = {
+        fen,
+        moves: data.puzzle.solution,
+        description: `Daily Puzzle (Rating: ${data.puzzle.rating})`
+      }
+
+      // Setup Tactics Mode
+      isTacticsMode = true
+      isMemoryTraining = false
+      stopMemoryTraining()
+      endgameControls.style.display = 'none'
+      tacticsControls.style.display = 'block'
+      memoryControls.style.display = 'none'
+      piecePaletteElement.style.display = 'none'
+      repertoireControls.style.display = 'none'
+
+      tacticsPuzzles = [puzzle]
+      nextTacticsPuzzle()
+    } catch (e) {
+      showToast('Error loading daily puzzle: ' + e.message, 'error')
+      console.error(e)
+    }
+  }
+
+  if (repertoireBuilderBtn) {
+    repertoireBuilderBtn.addEventListener('click', () => {
+      repertoireControls.style.display = 'block'
+      tacticsControls.style.display = 'none'
+      memoryControls.style.display = 'none'
+      endgameControls.style.display = 'none'
+      piecePaletteElement.style.display = 'none'
+      stopMemoryTraining()
+      renderRepertoireList()
+    })
+  }
+
+  if (saveRepertoireBtn) {
+    saveRepertoireBtn.addEventListener('click', () => {
+      const name = repertoireNameInput.value.trim() || 'Untitled'
+      const pgn = game.pgn()
+      if (!pgn) {
+        showToast('No moves to save', 'error')
+        return
+      }
+
+      const rep = JSON.parse(localStorage.getItem('my-repertoire') || '[]')
+      rep.push({ name, pgn, fen: game.fen() })
+      localStorage.setItem('my-repertoire', JSON.stringify(rep))
+
+      showToast('Line saved', 'success')
+      repertoireNameInput.value = ''
+      renderRepertoireList()
+    })
+  }
+
+  function renderRepertoireList () {
+    repertoireList.innerHTML = ''
+    const rep = JSON.parse(localStorage.getItem('my-repertoire') || '[]')
+
+    rep.forEach((item, index) => {
+      const div = document.createElement('div')
+      div.className = 'repertoire-item'
+      div.style.padding = '5px'
+      div.style.borderBottom = '1px solid var(--grafana-border)'
+      div.style.cursor = 'pointer'
+      div.style.display = 'flex'
+      div.style.justifyContent = 'space-between'
+
+      const title = document.createElement('span')
+      title.textContent = item.name
+      title.onclick = () => loadRepertoireItem(index)
+
+      const delBtn = document.createElement('button')
+      delBtn.textContent = 'x'
+      delBtn.style.padding = '0 5px'
+      delBtn.style.marginLeft = '10px'
+      delBtn.style.background = 'transparent'
+      delBtn.style.color = '#F2495C'
+      delBtn.style.border = 'none'
+      delBtn.onclick = (e) => {
+        e.stopPropagation()
+        deleteRepertoireItem(index)
+      }
+
+      div.appendChild(title)
+      div.appendChild(delBtn)
+      repertoireList.appendChild(div)
+    })
+  }
+
+  function loadRepertoireItem (index) {
+    const rep = JSON.parse(localStorage.getItem('my-repertoire') || '[]')
+    const item = rep[index]
+    if (item) {
+      game.load_pgn(item.pgn)
+      renderBoard()
+      renderHistory()
+      showToast(`Loaded: ${item.name}`, 'success')
+    }
+  }
+
+  function deleteRepertoireItem (index) {
+    const rep = JSON.parse(localStorage.getItem('my-repertoire') || '[]')
+    rep.splice(index, 1)
+    localStorage.setItem('my-repertoire', JSON.stringify(rep))
+    renderRepertoireList()
   }
 
   connect()
