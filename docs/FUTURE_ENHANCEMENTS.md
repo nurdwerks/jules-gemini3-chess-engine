@@ -91,10 +91,10 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* Show a semi-transparent ghost of the piece being dragged.
     *   *Implementation:* Standard HTML5 DnD ghost or custom element following mouse.
     *   *Tasks:*
-        - [ ] Set drag image.
+        - [x] Set drag image.
     *   *Testing Plan:* Drag piece.
     *   *Acceptance Criteria:*
-        - [ ] Ghost visible.
+        - [x] Ghost visible.
 
 72. **Legal Move Indicators (S)**
     *   *Description:* Improve the visual hints (dots/circles) for legal moves.
@@ -127,10 +127,10 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* Optional toggle to highlight pieces that are currently under attack.
     *   *Implementation:* Loop all pieces -> isAttacked() -> highlight.
     *   *Tasks:*
-        - [ ] Attack logic integration.
+        - [x] Attack logic integration.
     *   *Testing Plan:* Toggle on.
     *   *Acceptance Criteria:*
-        - [ ] Hanging pieces highlighted.
+        - [x] Hanging pieces highlighted.
 
 76. **King Safety Heatmap (S)**
     *   *Description:* Visual overlay showing safe and unsafe squares for the king.
