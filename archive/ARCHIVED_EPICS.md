@@ -1500,3 +1500,153 @@ The following Epics were part of the initial development phase and are either co
     *   *Implementation:* Flash clock red. Play "tick" sound.
     *   *Acceptance Criteria:*
         *   [x] Warning triggers at 10s.
+
+### Epic 71: Analysis Visualizations
+**Size:** Large (4-5 days)
+**Description:** Visual aids to help the user understand engine analysis and board state.
+
+**User Stories:**
+
+63. **Engine Analysis Arrows (S)**
+    *   *Description:* Visualize the engine's current best move and PV on the board using arrows.
+    *   *Implementation:* SVG overlay on top of board. Draw arrow from `from` to `to`.
+    *   *Acceptance Criteria:*
+        - [x] Arrow points correctly.
+
+64. **Best Move Arrow (S)**
+    *   *Description:* Display a distinct arrow color for the engine's "best move" vs. "ponder move".
+    *   *Implementation:* CSS classes `.arrow-best` (Blue), `.arrow-ponder` (Green).
+    *   *Acceptance Criteria:*
+        - [x] Distinct colors used.
+
+65. **Threat Arrow (S)**
+    *   *Description:* A specific arrow color/style to show the opponent's immediate threat.
+    *   *Implementation:* If eval drops significantly on null move (if implemented) or simple attack logic. Red arrow.
+    *   *Acceptance Criteria:*
+        - [x] Threat highlighted.
+
+66. **Last Move Arrow (S)**
+    *   *Description:* Option to draw an arrow for the last move instead of just highlighting squares.
+    *   *Implementation:* Draw yellow arrow for `lastMove`.
+    *   *Acceptance Criteria:*
+        - [x] Arrow appears.
+
+67. **Right-Click to Draw Arrows (S)**
+    *   *Description:* Allow the user to draw custom analysis arrows on the board.
+    *   *Implementation:* Mouse events on board. Right-down (start), Right-up (end). Store user arrows.
+    *   *Acceptance Criteria:*
+        - [x] Arrows persist until cleared or clicked.
+
+68. **Right-Click to Highlight Squares (S)**
+    *   *Description:* Allow the user to highlight specific squares for analysis.
+    *   *Implementation:* Right-click square -> toggle highlight class (Red/Green/Blue/Yellow cycle).
+    *   *Acceptance Criteria:*
+        - [x] Highlights appear.
+
+69. **Clear Analysis (S)**
+    *   *Description:* Button to clear all user-drawn arrows and highlights.
+    *   *Implementation:* Clear local state arrays. Re-render.
+    *   *Acceptance Criteria:*
+        - [x] Board clean.
+
+70. **Hover Square Highlight (S)**
+    *   *Description:* Highlight the square under the mouse cursor.
+    *   *Implementation:* CSS `:hover` on square elements (if div based) or JS mouseover.
+    *   *Acceptance Criteria:*
+        - [x] Subtle highlight follows cursor.
+
+71. **Drag and Drop Ghost (S)**
+    *   *Description:* Show a semi-transparent ghost of the piece being dragged.
+    *   *Implementation:* Standard HTML5 DnD ghost or custom element following mouse.
+    *   *Acceptance Criteria:*
+        - [x] Ghost visible.
+
+72. **Legal Move Indicators (S)**
+    *   *Description:* Improve the visual hints (dots/circles) for legal moves.
+    *   *Implementation:* Small circular `div` centered on target squares.
+    *   *Acceptance Criteria:*
+        - [x] Valid moves clearly marked.
+
+73. **Last Move Highlight (S)**
+    *   *Description:* Visually emphasize the `from` and `to` squares of the last played move.
+    *   *Implementation:* Add `.highlight-last` class to squares.
+    *   *Acceptance Criteria:*
+        - [x] Source and Dest highlighted.
+
+74. **Check Highlight (S)**
+    *   *Description:* Red radial gradient on the square of the king when in check.
+    *   *Implementation:* Check detection -> find King -> apply `.check-highlight`.
+    *   *Acceptance Criteria:*
+        - [x] King glows red.
+
+75. **Threat Indicator (S)**
+    *   *Description:* Optional toggle to highlight pieces that are currently under attack.
+    *   *Implementation:* Loop all pieces -> isAttacked() -> highlight.
+    *   *Acceptance Criteria:*
+        - [x] Hanging pieces highlighted.
+
+76. **King Safety Heatmap (S)**
+    *   *Description:* Visual overlay showing safe and unsafe squares for the king.
+    *   *Implementation:* Color squares green (safe) to red (many attackers).
+    *   *Acceptance Criteria:*
+        - [x] Visualizes danger zones.
+
+77. **Mobility Heatmap (S)**
+    *   *Description:* Highlight squares controlled by the currently selected piece or all pieces.
+    *   *Implementation:* Visualize `attackedSquares`.
+    *   *Acceptance Criteria:*
+        - [x] All attacked squares lit up.
+
+78. **Square Utilization Map (S)**
+    *   *Description:* Heatmap showing which squares have been visited most often.
+    *   *Implementation:* Track visit counts in game history.
+    *   *Acceptance Criteria:*
+        - [x] Center squares likely hotter.
+
+79. **PieceTracker (S)**
+    *   *Description:* Visual path showing where a specific piece has moved throughout the game.
+    *   *Implementation:* Draw lines connecting history of a specific piece ID.
+    *   *Acceptance Criteria:*
+        - [x] Path history shown.
+
+80. **Outpost Highlighter (S)**
+    *   *Description:* Highlight knights/bishops that are on strong outpost squares.
+    *   *Implementation:* Engine logic reuse (isOutpost).
+    *   *Acceptance Criteria:*
+        - [x] Highlighted.
+
+81. **Weak Square Highlighter (S)**
+    *   *Description:* Highlight squares that are undefended and near the king.
+    *   *Implementation:* Hole detection logic.
+    *   *Acceptance Criteria:*
+        - [x] Square highlighted.
+
+82. **Battery Highlighter (S)**
+    *   *Description:* Visual indication of aligned pieces.
+    *   *Implementation:* Detect Ray alignment.
+    *   *Acceptance Criteria:*
+        - [x] Battery shown.
+
+83. **X-Ray Highlighter (S)**
+    *   *Description:* Show attacks through other pieces.
+    *   *Implementation:* Bitboard magic attacks (x-ray).
+    *   *Acceptance Criteria:*
+        - [x] Visible.
+
+84. **Pin Visualizer (S)**
+    *   *Description:* Draw a line connecting the pinning piece, the pinned piece, and the target.
+    *   *Implementation:* Pin detection logic.
+    *   *Acceptance Criteria:*
+        - [x] Pin relation clear.
+
+85. **Fork Visualizer (S)**
+    *   *Description:* Highlight the forking piece and its targets.
+    *   *Implementation:* Double attack detection.
+    *   *Acceptance Criteria:*
+        - [x] Fork clear.
+
+86. **Discovered Attack Visualizer (S)**
+    *   *Description:* Highlight the moving piece and the piece revealing the attack.
+    *   *Implementation:* Move generator check extension logic.
+    *   *Acceptance Criteria:*
+        - [x] Reveal shown.
