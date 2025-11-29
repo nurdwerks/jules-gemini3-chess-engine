@@ -15,21 +15,21 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* A "Two Player" mode that disables the engine and allows two humans to play on the same screen.
     *   *Implementation:* Disable automatic engine response. Unlock board for both sides.
     *   *Tasks:*
-        - [ ] Add Game Mode selector (Engine vs Human, Human vs Human).
+        - [x] Add Game Mode selector (Engine vs Human, Human vs Human).
         - [ ] Logic to flip board automatically (optional).
     *   *Testing Plan:* Play a full game manually.
     *   *Acceptance Criteria:*
-        - [ ] Engine does not reply.
+        - [x] Engine does not reply.
 
 26. **Engine Self-Play Button (S)**
     *   *Description:* A button to make the engine play against itself from the current position.
     *   *Implementation:* Loop: Engine move -> make move -> request engine move.
     *   *Tasks:*
-        - [ ] Add "Self Play" button.
-        - [ ] Implement loop in `client.js`.
+        - [x] Add "Self Play" button.
+        - [x] Implement loop in `client.js`.
     *   *Testing Plan:* Watch engine play a game.
     *   *Acceptance Criteria:*
-        - [ ] Plays until mate/draw.
+        - [x] Plays until mate/draw.
 
 27. **Engine Duel: UI (S)**
     *   *Description:* UI to configure and run a match between two different engine settings.
@@ -67,27 +67,27 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* Add an option to hide pieces on the board for visualization training.
     *   *Implementation:* Set piece opacity to 0 via CSS class.
     *   *Tasks:*
-        - [ ] Toggle button.
-        - [ ] CSS: `.blindfold .piece { opacity: 0 }`.
+        - [x] Toggle button.
+        - [x] CSS: `.blindfold .piece { opacity: 0 }`.
     *   *Testing Plan:* Verify board looks empty but accepts moves.
     *   *Acceptance Criteria:*
-        - [ ] Pieces invisible, interaction remains.
+        - [x] Pieces invisible, interaction remains.
 
 32. **Chess960 Generator: Logic (S)**
     *   *Description:* Algorithm to generate a random Fischer Random (Chess960) starting position.
     *   *Implementation:* Logic to place Bishops (opposite), King between Rooks. Generate FEN.
     *   *Tasks:*
-        - [ ] Implement `generate960FEN()`.
+        - [x] Implement `generate960FEN()`.
     *   *Acceptance Criteria:*
-        - [ ] Valid 960 positions generated.
+        - [x] Valid 960 positions generated.
 
 33. **Chess960 Generator: UI (S)**
     *   *Description:* Button to trigger 960 generation.
     *   *Implementation:* Button -> call logic -> `loadFen`.
     *   *Tasks:*
-        - [ ] Button.
+        - [x] Button.
     *   *Acceptance Criteria:*
-        - [ ] Board updates to 960 position.
+        - [x] Board updates to 960 position.
 
 34. **Vote Chess (S)**
     *   *Description:* Allow multiple viewers to vote on the next move (mockup).
