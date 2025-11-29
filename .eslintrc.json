@@ -4,6 +4,7 @@
     "jest": true
   },
   "rules": {
-    "complexity": ["error", 10]
+    "complexity": ["error", 10],
+    "max-lines": ["error", 600]
   }
 }
