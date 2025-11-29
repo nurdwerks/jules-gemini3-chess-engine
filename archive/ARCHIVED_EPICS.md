@@ -1650,3 +1650,84 @@ The following Epics were part of the initial development phase and are either co
     *   *Implementation:* Move generator check extension logic.
     *   *Acceptance Criteria:*
         - [x] Reveal shown.
+
+### Epic 72: Statistics & Graphs
+**Size:** Medium (3 days)
+**Description:** Tools to visualize game data and engine performance metrics.
+
+**User Stories:**
+
+87. **Captured Piece Display (S)**
+    *   *Description:* Show a panel listing pieces captured by each side.
+    *   *Acceptance Criteria:*
+        - [x] Captured piece appears in list.
+
+88. **Piece Jail (S)**
+    *   *Description:* Show captured pieces in a "jail" area instead of a simple count.
+    *   *Acceptance Criteria:*
+        - [x] Distinct visual style.
+
+89. **Material Balance Bar (S)**
+    *   *Description:* A simple visual bar showing who is ahead based on material values.
+    *   *Acceptance Criteria:*
+        - [x] Bar shifts significantly.
+
+90. **Material Difference Numeric (S)**
+    *   *Description:* Just show "+1", "-3" next to the player names.
+    *   *Acceptance Criteria:*
+        - [x] Correct score shown.
+
+91. **Evaluation Graph (S)**
+    *   *Description:* Display a line chart showing the engine's evaluation score over the course of the game.
+    *   *Acceptance Criteria:*
+        - [x] Chart updates per move.
+
+92. **Vertical Evaluation Bar (S)**
+    *   *Description:* A gauge next to the board visualizing the current advantage.
+    *   *Acceptance Criteria:*
+        - [x] Full bar for white/black win.
+
+93. **Move Time Histogram (S)**
+    *   *Description:* A chart showing the time spent thinking on each move of the game.
+    *   *Acceptance Criteria:*
+        - [x] Varied bar heights.
+
+94. **Nodes per Second Graph (S)**
+    *   *Description:* A real-time graph showing the engine's speed (NPS) fluctuations.
+    *   *Acceptance Criteria:*
+        - [x] Real-time updates.
+
+95. **Material Chart (S)**
+    *   *Description:* Line chart showing total material value over time.
+    *   *Acceptance Criteria:*
+        - [x] Lines diverge on capture.
+
+96. **Tension Graph (S)**
+    *   *Description:* Graph showing the "tension" (number of attacks/defenses) on the board.
+    *   *Acceptance Criteria:*
+        - [x] Tension spikes before trades.
+
+97. **Connectivity Graph (S)**
+    *   *Description:* Visual representation of how well pieces support each other.
+    *   *Acceptance Criteria:*
+        - [ ] Skipped for now.
+
+98. **Move Accuracy Report: Analysis (S)**
+    *   *Description:* Simple stats on move quality (Best, Good, Inaccuracy, Blunder) after game.
+    *   *Acceptance Criteria:*
+        - [x] Moves categorized.
+
+99. **Move Accuracy Report: UI (S)**
+    *   *Description:* Report UI.
+    *   *Acceptance Criteria:*
+        - [x] Report generated.
+
+100. **Show WDL Stats (S)**
+    *   *Description:* Toggle to show Win/Draw/Loss probabilities from the engine.
+    *   *Acceptance Criteria:*
+        - [x] WDL percentages shown.
+
+101. **Engine vs. Engine Leaderboard (S)**
+    *   *Description:* Track win/loss stats for different engine versions.
+    *   *Acceptance Criteria:*
+        - [x] Stats update.

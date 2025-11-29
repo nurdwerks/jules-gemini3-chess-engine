@@ -427,11 +427,36 @@ button:hover {
     align-items: center;
     padding: 8px 5px;
     background-color: var(--grafana-panel-bg);
+    gap: 10px;
+}
+
+.player-details {
+    display: flex;
+    align-items: center;
 }
 
 .player-name {
     font-weight: 500;
     color: var(--grafana-text-primary);
+}
+
+.material-bar-container {
+    flex-grow: 1;
+    height: 8px;
+    background-color: var(--grafana-input-bg);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 0 10px;
+    display: flex;
+    align-items: center;
+    max-width: 150px;
+}
+
+.material-bar-fill {
+    height: 100%;
+    background-color: var(--grafana-text-secondary); /* Default color */
+    width: 0%;
+    transition: width 0.3s ease;
 }
 
 .clock {
@@ -1130,6 +1155,48 @@ body.light-mode {
     border: 1px solid var(--grafana-border);
     border-radius: 4px;
     position: relative;
+}
+
+.graph-container.large {
+    height: 200px;
+}
+
+/* Tabs */
+.tabs {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--grafana-border);
+}
+
+.tab-btn {
+    padding: 8px 12px;
+    background-color: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--grafana-text-secondary);
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+    border-radius: 0;
+}
+
+.tab-btn:hover {
+    color: var(--grafana-text-primary);
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.tab-btn.active {
+    color: var(--grafana-accent-blue);
+    border-bottom-color: var(--grafana-accent-blue);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
 }
 
 /* Visualization Styles */

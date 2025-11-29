@@ -70,6 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const evalValueElement = document.getElementById('eval-value')
   const depthValueElement = document.getElementById('depth-value')
   const npsValueElement = document.getElementById('nps-value')
+  const wdlValueElement = document.getElementById('wdl-value')
   const pvLinesElement = document.getElementById('pv-lines')
   const systemLogElement = document.getElementById('system-log')
 
@@ -83,7 +84,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const bottomMaterialDiff = document.getElementById('bottom-material-diff')
   const topCapturedPieces = document.getElementById('top-captured-pieces')
   const bottomCapturedPieces = document.getElementById('bottom-captured-pieces')
+  const topMaterialBar = document.getElementById('top-material-bar')
+  const bottomMaterialBar = document.getElementById('bottom-material-bar')
   const evalGraphSvg = document.getElementById('eval-graph')
+  const materialGraphSvg = document.getElementById('material-graph')
+  const timeGraphSvg = document.getElementById('time-graph')
+  const npsGraphSvg = document.getElementById('nps-graph')
+  const tensionGraphSvg = document.getElementById('tension-graph')
 
   const timeBaseInput = document.getElementById('time-base')
   const timeIncInput = document.getElementById('time-inc')
@@ -121,6 +128,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const startEndgameBtn = document.getElementById('start-endgame-btn')
   const dailyPuzzleBtn = document.getElementById('daily-puzzle-btn')
 
+  const analyzeGameBtn = document.getElementById('analyze-game-btn')
+  const analysisReportModal = document.getElementById('analysis-report-modal')
+  const closeAnalysisModalBtn = document.getElementById('close-analysis-modal')
+  const analysisSummary = document.getElementById('analysis-summary')
+  const analysisTable = document.getElementById('analysis-table').querySelector('tbody')
+  const analysisProgressBar = document.getElementById('analysis-progress-bar')
+  const analysisProgressFill = document.getElementById('analysis-progress-fill')
+
+  const leaderboardBtn = document.getElementById('leaderboard-btn')
+  const leaderboardModal = document.getElementById('leaderboard-modal')
+  const closeLeaderboardModalBtn = document.getElementById('close-leaderboard-modal')
+  const leaderboardTable = document.getElementById('leaderboard-table').querySelector('tbody')
+  const resetLeaderboardBtn = document.getElementById('reset-leaderboard-btn')
+
   const repertoireBuilderBtn = document.getElementById('repertoire-builder-btn')
   const repertoireControls = document.getElementById('repertoire-controls')
   const repertoireNameInput = document.getElementById('repertoire-name')
@@ -129,6 +150,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initialize chess.js
   const game = new Chess()
+
+  // Initialize Tabs
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Remove active class from all buttons and content
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'))
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'))
+
+      // Add active class to clicked button and corresponding content
+      btn.classList.add('active')
+      const tabId = btn.dataset.tab
+      const content = document.getElementById(`${tabId}-tab`)
+      if (content) content.classList.add('active')
+    })
+  })
 
   const OPTION_GROUPS = {
     Hash: 'Engine',
@@ -725,6 +761,10 @@ document.addEventListener('DOMContentLoaded', () => {
   let isAnalyzing = false
   let pendingAnalysisCmd = null
   let onGameEndCallback = null
+  let isFullAnalysis = false
+  let analysisQueue = [] // { fen, playedMove }
+  let analysisResults = []
+  let currentAnalysisInfo = {}
 
   let isMemoryTraining = false
   let memoryTargetFen = ''
@@ -741,6 +781,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let premove = null
   let lastEngineEval = 0 // cp
   let evalHistory = [] // Array of { ply, score }
+  let materialHistory = [] // Array of { ply, w, b }
+  let timeHistory = [] // Array of { ply, time }
+  let npsHistory = [] // Array of { ply, nps }
+  let tensionHistory = [] // Array of { ply, tension }
+  let moveStartTime = 0
 
   let whiteTime = 300000 // 5 minutes in ms
   let blackTime = 300000
@@ -843,6 +888,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function _handleBestMoveMsg (parts) {
     isAnalyzing = false
+    if (isFullAnalysis) {
+      _processAnalysisStep()
+      return
+    }
+
     if (handleAnalysisBestMove()) return
 
     if (ignoreNextBestMove) {
@@ -910,7 +960,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const result = game.move({ from, to, promotion })
-    if (result) SoundManager.playSound(result, game)
+    if (result) {
+      SoundManager.playSound(result, game)
+      // Track Move Time
+      const now = Date.now()
+      const timeTaken = now - moveStartTime
+      moveStartTime = now // Reset for next move
+      timeHistory.push({ ply: game.history().length, time: timeTaken })
+      renderTimeGraph()
+      _updateTensionHistory()
+    }
     currentViewIndex = -1
 
     _updateGraphAfterEngineMove(result)
@@ -938,6 +997,17 @@ document.addEventListener('DOMContentLoaded', () => {
         renderEvalGraph()
       }
     }
+    _updateMaterialHistory()
+  }
+
+  function _updateMaterialHistory () {
+    const board = game.board()
+    const counts = calculateBoardCounts(board)
+    const values = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 }
+    const wMat = calculateMaterial(counts.w, values)
+    const bMat = calculateMaterial(counts.b, values)
+    materialHistory.push({ ply: game.history().length, w: wMat, b: bMat })
+    renderMaterialGraph()
   }
 
   function _handleAutoFlip () {
@@ -978,6 +1048,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     info.depth = getVal('depth')
     info.seldepth = getVal('seldepth')
+    info.multipv = getVal('multipv')
     info.nodes = getVal('nodes')
     info.nps = getVal('nps')
 
@@ -994,23 +1065,26 @@ document.addEventListener('DOMContentLoaded', () => {
       info.pv = parts.slice(pvIdx + 1)
     }
 
+    const wdlIdx = parts.indexOf('wdl')
+    if (wdlIdx !== -1 && wdlIdx + 3 < parts.length) {
+      info.wdl = [
+        parseInt(parts[wdlIdx + 1]),
+        parseInt(parts[wdlIdx + 2]),
+        parseInt(parts[wdlIdx + 3])
+      ]
+    }
+
     // Only return info if we parsed something useful
-    if (info.depth || info.score || info.pv) return info
+    if (info.depth || info.score || info.pv || info.wdl) return info
     return null
   }
 
   function updateSearchStats (info) {
+    _updateAnalysisInfo(info)
     if (info.depth) depthValueElement.textContent = info.depth
-    if (info.nps) npsValueElement.textContent = formatNps(info.nps)
-    if (info.score) {
-      evalValueElement.textContent = formatScore(info.score)
-      updateEvalBar(info.score)
-      if (info.score.type === 'cp') {
-        lastEngineEval = info.score.value
-      } else {
-        lastEngineEval = info.score.value > 0 ? 10000 : -10000
-      }
-    }
+    _updateNps(info)
+    _updateWdl(info)
+    _updateScore(info)
     if (info.pv) {
       updatePvDisplay(info.pv)
       if (info.pv.length > 0) {
@@ -1018,6 +1092,46 @@ document.addEventListener('DOMContentLoaded', () => {
         const from = best.substring(0, 2)
         const to = best.substring(2, 4)
         ArrowManager.updateEngineArrow(from, to, 'arrow-best')
+      }
+    }
+  }
+
+  function _updateAnalysisInfo (info) {
+    if (isFullAnalysis && info.score && info.pv) {
+      const idx = info.multipv ? parseInt(info.multipv) : 1
+      currentAnalysisInfo[idx] = {
+        score: info.score,
+        move: info.pv[0],
+        pv: info.pv
+      }
+    }
+  }
+
+  function _updateNps (info) {
+    if (info.nps) {
+      npsValueElement.textContent = formatNps(info.nps)
+      npsHistory.push({ time: Date.now(), value: parseInt(info.nps) })
+      renderNpsGraph()
+    }
+  }
+
+  function _updateWdl (info) {
+    if (info.wdl) {
+      const w = (info.wdl[0] / 10).toFixed(0)
+      const d = (info.wdl[1] / 10).toFixed(0)
+      const l = (info.wdl[2] / 10).toFixed(0)
+      wdlValueElement.textContent = `${w}-${d}-${l}%`
+    }
+  }
+
+  function _updateScore (info) {
+    if (info.score) {
+      evalValueElement.textContent = formatScore(info.score)
+      updateEvalBar(info.score)
+      if (info.score.type === 'cp') {
+        lastEngineEval = info.score.value
+      } else {
+        lastEngineEval = info.score.value > 0 ? 10000 : -10000
       }
     }
   }
@@ -1373,7 +1487,14 @@ document.addEventListener('DOMContentLoaded', () => {
     isDuelActive = false
     updateSelfPlayButton()
     evalHistory = []
+    materialHistory = [] // Reset
+    timeHistory = []
+    npsHistory = []
+    tensionHistory = []
     renderEvalGraph()
+    renderMaterialGraph()
+    renderTimeGraph()
+    renderTensionGraph()
     startClock()
     renderBoard()
     renderHistory()
@@ -1386,6 +1507,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function startClock () {
     if (clockInterval) clearInterval(clockInterval)
     lastFrameTime = Date.now()
+    moveStartTime = Date.now() // Start tracking move time
     clockInterval = setInterval(() => {
       if (game.game_over() || !gameStarted) return
 
@@ -1417,36 +1539,11 @@ document.addEventListener('DOMContentLoaded', () => {
   function checkGameOver () {
     let result = null
     if (whiteTime <= 0) {
-      logToOutput('Game Over: White timeout')
-      clearInterval(clockInterval)
-      isSelfPlay = false
-      updateSelfPlayButton()
-      result = 'black'
+      result = _handleTimeout('white')
     } else if (blackTime <= 0) {
-      logToOutput('Game Over: Black timeout')
-      clearInterval(clockInterval)
-      isSelfPlay = false
-      updateSelfPlayButton()
-      result = 'white'
+      result = _handleTimeout('black')
     } else if (game.game_over()) {
-      if (game.in_checkmate()) {
-        logToOutput('Game Over: Checkmate')
-        result = game.turn() === 'w' ? 'black' : 'white'
-      } else if (game.in_draw()) {
-        if (isArmageddon) {
-          logToOutput('Game Over: Draw (Black Wins by Armageddon Rule)')
-          result = 'black'
-        } else {
-          logToOutput('Game Over: Draw')
-          result = 'draw'
-        }
-      } else {
-        // Stalemate, etc
-        result = 'draw'
-      }
-      clearInterval(clockInterval)
-      isSelfPlay = false
-      updateSelfPlayButton()
+      result = _handleGameRulesEnd()
     }
 
     if (result && onGameEndCallback) {
@@ -1454,6 +1551,38 @@ document.addEventListener('DOMContentLoaded', () => {
       onGameEndCallback = null // Clear it
       cb(result)
     }
+
+    if (result && isDuelActive) {
+      updateLeaderboard(engineAConfig.name, engineBConfig.name, result)
+    }
+  }
+
+  function _handleTimeout (loserColor) {
+    logToOutput(`Game Over: ${loserColor === 'white' ? 'White' : 'Black'} timeout`)
+    clearInterval(clockInterval)
+    isSelfPlay = false
+    updateSelfPlayButton()
+    return loserColor === 'white' ? 'black' : 'white'
+  }
+
+  function _handleGameRulesEnd () {
+    let result = 'draw'
+    if (game.in_checkmate()) {
+      logToOutput('Game Over: Checkmate')
+      result = game.turn() === 'w' ? 'black' : 'white'
+    } else if (game.in_draw()) {
+      if (isArmageddon) {
+        logToOutput('Game Over: Draw (Black Wins by Armageddon Rule)')
+        result = 'black'
+      } else {
+        logToOutput('Game Over: Draw')
+        result = 'draw'
+      }
+    }
+    clearInterval(clockInterval)
+    isSelfPlay = false
+    updateSelfPlayButton()
+    return result
   }
 
   function updateSelfPlayButton () {
@@ -2305,6 +2434,9 @@ document.addEventListener('DOMContentLoaded', () => {
     depthValueElement.textContent = '-'
     npsValueElement.textContent = '-'
     pvLinesElement.textContent = ''
+
+    npsHistory = [] // Reset live NPS history
+    renderNpsGraph()
 
     let cmd = 'position '
     if (startingFen === 'startpos') {
@@ -3548,25 +3680,41 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function _renderMaterialDiffUI (counts) {
-    const topColor = isFlipped ? 'w' : 'b'
-
     const values = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 }
-    const diff = calculateMaterial(counts.w, values) - calculateMaterial(counts.b, values)
+    const wMat = calculateMaterial(counts.w, values)
+    const bMat = calculateMaterial(counts.b, values)
+    const diff = wMat - bMat
 
+    _resetMaterialUI()
+    if (diff !== 0) {
+      _updateMaterialDiffDisplay(diff)
+    }
+  }
+
+  function _resetMaterialUI () {
     topMaterialDiff.textContent = ''
     bottomMaterialDiff.textContent = ''
+    if (topMaterialBar) topMaterialBar.style.width = '0%'
+    if (bottomMaterialBar) bottomMaterialBar.style.width = '0%'
+  }
 
-    if (diff === 0) return
-
+  function _updateMaterialDiffDisplay (diff) {
+    const topColor = isFlipped ? 'w' : 'b'
     const absDiff = Math.abs(diff)
-    const isWhiteUp = diff > 0
+    const barWidth = Math.min(100, (absDiff / 20) * 100)
 
-    if (isWhiteUp) {
-      if (topColor === 'w') topMaterialDiff.textContent = `+${absDiff}`
-      else bottomMaterialDiff.textContent = `+${absDiff}`
-    } else {
-      if (topColor === 'b') topMaterialDiff.textContent = `+${absDiff}`
-      else bottomMaterialDiff.textContent = `+${absDiff}`
+    // Determine who is leading
+    const leader = diff > 0 ? 'w' : 'b'
+    const isTopLeader = leader === topColor
+
+    const targetDiff = isTopLeader ? topMaterialDiff : bottomMaterialDiff
+    const targetBar = isTopLeader ? topMaterialBar : bottomMaterialBar
+    const color = leader === 'w' ? '#E3E3E3' : '#6B6B6B'
+
+    targetDiff.textContent = `+${absDiff}`
+    if (targetBar) {
+      targetBar.style.width = `${barWidth}%`
+      targetBar.style.backgroundColor = color
     }
   }
 
@@ -3667,6 +3815,381 @@ document.addEventListener('DOMContentLoaded', () => {
     polyline.setAttribute('stroke', '#33B5E5')
     polyline.setAttribute('stroke-width', '2')
     evalGraphSvg.appendChild(polyline)
+  }
+
+  function renderMaterialGraph () {
+    if (!materialGraphSvg) return
+    if (materialHistory.length === 0) {
+      materialGraphSvg.innerHTML = ''
+      return
+    }
+
+    materialGraphSvg.innerHTML = ''
+    const width = materialGraphSvg.clientWidth || 300
+    const height = materialGraphSvg.clientHeight || 200
+    const padding = 10
+
+    const maxPly = Math.max(20, materialHistory.length)
+    const maxMat = 39
+
+    const getX = (ply) => (ply / maxPly) * (width - 2 * padding) + padding
+    const getY = (mat) => height - ((mat / maxMat) * (height - 2 * padding) + padding)
+
+    // White Material Line
+    const wPoints = materialHistory.map(p => `${getX(p.ply)},${getY(p.w)}`).join(' ')
+    const wPoly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline')
+    wPoly.setAttribute('points', wPoints)
+    wPoly.setAttribute('fill', 'none')
+    wPoly.setAttribute('stroke', '#E3E3E3')
+    wPoly.setAttribute('stroke-width', '2')
+    materialGraphSvg.appendChild(wPoly)
+
+    // Black Material Line
+    const bPoints = materialHistory.map(p => `${getX(p.ply)},${getY(p.b)}`).join(' ')
+    const bPoly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline')
+    bPoly.setAttribute('points', bPoints)
+    bPoly.setAttribute('fill', 'none')
+    bPoly.setAttribute('stroke', '#6B6B6B')
+    bPoly.setAttribute('stroke-width', '2')
+    materialGraphSvg.appendChild(bPoly)
+  }
+
+  function renderTimeGraph () {
+    if (!timeGraphSvg) return
+    if (timeHistory.length === 0) {
+      timeGraphSvg.innerHTML = ''
+      return
+    }
+
+    timeGraphSvg.innerHTML = ''
+    const width = timeGraphSvg.clientWidth || 300
+    const height = timeGraphSvg.clientHeight || 200
+    const padding = 20
+
+    const maxPly = Math.max(20, timeHistory[timeHistory.length - 1].ply)
+    const maxTime = Math.max(1000, ...timeHistory.map(t => t.time))
+
+    const getX = (ply) => (ply / maxPly) * (width - 2 * padding) + padding
+    const getY = (time) => height - ((time / maxTime) * (height - 2 * padding) + padding)
+
+    // Bars
+    const barW = Math.max(2, ((width - 2 * padding) / maxPly) * 0.8)
+
+    timeHistory.forEach(t => {
+      const x = getX(t.ply) - barW / 2
+      const y = getY(t.time)
+      const h = (height - padding) - y
+
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+      rect.setAttribute('x', x)
+      rect.setAttribute('y', y)
+      rect.setAttribute('width', barW)
+      rect.setAttribute('height', h)
+      rect.setAttribute('fill', '#33B5E5') // Blue
+      timeGraphSvg.appendChild(rect)
+    })
+  }
+
+  function renderNpsGraph () {
+    if (!npsGraphSvg) return
+    if (npsHistory.length === 0) {
+      npsGraphSvg.innerHTML = ''
+      return
+    }
+
+    npsGraphSvg.innerHTML = ''
+    const width = npsGraphSvg.clientWidth || 300
+    const height = npsGraphSvg.clientHeight || 200
+    const padding = 10
+
+    const maxSamples = npsHistory.length
+    const maxNps = Math.max(100000, ...npsHistory.map(n => n.value))
+
+    const getX = (i) => (i / (maxSamples - 1 || 1)) * (width - 2 * padding) + padding
+    const getY = (val) => height - ((val / maxNps) * (height - 2 * padding) + padding)
+
+    const points = npsHistory.map((n, i) => `${getX(i)},${getY(n.value)}`).join(' ')
+    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline')
+    poly.setAttribute('points', points)
+    poly.setAttribute('fill', 'none')
+    poly.setAttribute('stroke', '#9AC42A') // Green
+    poly.setAttribute('stroke-width', '2')
+    npsGraphSvg.appendChild(poly)
+  }
+
+  function _updateTensionHistory () {
+    const tension = _calculateTension(game)
+    tensionHistory.push({ ply: game.history().length, value: tension })
+    renderTensionGraph()
+  }
+
+  function _calculateTension (chess) {
+    const moves = chess.moves({ verbose: true })
+    let count = moves.filter(m => m.flags.includes('c') || m.flags.includes('e')).length
+
+    // Check opponent moves by flipping side in FEN
+    // Note: detailed validation might fail if position is illegal for other side, but good approximation
+    const fen = chess.fen()
+    const tokens = fen.split(' ')
+    tokens[1] = tokens[1] === 'w' ? 'b' : 'w'
+    const tempFen = tokens.join(' ')
+
+    try {
+      const temp = new Chess(tempFen)
+      const oppMoves = temp.moves({ verbose: true })
+      count += oppMoves.filter(m => m.flags.includes('c') || m.flags.includes('e')).length
+    } catch (e) {
+      // Ignore errors
+    }
+
+    return count
+  }
+
+  function renderTensionGraph () {
+    if (!tensionGraphSvg) return
+    if (tensionHistory.length === 0) {
+      tensionGraphSvg.innerHTML = ''
+      return
+    }
+
+    tensionGraphSvg.innerHTML = ''
+    const width = tensionGraphSvg.clientWidth || 300
+    const height = tensionGraphSvg.clientHeight || 200
+    const padding = 10
+
+    const maxPly = Math.max(20, tensionHistory[tensionHistory.length - 1].ply)
+    const maxTension = Math.max(10, ...tensionHistory.map(t => t.value))
+
+    const getX = (ply) => (ply / maxPly) * (width - 2 * padding) + padding
+    const getY = (val) => height - ((val / maxTension) * (height - 2 * padding) + padding)
+
+    const points = tensionHistory.map(t => `${getX(t.ply)},${getY(t.value)}`).join(' ')
+    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline')
+    poly.setAttribute('points', points)
+    poly.setAttribute('fill', 'none')
+    poly.setAttribute('stroke', '#F2495C') // Red
+    poly.setAttribute('stroke-width', '2')
+    tensionGraphSvg.appendChild(poly)
+  }
+
+  if (analyzeGameBtn) {
+    analyzeGameBtn.addEventListener('click', startFullGameAnalysis)
+  }
+
+  if (closeAnalysisModalBtn) {
+    closeAnalysisModalBtn.addEventListener('click', () => {
+      analysisReportModal.classList.remove('active')
+      isFullAnalysis = false // Cancel
+      socket.send('setoption name MultiPV value 1')
+    })
+  }
+
+  function startFullGameAnalysis () {
+    const history = game.history({ verbose: true })
+    if (history.length === 0) {
+      showToast('No game to analyze', 'error')
+      return
+    }
+
+    isFullAnalysis = true
+    analysisQueue = []
+    analysisResults = []
+    currentAnalysisInfo = {}
+
+    const tempGame = new Chess()
+    if (startingFen !== 'startpos') tempGame.load(startingFen)
+
+    // We analyze positions *before* the move was made
+    // 1. Initial Position -> Played Move 1
+    analysisQueue.push({ fen: tempGame.fen(), playedMove: history[0], moveIndex: 1, san: history[0].san, turn: tempGame.turn() })
+
+    for (let i = 0; i < history.length - 1; i++) {
+      tempGame.move(history[i])
+      analysisQueue.push({ fen: tempGame.fen(), playedMove: history[i + 1], moveIndex: i + 2, san: history[i + 1].san, turn: tempGame.turn() })
+    }
+
+    analysisReportModal.classList.add('active')
+    if (analysisProgressBar) analysisProgressBar.style.display = 'block'
+    if (analysisProgressFill) analysisProgressFill.style.width = '0%'
+    if (analysisSummary) analysisSummary.textContent = 'Analyzing...'
+    if (analysisTable) analysisTable.innerHTML = ''
+
+    socket.send('stop')
+    socket.send('setoption name MultiPV value 3')
+    setTimeout(_runNextAnalysis, 100)
+  }
+
+  function _runNextAnalysis () {
+    if (!isFullAnalysis) return // Cancelled
+    if (analysisQueue.length === 0) {
+      _finishAnalysis()
+      return
+    }
+
+    const task = analysisQueue[0]
+    currentAnalysisInfo = {}
+    socket.send(`position fen ${task.fen}`)
+    socket.send('go depth 12')
+    isAnalyzing = true
+  }
+
+  function _processAnalysisStep () {
+    const task = analysisQueue.shift()
+    if (!task) return
+
+    const result = _calculateAnalysisResult(task)
+    analysisResults.push(result)
+
+    _renderAnalysisRow(task, result)
+    _updateAnalysisProgress()
+
+    _runNextAnalysis()
+  }
+
+  function _calculateAnalysisResult (task) {
+    const bestInfo = currentAnalysisInfo[1]
+    let playedUCI = task.playedMove.from + task.playedMove.to
+    if (task.playedMove.promotion) playedUCI += task.playedMove.promotion
+
+    const bestMoveUCI = bestInfo ? bestInfo.move : '?'
+    const evalScore = bestInfo ? formatScore(bestInfo.score) : '?'
+
+    let bestScoreVal = 0
+    if (bestInfo && bestInfo.score) {
+      bestScoreVal = bestInfo.score.type === 'cp' ? bestInfo.score.value : (bestInfo.score.value > 0 ? 10000 : -10000)
+    }
+
+    let playedScoreVal = -99999
+    let found = false
+
+    Object.values(currentAnalysisInfo).forEach(info => {
+      if (info.move === playedUCI) {
+        playedScoreVal = info.score.type === 'cp' ? info.score.value : (info.score.value > 0 ? 10000 : -10000)
+        found = true
+      }
+    })
+
+    const diff = found ? (bestScoreVal - playedScoreVal) : '?'
+
+    return {
+      move: task.moveIndex,
+      san: task.san,
+      played: playedUCI,
+      best: bestMoveUCI,
+      diff,
+      eval: evalScore
+    }
+  }
+
+  function _renderAnalysisRow (task, result) {
+    const tr = document.createElement('tr')
+    tr.style.borderBottom = '1px solid var(--grafana-border)'
+
+    let color = 'inherit'
+    let annotation = ''
+    const diff = result.diff
+
+    if (typeof diff === 'number') {
+      if (diff > 300) { color = '#F2495C'; annotation = '??' } else if (diff > 100) { color = '#EAB839'; annotation = '?' } else if (diff > 50) { color = '#33B5E5'; annotation = '?!' }
+    } else {
+      color = '#EAB839'; annotation = '?!'
+    }
+
+    const moveNum = Math.ceil(task.moveIndex / 2)
+    const moveDots = task.moveIndex % 2 === 0 ? '..' : ''
+
+    tr.innerHTML = `
+        <td style="padding: 5px;">${moveNum}${moveDots}</td>
+        <td style="padding: 5px; color: ${color}">${task.san} ${annotation}</td>
+        <td style="padding: 5px;">${result.best}</td>
+        <td style="padding: 5px;">${typeof diff === 'number' ? (diff / 100).toFixed(2) : '> 0.50'}</td>
+        <td style="padding: 5px;">${result.eval}</td>
+    `
+    if (analysisTable) analysisTable.appendChild(tr)
+  }
+
+  function _updateAnalysisProgress () {
+    if (analysisResults.length > 0) {
+      const total = analysisResults.length + analysisQueue.length
+      const pct = (analysisResults.length / total) * 100
+      if (analysisProgressFill) analysisProgressFill.style.width = `${pct}%`
+    }
+  }
+
+  function _finishAnalysis () {
+    isFullAnalysis = false
+    if (analysisProgressBar) analysisProgressBar.style.display = 'none'
+    if (analysisSummary) analysisSummary.textContent = 'Analysis Complete'
+    socket.send('setoption name MultiPV value 1')
+    showToast('Analysis Complete', 'success')
+  }
+
+  if (leaderboardBtn) {
+    leaderboardBtn.addEventListener('click', () => {
+      leaderboardModal.classList.add('active')
+      renderLeaderboard()
+    })
+  }
+
+  if (closeLeaderboardModalBtn) {
+    closeLeaderboardModalBtn.addEventListener('click', () => {
+      leaderboardModal.classList.remove('active')
+    })
+  }
+
+  if (resetLeaderboardBtn) {
+    resetLeaderboardBtn.addEventListener('click', () => {
+      localStorage.removeItem('engine-leaderboard')
+      renderLeaderboard()
+      showToast('Leaderboard data cleared', 'info')
+    })
+  }
+
+  function updateLeaderboard (whiteName, blackName, result) {
+    const data = JSON.parse(localStorage.getItem('engine-leaderboard') || '{}')
+
+    if (!data[whiteName]) data[whiteName] = { w: 0, d: 0, l: 0 }
+    if (!data[blackName]) data[blackName] = { w: 0, d: 0, l: 0 }
+
+    if (result === 'white') {
+      data[whiteName].w++
+      data[blackName].l++
+    } else if (result === 'black') {
+      data[whiteName].l++
+      data[blackName].w++
+    } else {
+      data[whiteName].d++
+      data[blackName].d++
+    }
+
+    localStorage.setItem('engine-leaderboard', JSON.stringify(data))
+  }
+
+  function renderLeaderboard () {
+    if (!leaderboardTable) return
+    leaderboardTable.innerHTML = ''
+    const data = JSON.parse(localStorage.getItem('engine-leaderboard') || '{}')
+
+    const entries = Object.entries(data).map(([name, stats]) => {
+      const games = stats.w + stats.d + stats.l
+      const score = stats.w + stats.d * 0.5
+      const pct = games > 0 ? (score / games) * 100 : 0
+      return { name, ...stats, games, pct }
+    }).sort((a, b) => b.pct - a.pct)
+
+    entries.forEach(e => {
+      const tr = document.createElement('tr')
+      tr.style.borderBottom = '1px solid var(--grafana-border)'
+      tr.innerHTML = `
+            <td style="padding: 5px;">${e.name}</td>
+            <td style="padding: 5px;">${e.games}</td>
+            <td style="padding: 5px; color: #9AC42A;">${e.w}</td>
+            <td style="padding: 5px; color: #AAB4C1;">${e.d}</td>
+            <td style="padding: 5px; color: #F2495C;">${e.l}</td>
+            <td style="padding: 5px;">${e.pct.toFixed(1)}%</td>
+          `
+      leaderboardTable.appendChild(tr)
+    })
   }
 
   connect()
