@@ -12,19 +12,8 @@ Benchmarking functions can be written and verified, but performance-critical ben
 
 ## Active Roadmap
 
-### Epic 64: Advanced UCI Option Controls
-**Size:** Small (2 days)
-**Description:** Improve the usability of the engine configuration panel.
-**User Stories:**
-1.  **Button Support (S)**
-    *   *Description:* Correctly handle UCI 'button' type options (e.g., Clear Hash).
-    *   *Acceptance Criteria:*
-        *   [ ] Clicking the button sends the correct UCI command.
-2.  **Grouping and Tooltips (S)**
-    *   *Description:* Group related options and add tooltips if descriptions are available.
-    *   *Acceptance Criteria:*
-        *   [ ] Options are organized logically (e.g., Search, Eval, System).
+*No active epics. Please select the next epic from the backlog.*
 
 ## Archived Roadmap (Completed or Superseded)
 
-See [archive/ARCHIVED_EPICS.md](archive/ARCHIVED_EPICS.md) for Epics 1-63.
+See [archive/ARCHIVED_EPICS.md](archive/ARCHIVED_EPICS.md) for Epics 1-64.

@@ -930,3 +930,16 @@ The following Epics were part of the initial development phase and are either co
     *   *Description:* Ensure piece dragging (or tap-to-move) works smoothly on touch screens.
     *   *Acceptance Criteria:*
         *   [x] Mobile users can play a game without issues.
+
+### Epic 64: Advanced UCI Option Controls
+**Size:** Small (2 days)
+**Description:** Improve the usability of the engine configuration panel.
+**User Stories:**
+1.  **Button Support (S)**
+    *   *Description:* Correctly handle UCI 'button' type options (e.g., Clear Hash).
+    *   *Acceptance Criteria:*
+        *   [x] Clicking the button sends the correct UCI command.
+2.  **Grouping and Tooltips (S)**
+    *   *Description:* Group related options and add tooltips if descriptions are available.
+    *   *Acceptance Criteria:*
+        *   [x] Options are organized logically (e.g., Search, Eval, System).

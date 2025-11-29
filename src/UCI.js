@@ -114,6 +114,7 @@ class UCI {
     this.output('id name JulesGemini')
     this.output('id author JulesGemini')
     this.output(`option name Hash type spin default ${this.options.Hash} min 1 max 1024`)
+    this.output('option name Clear Hash type button')
     this.output(`option name Threads type spin default ${this.options.Threads} min 1 max 64`)
     this.output(`option name Ponder type check default ${this.options.Ponder}`)
     this.output(`option name MultiPV type spin default ${this.options.MultiPV} min 1 max 500`)
@@ -315,6 +316,12 @@ class UCI {
   }
 
   applyOption (name, value) {
+    if (name === 'Clear Hash') {
+      this.tt.clear()
+      this.output('info string Hash cleared')
+      return
+    }
+
     if (Object.prototype.hasOwnProperty.call(this.options, name)) {
       this.options[name] = value
       if (name === 'Hash' && this.options.Threads === 1) {
