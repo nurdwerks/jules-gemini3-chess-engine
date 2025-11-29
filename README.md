@@ -12,19 +12,6 @@ Benchmarking functions can be written and verified, but performance-critical ben
 
 ## Active Roadmap
 
-### Epic 61: Engine Analysis Mode
-**Size:** Medium (3 days)
-**Description:** Enable continuous engine analysis without auto-playing moves.
-**User Stories:**
-1.  **Analysis Toggle (S)**
-    *   *Description:* Add a switch to enable "Analysis Mode".
-    *   *Acceptance Criteria:*
-        *   [ ] When enabled, the engine analyzes the current position indefinitely (`go infinite`).
-2.  **Interactive Exploration (S)**
-    *   *Description:* Allow the user to make moves on the board during analysis to see how the evaluation changes.
-    *   *Acceptance Criteria:*
-        *   [ ] Making a move updates the position and restarts the analysis automatically.
-
 ### Epic 62: Sound Effects Integration
 **Size:** Small (1 day)
 **Description:** Add audio feedback for better game immersion.
