@@ -1470,3 +1470,33 @@ The following Epics were part of the initial development phase and are either co
     *   *Testing Plan:* Autoplay game at diff speeds.
     *   *Acceptance Criteria:*
         - [x] Speed varies.
+
+### Epic 70: Time Control
+**Size:** Small (2 days)
+**Description:** Implementation of chess clocks and time control rules.
+
+**User Stories:**
+
+59. **Move Time limit for Human (S)**
+    *   *Description:* Add a clock for the human player to enforce time controls.
+    *   *Implementation:* JS Interval decrementing human time when `turn == human`.
+    *   *Acceptance Criteria:*
+        *   [x] Game ends on flag fall.
+
+60. **Increment Support (S)**
+    *   *Description:* Add support for time increments (Fischer clock) in human games.
+    *   *Implementation:* Add `inc` to time after move.
+    *   *Acceptance Criteria:*
+        *   [x] Increment added correctly.
+
+61. **Game Clock (S)**
+    *   *Description:* Add a visual timer for both white and black.
+    *   *Implementation:* Digital readout `MM:SS`.
+    *   *Acceptance Criteria:*
+        *   [x] Clocks readable.
+
+62. **Low Time Alert (S)**
+    *   *Description:* Visual/Audio warning when time is running low (< 10s).
+    *   *Implementation:* Flash clock red. Play "tick" sound.
+    *   *Acceptance Criteria:*
+        *   [x] Warning triggers at 10s.

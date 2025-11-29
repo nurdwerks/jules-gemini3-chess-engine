@@ -58,6 +58,14 @@
                         <button id="armageddon-btn">Armageddon</button>
                      </div>
                      <div class="option-item mt-10">
+                        <label>Time Control:</label>
+                        <div style="display: flex; gap: 5px; align-items: center;">
+                            <input type="number" id="time-base" value="5" min="0" max="180" style="width: 50px;" title="Base Time (minutes)">
+                            <span>+</span>
+                            <input type="number" id="time-inc" value="0" min="0" max="60" style="width: 50px;" title="Increment (seconds)">
+                        </div>
+                     </div>
+                     <div class="option-item">
                         <label for="game-mode">Game Mode:</label>
                         <select id="game-mode">
                             <option value="pve">Player vs Engine</option>

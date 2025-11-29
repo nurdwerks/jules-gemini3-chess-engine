@@ -6,52 +6,6 @@ This document outlines the detailed backlog of future enhancements for the Jules
 
 
 
-### Epic 70: Time Control
-**Size:** Small (2 days)
-**Description:** Implementation of chess clocks and time control rules.
-
-**User Stories:**
-
-59. **Move Time limit for Human (S)**
-    *   *Description:* Add a clock for the human player to enforce time controls.
-    *   *Implementation:* JS Interval decrementing human time when `turn == human`.
-    *   *Tasks:*
-        - [ ] Timer logic.
-        - [ ] Flag fall (Loss) logic.
-    *   *Testing Plan:* Let time run out.
-    *   *Acceptance Criteria:*
-        - [ ] Game ends on flag fall.
-
-60. **Increment Support (S)**
-    *   *Description:* Add support for time increments (Fischer clock) in human games.
-    *   *Implementation:* Add `inc` to time after move.
-    *   *Tasks:*
-        - [ ] Update timer logic.
-    *   *Testing Plan:* Verify time increases after move.
-    *   *Acceptance Criteria:*
-        - [ ] Increment added correctly.
-
-61. **Game Clock (S)**
-    *   *Description:* Add a visual timer for both white and black.
-    *   *Implementation:* Digital readout `MM:SS`.
-    *   *Tasks:*
-        - [ ] Render clock elements.
-    *   *Testing Plan:* Visual check.
-    *   *Acceptance Criteria:*
-        - [ ] Clocks readable.
-
-62. **Low Time Alert (S)**
-    *   *Description:* Visual/Audio warning when time is running low (< 10s).
-    *   *Implementation:* Flash clock red. Play "tick" sound.
-    *   *Tasks:*
-        - [ ] CSS class `.low-time`.
-        - [ ] Audio trigger.
-    *   *Testing Plan:* Run time down.
-    *   *Acceptance Criteria:*
-        - [ ] Warning triggers at 10s.
-
----
-
 ### Epic 71: Analysis Visualizations
 **Size:** Large (4-5 days)
 **Description:** Visual aids to help the user understand engine analysis and board state.
