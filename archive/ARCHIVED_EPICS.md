@@ -1243,3 +1243,34 @@ The following Epics were part of the initial development phase and are either co
     *   *Description:* UI for "Guess the Move" mode.
     *   *Acceptance Criteria:*
         *   [x] User can play through game.
+
+### Epic 67: Game Modes & Variations
+**Size:** Large (1-2 weeks)
+**Description:** Implement new ways to play chess, including variants and multiplayer setups.
+
+**User Stories:**
+
+29. **Tournament Manager: Queue (S)**
+    *   *Description:* Queue system for matches.
+    *   *Implementation:* Array of match pairs.
+    *   *Tasks:*
+        - [x] Match queue logic.
+    *   *Acceptance Criteria:*
+        - [x] Matches run in order.
+
+30. **Tournament Manager: Results (S)**
+    *   *Description:* Standings table.
+    *   *Implementation:* HTML Table.
+    *   *Tasks:*
+        - [x] Standings table rendering.
+    *   *Acceptance Criteria:*
+        - [x] Scores update.
+
+34. **Vote Chess (S)**
+    *   *Description:* Allow multiple viewers to vote on the next move (mockup).
+    *   *Implementation:* Connect to a voting backend or mock via multiple browser tabs (websockets).
+    *   *Tasks:*
+        - [x] Voting UI overlay on board.
+    *   *Testing Plan:* Simulate votes.
+    *   *Acceptance Criteria:*
+        - [x] Most voted move is played.

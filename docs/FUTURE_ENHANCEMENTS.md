@@ -5,38 +5,6 @@ This document outlines the detailed backlog of future enhancements for the Jules
 ---
 
 
-### Epic 67: Game Modes & Variations
-**Size:** Large (1-2 weeks)
-**Description:** Implement new ways to play chess, including variants and multiplayer setups.
-
-**User Stories:**
-
-29. **Tournament Manager: Queue (S)**
-    *   *Description:* Queue system for matches.
-    *   *Implementation:* Array of match pairs.
-    *   *Tasks:*
-        - [ ] Match queue logic.
-    *   *Acceptance Criteria:*
-        - [ ] Matches run in order.
-
-30. **Tournament Manager: Results (S)**
-    *   *Description:* Standings table.
-    *   *Implementation:* HTML Table.
-    *   *Tasks:*
-        - [ ] Standings table rendering.
-    *   *Acceptance Criteria:*
-        - [ ] Scores update.
-
-34. **Vote Chess (S)**
-    *   *Description:* Allow multiple viewers to vote on the next move (mockup).
-    *   *Implementation:* Connect to a voting backend or mock via multiple browser tabs (websockets).
-    *   *Tasks:*
-        - [ ] Voting UI overlay on board.
-    *   *Testing Plan:* Simulate votes.
-    *   *Acceptance Criteria:*
-        - [ ] Most voted move is played.
-
----
 
 ### Epic 68: Training & Puzzles
 **Size:** Medium (3-5 days)

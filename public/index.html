@@ -48,6 +48,7 @@
                         <button id="flip-board-btn">Flip Board</button>
                         <button id="self-play-btn">Self Play</button>
                         <button id="engine-duel-btn">Engine Duel</button>
+                        <button id="tournament-btn">Tournament</button>
                         <button id="armageddon-btn">Armageddon</button>
                      </div>
                      <div class="option-item mt-10">
@@ -56,6 +57,7 @@
                             <option value="pve">Player vs Engine</option>
                             <option value="pvp">Player vs Player</option>
                             <option value="guess">Guess the Move</option>
+                            <option value="vote">Vote Chess</option>
                         </select>
                      </div>
                      <div class="option-item">
@@ -248,8 +250,60 @@
                    <div id="system-log"></div>
                </div>
            </div>
+            <div class="panel tournament-panel" id="tournament-panel" style="display: none;">
+                <div class="panel-header">
+                   <h2 class="panel-title">Tournament Standings</h2>
+               </div>
+               <div class="panel-content">
+                   <table id="tournament-standings-table">
+                       <thead>
+                           <tr>
+                               <th>Rank</th>
+                               <th>Engine</th>
+                               <th>Elo</th>
+                               <th>Score</th>
+                               <th>Games</th>
+                           </tr>
+                       </thead>
+                       <tbody></tbody>
+                   </table>
+                   <div class="tournament-match-list" id="tournament-match-queue"></div>
+                   <div class="button-group mt-10">
+                       <button id="stop-tournament-btn" style="background-color: #F2495C;">Stop Tournament</button>
+                   </div>
+               </div>
+           </div>
         </div>
     </main>
+  </div>
+  <div id="tournament-setup-modal" class="modal-overlay">
+      <div class="modal">
+          <div class="modal-header">
+              <h3 class="modal-title">Tournament Setup</h3>
+              <button class="modal-close-btn" id="close-tournament-modal">&times;</button>
+          </div>
+          <div class="modal-content">
+              <div class="option-item">
+                  <label>Type:</label>
+                  <select id="tournament-type">
+                      <option value="round-robin">Round Robin</option>
+                  </select>
+              </div>
+              <div class="option-item">
+                  <label>Rounds:</label>
+                  <input type="number" id="tournament-rounds" value="1" min="1" max="10">
+              </div>
+              <div class="separator"></div>
+              <h4>Players (Engines)</h4>
+              <div id="tournament-players-list" class="tournament-setup-list">
+                  <!-- Dynamic Inputs -->
+              </div>
+              <button id="add-tournament-player-btn" style="background-color: var(--grafana-panel-bg); border: 1px dashed var(--grafana-text-secondary); color: var(--grafana-text-secondary);">+ Add Player</button>
+          </div>
+          <div class="modal-footer">
+              <button id="start-tournament-confirm-btn">Start Tournament</button>
+          </div>
+      </div>
   </div>
   <div id="pgn-import-modal" class="modal-overlay">
       <div class="modal">
@@ -309,6 +363,7 @@
       </div>
   </div>
   <script src="libs/chess.js"></script>
+  <script src="tournament.js"></script>
   <script src="client.js"></script>
   <div id="toast-container"></div>
 </body>

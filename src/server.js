@@ -3,8 +3,10 @@ const fs = require('fs')
 const path = require('path')
 const WebSocket = require('ws')
 const UCI = require('./UCI')
+const VoteRoom = require('./VoteRoom')
 
 const PORT = 3000
+const voteRoom = new VoteRoom()
 
 // HTTP Server to serve static files
 const server = http.createServer((req, res) => {
@@ -74,13 +76,31 @@ wss.on('connection', (ws) => {
   })
 
   ws.on('message', (message) => {
-    const cmd = message.toString()
+    const msgStr = message.toString()
+
+    // Check for JSON (Vote Protocol)
+    if (msgStr.startsWith('{')) {
+      try {
+        const data = JSON.parse(msgStr)
+        if (data.action === 'join_vote') {
+          voteRoom.addClient(ws)
+        } else if (data.action === 'leave_vote') {
+          voteRoom.removeClient(ws)
+        } else if (data.action === 'vote') {
+          voteRoom.handleVote(ws, data.move)
+        }
+        return // Don't process as UCI
+      } catch (e) {}
+    }
+
+    const cmd = msgStr
     // console.log(`Received command: ${cmd}`); // Optional logging
     uci.processCommand(cmd)
   })
 
   ws.on('close', () => {
     console.log('Client disconnected')
+    voteRoom.removeClient(ws)
     // UCI instance will be garbage collected
   })
 })
