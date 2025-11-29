@@ -198,16 +198,27 @@ document.addEventListener('DOMContentLoaded', () => {
   let isArmageddon = false
   let engineAConfig = { name: 'Engine A', elo: 1500, limitStrength: true }
   let engineBConfig = { name: 'Engine B', elo: 2000, limitStrength: true }
-  let guessModeData = { moves: [], index: 0, active: false }
+  const guessModeData = { moves: [], index: 0, active: false }
   let isAnalysisMode = false
   let ignoreNextBestMove = false
   let isAnalyzing = false
   let pendingAnalysisCmd = null
+  let onGameEndCallback = null
 
   let whiteTime = 300000 // 5 minutes in ms
   let blackTime = 300000
   let clockInterval = null
   let lastFrameTime = 0
+
+  // Public API for Tournament Manager
+  window.ChessApp = {
+    startMatch: (whiteConfig, blackConfig, onGameEnd) => {
+      onGameEndCallback = onGameEnd
+      engineAConfig = whiteConfig
+      engineBConfig = blackConfig
+      startDuel(true) // Pass true to indicate external start (headless or automated)
+    }
+  }
 
   function connect () {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -231,12 +242,57 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function _handleSocketMessage (msg) {
+    if (msg.startsWith('{')) {
+      try {
+        const data = JSON.parse(msg)
+        _handleVoteMessage(data)
+        return
+      } catch (e) {}
+    }
+
     const parts = msg.split(' ')
     if (msg.startsWith('option name')) parseOption(msg)
     else if (parts[0] === 'uciok') socket.send('isready')
     else if (parts[0] === 'readyok') _handleReadyOk()
     else if (parts[0] === 'bestmove') _handleBestMoveMsg(parts)
     else if (parts[0] === 'info') _handleInfoMsg(msg)
+  }
+
+  function _handleVoteMessage (data) {
+    if (data.type === 'vote_state') {
+      // Sync state
+      game.load(data.fen)
+      startingFen = data.fen // For reference
+      currentViewIndex = -1
+      renderBoard()
+      renderHistory()
+      showToast(`Joined Vote Chess. Time left: ${Math.ceil(data.timeLeft / 1000)}s`)
+    } else if (data.type === 'vote_update') {
+      // Show top votes
+      const entries = Object.entries(data.votes).sort((a, b) => b[1] - a[1])
+      const top = entries.slice(0, 5).map(e => `${e[0]} (${e[1]})`).join(', ')
+      logSystemMessage(`Votes: ${top}`)
+    } else if (data.type === 'vote_result') {
+      // Play move
+      const move = data.move
+      const m = game.move(move)
+      if (m) {
+        SoundManager.playSound(m, game)
+        renderBoard()
+        renderHistory()
+        showToast(`Vote Result: ${move}`, 'success')
+      }
+    } else if (data.type === 'vote_start') {
+      // New turn
+      if (game.fen() !== data.fen) {
+        game.load(data.fen)
+        renderBoard()
+        renderHistory()
+      }
+      showToast('Voting started!', 'info')
+    } else if (data.type === 'game_over') {
+      showToast(`Game Over: ${data.result}`, 'info')
+    }
   }
 
   function _handleReadyOk () {
@@ -625,7 +681,7 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast('Guess Mode: Play the move you think was played!', 'info')
   }
 
-  function startDuel () {
+  function startDuel (isExternal = false) {
     isDuelActive = true
     isSelfPlay = false // Ensure standard self-play is off
     updateSelfPlayButton()
@@ -639,8 +695,11 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedSquare = null
     legalMovesForSelectedPiece = []
     currentViewIndex = -1
-    whiteTime = 300000
-    blackTime = 300000
+    // Shorten time for tournament matches? Or keep default?
+    // User can implement time control settings later. Defaulting to 1m for speed if external?
+    // Let's stick to default or make it faster.
+    whiteTime = isExternal ? 60000 : 300000
+    blackTime = isExternal ? 60000 : 300000
 
     startClock()
     renderBoard()
@@ -721,25 +780,44 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function checkGameOver () {
+    let result = null
     if (whiteTime <= 0) {
       logToOutput('Game Over: White timeout')
       clearInterval(clockInterval)
       isSelfPlay = false
       updateSelfPlayButton()
+      result = 'black'
     } else if (blackTime <= 0) {
       logToOutput('Game Over: Black timeout')
       clearInterval(clockInterval)
       isSelfPlay = false
       updateSelfPlayButton()
+      result = 'white'
     } else if (game.game_over()) {
-      if (game.in_checkmate()) logToOutput('Game Over: Checkmate')
-      else if (game.in_draw()) {
-        if (isArmageddon) logToOutput('Game Over: Draw (Black Wins by Armageddon Rule)')
-        else logToOutput('Game Over: Draw')
+      if (game.in_checkmate()) {
+        logToOutput('Game Over: Checkmate')
+        result = game.turn() === 'w' ? 'black' : 'white'
+      } else if (game.in_draw()) {
+        if (isArmageddon) {
+          logToOutput('Game Over: Draw (Black Wins by Armageddon Rule)')
+          result = 'black'
+        } else {
+          logToOutput('Game Over: Draw')
+          result = 'draw'
+        }
+      } else {
+        // Stalemate, etc
+        result = 'draw'
       }
       clearInterval(clockInterval)
       isSelfPlay = false
       updateSelfPlayButton()
+    }
+
+    if (result && onGameEndCallback) {
+      const cb = onGameEndCallback
+      onGameEndCallback = null // Clear it
+      cb(result)
     }
   }
 
@@ -1008,6 +1086,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return files[col] + rank
   }
 
+  // eslint-disable-next-line complexity
   async function attemptMove (targetMove) {
     // Guess Mode Logic
     if (gameMode === 'guess' && guessModeData.active) {
@@ -1372,8 +1451,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (gameModeSelect) {
     gameModeSelect.addEventListener('change', (e) => {
+      const prevMode = gameMode
       gameMode = e.target.value
-      if (gameMode === 'guess') {
+
+      if (prevMode === 'vote') {
+        socket.send(JSON.stringify({ action: 'leave_vote' }))
+      }
+
+      if (gameMode === 'vote') {
+        socket.send(JSON.stringify({ action: 'join_vote' }))
+      } else if (gameMode === 'guess') {
         if (game.history().length === 0) {
           showToast('Load a PGN to start guessing!', 'info')
         } else {
