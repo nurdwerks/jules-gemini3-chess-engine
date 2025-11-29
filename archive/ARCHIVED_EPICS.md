@@ -943,3 +943,170 @@ The following Epics were part of the initial development phase and are either co
     *   *Description:* Group related options and add tooltips if descriptions are available.
     *   *Acceptance Criteria:*
         *   [x] Options are organized logically (e.g., Search, Eval, System).
+
+### Epic 65: Board Customization & Aesthetics
+**Size:** Medium (3-5 days)
+**Description:** Enhance the visual appeal and customizability of the chess board to improve user experience and engagement. This includes theming, animations, and diverse asset support.
+
+**User Stories:**
+
+1.  **Board Flipping (S)**
+    *   *Description:* Allow the user to flip the board view so Black is at the bottom.
+    *   *Implementation:* Toggle a CSS class `flipped` on the board container and individual square/piece elements to rotate them 180 degrees.
+    *   *Tasks:*
+        - [x] Add "Flip Board" button to UI.
+        - [x] Implement `flipBoard()` function in `client.js`.
+        - [x] Add `.flipped` CSS transformations.
+    *   *Testing Plan:*
+        - Manual: Click button, verify board rotates, verify rank/file labels update.
+        - Playwright: Check element `transform` styles.
+    *   *Acceptance Criteria:*
+        - [x] Board orientation toggles correctly.
+        - [x] Drag and drop works correctly in flipped mode.
+
+2.  **Piece Set Selection (S)**
+    *   *Description:* Add a UI option to switch between different piece themes (e.g., Alpha, Merida, Cburnett).
+    *   *Implementation:* Store piece sets in `public/images/pieces/{set_name}/`. Update `getPieceImage(piece)` to use selected set path.
+    *   *Tasks:*
+        - [x] Download open-source piece sets.
+        - [x] Create dropdown in Settings.
+        - [x] Update image loading logic.
+    *   *Testing Plan:* Verify all piece images load for each set.
+    *   *Acceptance Criteria:*
+        - [x] User can select at least 3 distinct piece sets.
+
+3.  **Board Color Themes (S)**
+    *   *Description:* Add a UI option to change the board square colors (e.g., Green/White, Blue/White, Wood).
+    *   *Implementation:* Use CSS variables for `--light-square` and `--dark-square`. Dropdown updates these variables on `root`.
+    *   *Tasks:*
+        - [x] Define theme palettes in `client.js`.
+        - [x] Add color picker/dropdown.
+    *   *Testing Plan:* Visual inspection of board colors.
+    *   *Acceptance Criteria:*
+        - [x] Changing theme immediately updates board colors.
+
+4.  **Board Size Slider (S)**
+    *   *Description:* Slider to dynamically resize the board (Small, Medium, Large).
+    *   *Implementation:* Bind slider value to `--board-size` CSS variable or width percentage.
+    *   *Tasks:*
+        - [x] Add range input to UI.
+        - [x] Listen for `input` events and update container style.
+    *   *Testing Plan:* Verify board remains responsive and pieces scale correctly.
+    *   *Acceptance Criteria:*
+        - [x] Board resizes smoothly from 300px to 800px (or screen max).
+
+5.  **Dark Mode Toggle (S)**
+    *   *Description:* A dedicated toggle for the entire UI theme (Light/Dark), separate from board colors.
+    *   *Implementation:* Toggle `dark-mode` class on `<body>`. Define dark colors for background, panels, and text.
+    *   *Tasks:*
+        - [x] Create CSS variables for UI colors.
+        - [x] Implement toggle switch.
+        - [x] Persist preference in `localStorage`.
+    *   *Testing Plan:* Verify text contrast and background in both modes.
+    *   *Acceptance Criteria:*
+        - [x] UI switches themes instantly.
+        - [x] Setting is remembered on reload.
+
+6.  **Piece Style: 3D Assets (S)**
+    *   *Description:* Add a set of 3D-rendered piece images.
+    *   *Implementation:* Use pre-rendered 2D images of 3D pieces.
+    *   *Tasks:*
+        - [x] Source or render 3D piece sprites.
+        - [x] Add to Piece Set dropdown.
+    *   *Testing Plan:* Check visual alignment of 3D bases on squares.
+    *   *Acceptance Criteria:*
+        - [x] 3D style pieces are selectable.
+
+7.  **Piece Style: Pixel Art (S)**
+    *   *Description:* Add a retro 8-bit piece set.
+    *   *Implementation:* Add "Pixel" to piece sets. Use `image-rendering: pixelated` CSS.
+    *   *Tasks:*
+        - [x] Create/Find pixel art sprites.
+        - [x] Add CSS rule for pixelated scaling.
+    *   *Testing Plan:* Verify sharp edges on scaling.
+    *   *Acceptance Criteria:*
+        - [x] Pixel art looks crisp.
+
+8.  **Board Style: Glass (S)**
+    *   *Description:* A translucent/glass-effect board theme.
+    *   *Implementation:* Use `backdrop-filter: blur()` and semi-transparent RGBA colors for squares.
+    *   *Tasks:*
+        - [x] Create "Glass" theme definition.
+        - [x] Apply specific CSS classes for blur effects.
+    *   *Testing Plan:* Ensure background image/color is visible through board.
+    *   *Acceptance Criteria:*
+        - [x] Glass effect is visible and performant.
+
+9.  **Board Style: Newspaper (S)**
+    *   *Description:* A black and white high-contrast print style theme.
+    *   *Implementation:* Use grayscale filters and specific high-contrast patterns.
+    *   *Tasks:*
+        - [x] Create "Newspaper" theme.
+    *   *Testing Plan:* Verify high contrast for accessibility.
+    *   *Acceptance Criteria:*
+        - [x] Theme resembles a printed diagram.
+
+10. **Custom Theme Editor (S)**
+    *   *Description:* Allow users to pick custom hex colors for the board instead of using presets.
+    *   *Implementation:* HTML5 `<input type="color">` for light/dark squares.
+    *   *Tasks:*
+        - [x] Add color inputs to Settings.
+        - [x] Update CSS variables dynamically.
+    *   *Testing Plan:* Verify any color combo works.
+    *   *Acceptance Criteria:*
+        - [x] Users can create arbitrary board color schemes.
+
+11. **Custom CSS Import (S)**
+    *   *Description:* Allow users to upload or paste custom CSS to style the board.
+    *   *Implementation:* Text area for CSS, inject into a `<style id="custom-css">` tag.
+    *   *Tasks:*
+        - [x] Add CSS editor modal.
+        - [x] Sanitize input (basic check) and inject.
+    *   *Testing Plan:* Paste valid CSS, check results.
+    *   *Acceptance Criteria:*
+        - [x] User CSS overrides default styles.
+
+12. **Theme Upload (S)**
+    *   *Description:* Allow user to upload a JSON theme file.
+    *   *Implementation:* `FileReader` to parse JSON, then apply settings (colors, pieces).
+    *   *Tasks:*
+        - [x] Define JSON schema for themes.
+        - [x] Add file input.
+    *   *Testing Plan:* Upload valid and invalid JSONs.
+    *   *Acceptance Criteria:*
+        - [x] Theme applies correctly from file.
+
+13. **Piece Set Upload: UI (S)**
+    *   *Description:* Create the UI area for uploading a custom piece set.
+    *   *Implementation:* Drag-and-drop zone.
+    *   *Tasks:*
+        - [x] Implement drag-and-drop zone for images.
+    *   *Acceptance Criteria:*
+        - [x] UI accepts files.
+
+14. **Piece Set Upload: Logic (S)**
+    *   *Description:* Logic to map uploaded images to piece types.
+    *   *Implementation:* Use `URL.createObjectURL` for blobs. Map filenames (wk.svg, etc.) to internal IDs.
+    *   *Tasks:*
+        - [x] File parsing logic.
+        - [x] State update.
+    *   *Acceptance Criteria:*
+        - [x] Custom pieces render on board.
+
+15. **Piece Animation Speed (S)**
+    *   *Description:* Configurable speed for piece movement animations.
+    *   *Implementation:* Adjust CSS `transition-duration` or JS animation timer.
+    *   *Tasks:*
+        - [x] Add "Animation Speed" dropdown (Slow, Normal, Fast, Instant).
+    *   *Testing Plan:* Visual check of move speed.
+    *   *Acceptance Criteria:*
+        - [x] "Instant" disables animation.
+
+16. **Evaluation Bar Animation (S)**
+    *   *Description:* Smooth transition animations for the evaluation bar as the score changes.
+    *   *Implementation:* CSS `transition: height 0.5s ease-out`.
+    *   *Tasks:*
+        - [x] Add transition to eval bar container.
+    *   *Testing Plan:* Observe bar during analysis.
+    *   *Acceptance Criteria:*
+        - [x] Bar grows/shrinks smoothly, not jerkily.

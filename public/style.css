@@ -77,6 +77,31 @@ body {
     padding: 15px;
 }
 
+.board-container {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    max-width: var(--board-max-width, 100%);
+    margin: 0 auto;
+}
+
+#eval-bar-container {
+    width: 20px;
+    background-color: #444;
+    border: 1px solid var(--grafana-border);
+    position: relative;
+    display: flex;
+    flex-direction: column-reverse; /* Fill from bottom */
+}
+
+#eval-bar-fill {
+    width: 100%;
+    background-color: #fff;
+    height: 50%;
+    transition: height 0.5s ease-out;
+}
+
 #chessboard {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
@@ -85,8 +110,7 @@ body {
   border: 2px solid var(--grafana-border);
   user-select: none;
   width: 100%;
-  max-width: var(--board-max-width, 100%);
-  margin: 0 auto;
+  /* max-width handled by container now */
 }
 
 .square {
