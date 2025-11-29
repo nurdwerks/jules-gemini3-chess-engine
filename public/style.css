@@ -771,3 +771,8 @@ body.light-mode {
     background-color: #ffffff;
     background-size: 4px 4px;
 }
+
+/* Blindfold Mode */
+#chessboard.blindfold .piece {
+    opacity: 0;
+}

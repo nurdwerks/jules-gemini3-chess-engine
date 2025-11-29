@@ -9,13 +9,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const uciOptionsElement = document.getElementById('uci-options')
   const moveHistoryElement = document.getElementById('move-history')
   const newGameBtn = document.getElementById('new-game-btn')
+  const new960Btn = document.getElementById('new-960-btn')
   const flipBoardBtn = document.getElementById('flip-board-btn')
+  const selfPlayBtn = document.getElementById('self-play-btn')
   const fullscreenBtn = document.getElementById('fullscreen-btn')
   const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn')
   const zenModeCheckbox = document.getElementById('zen-mode')
+  const blindfoldModeCheckbox = document.getElementById('blindfold-mode')
   const streamerModeBtn = document.getElementById('streamer-mode-btn')
   const showCoordsCheckbox = document.getElementById('show-coords')
   const coordsOutsideCheckbox = document.getElementById('coords-outside')
+  const gameModeSelect = document.getElementById('game-mode')
   const analysisModeCheckbox = document.getElementById('analysis-mode')
   const fenInput = document.getElementById('fen-input')
   const loadFenBtn = document.getElementById('load-fen-btn')
@@ -156,6 +160,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentPieceSet = 'cburnett' // 'cburnett', 'alpha', 'merida', or 'unicode'
   let legalMovesForSelectedPiece = [] // Array of move objects from chess.js
   let startingFen = 'startpos' // Track the initial position
+  let gameMode = 'pve' // 'pve' or 'pvp'
+  let isSelfPlay = false
   let isAnalysisMode = false
   let ignoreNextBestMove = false
   let isAnalyzing = false
@@ -216,6 +222,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const move = parts[1]
     if (move && move !== '(none)') {
       await performMove(move)
+      if (isSelfPlay && !game.game_over()) {
+        setTimeout(() => {
+          if (isSelfPlay) sendPositionAndGo()
+        }, 500) // Small delay for visual pacing
+      }
     }
   }
 
@@ -520,6 +531,8 @@ document.addEventListener('DOMContentLoaded', () => {
     currentViewIndex = -1
     whiteTime = 300000
     blackTime = 300000
+    isSelfPlay = false
+    updateSelfPlayButton()
     startClock()
     renderBoard()
     renderHistory()
@@ -554,13 +567,25 @@ document.addEventListener('DOMContentLoaded', () => {
     if (whiteTime <= 0) {
       logToOutput('Game Over: White timeout')
       clearInterval(clockInterval)
+      isSelfPlay = false
+      updateSelfPlayButton()
     } else if (blackTime <= 0) {
       logToOutput('Game Over: Black timeout')
       clearInterval(clockInterval)
+      isSelfPlay = false
+      updateSelfPlayButton()
     } else if (game.game_over()) {
       if (game.in_checkmate()) logToOutput('Game Over: Checkmate')
       else if (game.in_draw()) logToOutput('Game Over: Draw')
       clearInterval(clockInterval)
+      isSelfPlay = false
+      updateSelfPlayButton()
+    }
+  }
+
+  function updateSelfPlayButton () {
+    if (selfPlayBtn) {
+      selfPlayBtn.textContent = isSelfPlay ? 'Stop Self Play' : 'Self Play'
     }
   }
 
@@ -828,7 +853,14 @@ document.addEventListener('DOMContentLoaded', () => {
     currentViewIndex = -1
     renderBoard()
     renderHistory()
-    sendPositionAndGo()
+
+    if (gameMode === 'pve') {
+      sendPositionAndGo()
+    } else {
+      checkGameOver()
+      // In PvP, we might want to flip the board automatically if enabled (future story)
+      // For now, we just let the other player move.
+    }
   }
 
   function animateMove (from, to, duration) {
@@ -908,6 +940,80 @@ document.addEventListener('DOMContentLoaded', () => {
     startNewGame()
   })
 
+  if (new960Btn) {
+    new960Btn.addEventListener('click', () => {
+      const fen = generate960Fen()
+      fenInput.value = fen
+      handleLoadFen()
+    })
+  }
+
+  function generate960Fen () {
+    const pieces = new Array(8).fill(null)
+
+    // 1. Place Bishops on opposite colors
+    // Light squares: 1, 3, 5, 7
+    // Dark squares: 0, 2, 4, 6
+    const lightSquares = [1, 3, 5, 7]
+    const darkSquares = [0, 2, 4, 6]
+
+    const bishop1Pos = darkSquares[Math.floor(Math.random() * 4)]
+    const bishop2Pos = lightSquares[Math.floor(Math.random() * 4)]
+
+    pieces[bishop1Pos] = 'b'
+    pieces[bishop2Pos] = 'b'
+
+    // 2. Place Queen
+    const emptyIndices = () => pieces.map((p, i) => p === null ? i : null).filter(i => i !== null)
+    let empty = emptyIndices()
+    const queenPos = empty[Math.floor(Math.random() * empty.length)]
+    pieces[queenPos] = 'q'
+
+    // 3. Place Knights
+    empty = emptyIndices()
+    const knight1Pos = empty[Math.floor(Math.random() * empty.length)]
+    pieces[knight1Pos] = 'n'
+
+    empty = emptyIndices()
+    const knight2Pos = empty[Math.floor(Math.random() * empty.length)]
+    pieces[knight2Pos] = 'n'
+
+    // 4. Place Rooks and King
+    empty = emptyIndices()
+    // Must be R, K, R
+    pieces[empty[0]] = 'r'
+    pieces[empty[1]] = 'k'
+    pieces[empty[2]] = 'r'
+
+    const whitePieces = pieces.map(p => p.toUpperCase()).join('')
+    const blackPieces = pieces.join('')
+
+    // Generate Castling Rights (X-FEN style uses file letters if ambiguous, but let's try standard letters first)
+    // Actually, to be safe with most parsers for 960, we should use the file letters of the rooks.
+    // But let's see what chess.js accepts.
+    // If we use simple KQkq, it implies standard rooks usually.
+    // The safest is often just standard letters if rooks are outermost, but strictly 960 uses file letters.
+    // Note: Standard chess.js (v0.10.x) does not support Chess960 castling rules or FEN notation (File letters).
+    // It enforces strict "KQkq" regex and expects rooks on standard squares.
+    // For the purpose of this visual generator, we will disable castling rights in the FEN
+    // so that the position loads correctly in the UI.
+    // Full 960 gameplay support would require replacing the chess.js library.
+    const castling = '-'
+
+    return `${blackPieces}/pppppppp/8/8/8/8/PPPPPPPP/${whitePieces} w ${castling} - 0 1`
+  }
+
+  if (selfPlayBtn) {
+    selfPlayBtn.addEventListener('click', () => {
+      isSelfPlay = !isSelfPlay
+      updateSelfPlayButton()
+      if (isSelfPlay) {
+        // Trigger first move if game not started or waiting
+        sendPositionAndGo()
+      }
+    })
+  }
+
   flipBoardBtn.addEventListener('click', () => {
     isFlipped = !isFlipped
     if (isFlipped) {
@@ -939,6 +1045,16 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleZenMode(zenModeCheckbox.checked)
   })
 
+  if (blindfoldModeCheckbox) {
+    blindfoldModeCheckbox.addEventListener('change', () => {
+      if (blindfoldModeCheckbox.checked) {
+        boardElement.classList.add('blindfold')
+      } else {
+        boardElement.classList.remove('blindfold')
+      }
+    })
+  }
+
   // Exit Zen Mode on Escape key
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
@@ -958,6 +1074,18 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       document.body.classList.remove('zen-mode')
     }
+  }
+
+  if (gameModeSelect) {
+    gameModeSelect.addEventListener('change', (e) => {
+      gameMode = e.target.value
+      // If switching to PvE and it's engine's turn, we might need to trigger it.
+      // But usually we start new games or assume user knows what they are doing.
+      if (gameMode === 'pve' && !game.game_over() && ((game.turn() === 'b' && !isFlipped) || (game.turn() === 'w' && isFlipped))) {
+        // Simple heuristic: if we switch to PvE and it looks like engine turn, go.
+        // But better to just let user play or hit "Move Now" (future feature).
+      }
+    })
   }
 
   streamerModeBtn.addEventListener('click', () => {

@@ -44,9 +44,18 @@
                      <div id="status">Status: Disconnected</div>
                      <div class="button-group">
                         <button id="new-game-btn">New Game</button>
+                        <button id="new-960-btn">New Chess960</button>
                         <button id="flip-board-btn">Flip Board</button>
+                        <button id="self-play-btn">Self Play</button>
                      </div>
                      <div class="option-item mt-10">
+                        <label for="game-mode">Game Mode:</label>
+                        <select id="game-mode">
+                            <option value="pve">Player vs Engine</option>
+                            <option value="pvp">Player vs Player</option>
+                        </select>
+                     </div>
+                     <div class="option-item">
                         <label for="analysis-mode">Analysis Mode</label>
                         <input type="checkbox" id="analysis-mode">
                      </div>
@@ -83,6 +92,10 @@
                      <div class="option-item">
                         <label for="zen-mode">Zen Mode:</label>
                         <input type="checkbox" id="zen-mode">
+                     </div>
+                     <div class="option-item">
+                        <label for="blindfold-mode">Blindfold Mode:</label>
+                        <input type="checkbox" id="blindfold-mode">
                      </div>
                      <div class="option-item">
                          <button id="streamer-mode-btn">Streamer Mode</button>
