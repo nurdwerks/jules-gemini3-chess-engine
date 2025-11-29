@@ -1274,3 +1274,80 @@ The following Epics were part of the initial development phase and are either co
     *   *Testing Plan:* Simulate votes.
     *   *Acceptance Criteria:*
         - [x] Most voted move is played.
+
+### Epic 68: Training & Puzzles
+**Size:** Medium (3-5 days)
+**Description:** Features to help users improve their chess skills.
+
+**User Stories:**
+
+39. **Blindfold Training (S)**
+    *   *Description:* A mode where pieces disappear after a few seconds.
+    *   *Implementation:* CSS animation `fade-out` on piece placement.
+    *   *Tasks:*
+        - [x] Add "Disappearing Pieces" mode.
+    *   *Testing Plan:* Move piece, wait, verify disappearance.
+    *   *Acceptance Criteria:*
+        - [x] Pieces vanish after set delay.
+
+40. **Memory Training (S)**
+    *   *Description:* Show a position for 5 seconds, then ask the user to reconstruct it.
+    *   *Implementation:* Show board -> clear board -> drag pieces from sidebar. Compare FENs.
+    *   *Tasks:*
+        - [x] Reconstruction UI.
+        - [x] Comparison logic.
+    *   *Testing Plan:* Test simple positions.
+    *   *Acceptance Criteria:*
+        - [x] Score calculated based on accuracy.
+
+41. **Tactics Trainer: Loader (S)**
+    *   *Description:* Load random tactical positions from a database.
+    *   *Implementation:* Fetch FEN/Solution from external API or local JSON.
+    *   *Tasks:*
+        - [x] Puzzle loader.
+    *   *Acceptance Criteria:*
+        - [x] Puzzles load.
+
+42. **Tactics Trainer: Validation (S)**
+    *   *Description:* Validate user moves against puzzle solution.
+    *   *Implementation:* Move comparison.
+    *   *Tasks:*
+        - [x] Move validation logic.
+    *   *Acceptance Criteria:*
+        - [x] Correct/Incorrect feedback.
+
+43. **Endgame Trainer (S)**
+    *   *Description:* Load standard endgame positions (e.g., K+P vs K) for practice.
+    *   *Implementation:* Library of FENs (Lucena, Philidor, etc.). Play against engine.
+    *   *Tasks:*
+        - [x] Endgame Menu.
+        - [x] Engine plays strongest response (Syzygy).
+    *   *Testing Plan:* Verify engine resistance.
+    *   *Acceptance Criteria:*
+        - [x] User can practice specific endgames.
+
+44. **Daily Puzzle (S)**
+    *   *Description:* Fetch and display a daily chess puzzle for the user to solve.
+    *   *Implementation:* Lichess Daily Puzzle API.
+    *   *Tasks:*
+        - [x] Fetch API.
+        - [x] Render board.
+    *   *Testing Plan:* Verify puzzle updates daily.
+    *   *Acceptance Criteria:*
+        - [x] Shows current daily puzzle.
+
+45. **Opening Repertoire Builder: UI (S)**
+    *   *Description:* UI to traverse and save lines.
+    *   *Implementation:* Tree navigation buttons.
+    *   *Tasks:*
+        - [x] UI buttons.
+    *   *Acceptance Criteria:*
+        - [x] Can navigate tree.
+
+46. **Opening Repertoire Builder: Storage (S)**
+    *   *Description:* Save and load repertoire.
+    *   *Implementation:* LocalStorage JSON.
+    *   *Tasks:*
+        - [x] Persistence logic.
+    *   *Acceptance Criteria:*
+        - [x] Repertoire persists.

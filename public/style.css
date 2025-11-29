@@ -954,3 +954,43 @@ body.light-mode {
 .tournament-match-item.completed {
     border-color: var(--grafana-accent-green);
 }
+
+/* Epic 68: Blindfold Training */
+.blindfold-training .piece {
+  animation: fadeOutPiece 3s forwards;
+}
+
+@keyframes fadeOutPiece {
+  0% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Epic 68: Memory Training Palette */
+.piece-palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 10px;
+    background: var(--grafana-input-bg);
+    padding: 5px;
+    border-radius: 4px;
+    justify-content: center;
+}
+
+.palette-piece {
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    border-radius: 4px;
+}
+
+.palette-piece:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.palette-piece.selected {
+    border-color: var(--grafana-accent-blue);
+    background-color: rgba(51, 181, 229, 0.2);
+}
