@@ -1,7 +1,7 @@
 /* eslint-env browser */
 /* global Chess, SocketHandler, BoardRenderer, GameManager, AnalysisManager, TrainingManager, UIManager, ArrowManager, SoundManager, ClientUtils, MoveHandler, LeaderboardManager */
 
-document.addEventListener('DOMContentLoaded', () => {
+const initApp = () => {
   const game = new Chess()
 
   // Shared State
@@ -478,4 +478,10 @@ document.addEventListener('DOMContentLoaded', () => {
       gameManager.sendPositionAndGo()
     }
   }
-})
+}
+
+document.addEventListener('DOMContentLoaded', initApp)
+
+if (typeof module !== 'undefined') {
+  module.exports = initApp
+}
