@@ -38,6 +38,6 @@ describe('Passed Pawn Extensions', () => {
     // The move should be a2-a1=Q
     expect(bestMove).toBeDefined()
     expect(bestMove).not.toBeNull()
-    expect(search.moveToString(bestMove)).toBe('a2a1q')
+    expect(board.moveToString(bestMove)).toBe('a2a1q')
   })
 })

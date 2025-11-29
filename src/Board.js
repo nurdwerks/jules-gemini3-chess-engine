@@ -5,6 +5,8 @@ const trace = require('./trace')
 const FenParser = require('./FenParser')
 const MoveGenerator = require('./MoveGenerator')
 const PerftTT = require('./PerftTT')
+const San = require('./San')
+const BoardZobrist = require('./BoardZobrist')
 
 class Board {
   constructor () {
@@ -345,99 +347,7 @@ class Board {
   }
 
   calculateZobristKey () {
-    let key = 0n;
-    ['white', 'black'].forEach(c => {
-      ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king'].forEach(t => {
-        let bb = this.bitboards[c] & this.bitboards[t]
-        while (bb) {
-          const sq64 = Bitboard.lsb(bb)
-          const row = 7 - Math.floor(sq64 / 8)
-          const col = sq64 % 8
-          const idx = (row << 4) | col
-
-          const { c: cIdx, t: tIdx } = Zobrist.getPieceIndex(c, t)
-          key ^= Zobrist.pieces[cIdx][tIdx][idx]
-
-          bb &= (bb - 1n)
-        }
-      })
-    })
-
-    if (this.activeColor === 'b') key ^= Zobrist.sideToMove
-    key ^= this.getCastlingHash(this.castlingRights)
-    const epIndex = Zobrist.getEpIndex(this.enPassantTarget)
-    if (epIndex !== -1) key ^= Zobrist.enPassant[epIndex]
-    this.zobristKey = key
-  }
-
-  getCastlingHash (rights) {
-    if (rights === '-') return 0n
-    let hash = 0n
-    for (const char of rights) {
-      hash ^= this._getRightsHash(char)
-    }
-    return hash
-  }
-
-  _getRightsHash (char) {
-    if (char === 'K') return Zobrist.castling[0][7]
-    else if (char === 'Q') return Zobrist.castling[0][0]
-    else if (char === 'k') return Zobrist.castling[1][7]
-    else if (char === 'q') return Zobrist.castling[1][0]
-    else {
-      const code = char.charCodeAt(0)
-      if (code >= 65 && code <= 72) return Zobrist.castling[0][code - 65]
-      else if (code >= 97 && code <= 104) return Zobrist.castling[1][code - 97]
-    }
-    return 0n
-  }
-
-  updateZobristForMove (move, capturedPiece) {
-    const { c, t } = Zobrist.getPieceIndex(move.piece.color, move.piece.type)
-    this.zobristKey ^= Zobrist.pieces[c][t][move.from]
-
-    if (capturedPiece) {
-      const capIdx = Zobrist.getPieceIndex(capturedPiece.color, capturedPiece.type)
-      this.zobristKey ^= Zobrist.pieces[capIdx.c][capIdx.t][move.to]
-    } else if (move.flags === 'e' || move.flags === 'ep') {
-      const isWhite = move.piece.color === 'white'
-      const captureSq = isWhite ? move.to + 16 : move.to - 16
-      const capColor = isWhite ? 'black' : 'white'
-      const capIdx = Zobrist.getPieceIndex(capColor, 'pawn')
-      this.zobristKey ^= Zobrist.pieces[capIdx.c][capIdx.t][captureSq]
-    }
-
-    if (move.promotion) {
-      const promoType = { q: 'queen', r: 'rook', b: 'bishop', n: 'knight' }[move.promotion]
-      const promoIdx = Zobrist.getPieceIndex(move.piece.color, promoType)
-      this.zobristKey ^= Zobrist.pieces[promoIdx.c][promoIdx.t][move.to]
-    } else {
-      this.zobristKey ^= Zobrist.pieces[c][t][move.to]
-    }
-  }
-
-  updateZobristCastling (move) {
-    if (move.flags !== 'k' && move.flags !== 'q') return
-
-    if (move.piece.color === 'white') {
-      const rookIdx = Zobrist.getPieceIndex('white', 'rook')
-      if (move.flags === 'k') {
-        this.zobristKey ^= Zobrist.pieces[rookIdx.c][rookIdx.t][119]
-        this.zobristKey ^= Zobrist.pieces[rookIdx.c][rookIdx.t][117]
-      } else {
-        this.zobristKey ^= Zobrist.pieces[rookIdx.c][rookIdx.t][112]
-        this.zobristKey ^= Zobrist.pieces[rookIdx.c][rookIdx.t][115]
-      }
-    } else {
-      const rookIdx = Zobrist.getPieceIndex('black', 'rook')
-      if (move.flags === 'k') {
-        this.zobristKey ^= Zobrist.pieces[rookIdx.c][rookIdx.t][7]
-        this.zobristKey ^= Zobrist.pieces[rookIdx.c][rookIdx.t][5]
-      } else {
-        this.zobristKey ^= Zobrist.pieces[rookIdx.c][rookIdx.t][0]
-        this.zobristKey ^= Zobrist.pieces[rookIdx.c][rookIdx.t][3]
-      }
-    }
+    BoardZobrist.calculateZobristKey(this)
   }
 
   applyMove (move) {
@@ -449,17 +359,17 @@ class Board {
     const state = this._createState()
     const capturedPiece = move.captured || ((move.flags !== 'e' && move.flags !== 'ep') ? this.getPiece(move.to) : null)
 
-    this._updateZobristBeforeMove(move, capturedPiece)
+    BoardZobrist.updateZobristBeforeMove(this, move, capturedPiece)
 
     const madeCapturedPiece = this.makeMove(move)
     state.capturedPiece = madeCapturedPiece
 
     this.activeColor = this.activeColor === 'w' ? 'b' : 'w'
     this.updateCastlingRights(move, madeCapturedPiece)
-    this.zobristKey ^= this.getCastlingHash(this.castlingRights)
+    this.zobristKey ^= BoardZobrist.getCastlingHash(this.castlingRights)
 
     this.updateEnPassant(move)
-    this._updateZobristAfterMove()
+    BoardZobrist.updateZobristAfterMove(this)
 
     this._updateClocks(move, madeCapturedPiece)
 
@@ -477,20 +387,6 @@ class Board {
       zobristKey: this.zobristKey,
       capturedPiece: null
     }
-  }
-
-  _updateZobristBeforeMove (move, capturedPiece) {
-    this.updateZobristForMove(move, capturedPiece)
-    this.updateZobristCastling(move)
-    this.zobristKey ^= Zobrist.sideToMove
-    this.zobristKey ^= this.getCastlingHash(this.castlingRights)
-    const oldEpIndex = Zobrist.getEpIndex(this.enPassantTarget)
-    if (oldEpIndex !== -1) this.zobristKey ^= Zobrist.enPassant[oldEpIndex]
-  }
-
-  _updateZobristAfterMove () {
-    const newEpIndex = Zobrist.getEpIndex(this.enPassantTarget)
-    if (newEpIndex !== -1) this.zobristKey ^= Zobrist.enPassant[newEpIndex]
   }
 
   _updateClocks (move, madeCapturedPiece) {
@@ -657,66 +553,12 @@ class Board {
     throw new Error(`Illegal move: ${moveStr}`)
   }
 
-  disambiguateMove (move, moves, piece, toAlg) {
-    const pieceChar = piece.type.toUpperCase().replace('KNIGHT', 'N').charAt(0)
-    let san = `${pieceChar}${toAlg}`
-
-    const ambiguousMoves = moves.filter(m =>
-      m.piece.type === piece.type &&
-        m.to === move.to &&
-        m.from !== move.from
-    )
-
-    if (ambiguousMoves.length > 0) {
-      const fromAlg = this.moveToString(move)
-      const fromFile = fromAlg.charAt(0)
-      const fromRank = fromAlg.charAt(1)
-
-      const fileCollision = ambiguousMoves.some(m => (this.moveToString(m).charAt(0) === fromFile))
-      const rankCollision = ambiguousMoves.some(m => (this.moveToString(m).charAt(1) === fromRank))
-
-      if (fileCollision && rankCollision) {
-        san = `${pieceChar}${fromAlg.slice(0, 2)}${toAlg}`
-      } else if (fileCollision) {
-        san = `${pieceChar}${fromRank}${toAlg}`
-      } else {
-        san = `${pieceChar}${fromFile}${toAlg}`
-      }
-    }
-    return san
-  }
-
   moveToSan (move, moves) {
-    if (move.flags === 'k' || move.flags === 'k960') return 'O-O'
-    if (move.flags === 'q' || move.flags === 'q960') return 'O-O-O'
-
-    const piece = move.piece
-    const toAlg = this.moveToString(move).slice(2, 4)
-
-    if (piece.type === 'pawn') {
-      if (move.captured) {
-        const fromAlg = this.moveToString(move).slice(0, 1)
-        return `${fromAlg}x${toAlg}`
-      }
-      return toAlg
-    }
-
-    let san = this.disambiguateMove(move, moves, piece, toAlg)
-
-    if (move.captured) {
-      san = san.replace(toAlg, `x${toAlg}`)
-    }
-
-    return san
+    return San.moveToSan(this, move, moves)
   }
 
   moveToString (move) {
-    const { row: fromRow, col: fromCol } = this.toRowCol(move.from)
-    const { row: toRow, col: toCol } = this.toRowCol(move.to)
-    const fromAlg = `${String.fromCharCode('a'.charCodeAt(0) + fromCol)}${8 - fromRow}`
-    const toAlg = `${String.fromCharCode('a'.charCodeAt(0) + toCol)}${8 - toRow}`
-    const promo = move.promotion ? move.promotion : ''
-    return `${fromAlg}${toAlg}${promo}`
+    return San.moveToString(this, move)
   }
 
   generateFen () {
