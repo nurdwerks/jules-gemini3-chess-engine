@@ -29,6 +29,24 @@ body {
 .container {
     max-width: 1200px;
     margin: 0 auto;
+    position: relative;
+}
+
+.sidebar-toggle {
+    display: none; /* Hidden on desktop by default unless we want it always visible */
+    background: transparent;
+    border: none;
+    color: var(--grafana-text-secondary);
+    font-size: 24px;
+    cursor: pointer;
+    position: absolute;
+    top: -40px;
+    left: 0;
+}
+
+/* Enable sidebar toggle on desktop too per story */
+.sidebar-toggle {
+    display: block;
 }
 
 .main-header {
@@ -41,6 +59,17 @@ body {
 #dashboard {
     display: flex;
     gap: 20px;
+    transition: all 0.3s ease;
+}
+
+/* Sidebar Collapsed State */
+.sidebar-collapsed .sidebar {
+    display: none;
+}
+
+.sidebar-collapsed .chessboard-panel {
+    flex-grow: 1;
+    max-width: 100%;
 }
 
 .chessboard-panel {
@@ -65,12 +94,29 @@ body {
 .panel-header {
     padding: 10px 15px;
     border-bottom: 1px solid var(--grafana-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .panel-title {
     margin: 0;
     font-size: 16px;
     font-weight: 500;
+}
+
+.icon-btn {
+    background: none;
+    border: none;
+    color: var(--grafana-text-secondary);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0;
+}
+
+.icon-btn:hover {
+    color: var(--grafana-text-primary);
+    background: none;
 }
 
 .panel-content {
@@ -198,7 +244,7 @@ button:hover {
 }
 
 #engine-output {
-    height: 250px;
+    height: 150px;
     overflow-y: auto;
     background-color: var(--grafana-input-bg);
     padding: 10px;
@@ -208,6 +254,19 @@ button:hover {
     white-space: pre-wrap;
     border-radius: 4px;
     color: var(--grafana-text-secondary);
+}
+
+#system-log {
+    height: 100px;
+    overflow-y: auto;
+    background-color: var(--grafana-input-bg);
+    padding: 10px;
+    font-family: monospace;
+    font-size: 12px;
+    border: 1px solid var(--grafana-border);
+    white-space: pre-wrap;
+    border-radius: 4px;
+    color: var(--grafana-accent-blue);
 }
 
 #uci-options {
@@ -230,11 +289,18 @@ button:hover {
     padding: 0 5px;
 }
 
+.separator {
+    border: 0;
+    border-top: 1px solid var(--grafana-border);
+    margin: 10px 0;
+}
+
 .option-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
     font-size: 14px;
+    margin-bottom: 8px;
 }
 
 .option-item label {
@@ -393,6 +459,114 @@ button:hover {
     border-color: #F2495C;
 }
 
+/* Coordinates */
+.coordinate {
+    position: absolute;
+    font-size: 10px;
+    font-weight: bold;
+    pointer-events: none;
+    user-select: none;
+}
+
+.coordinate.rank {
+    top: 2px;
+    left: 2px;
+}
+
+.coordinate.file {
+    bottom: 0px;
+    right: 2px;
+}
+
+/* Coordinates Outside Board */
+#chessboard.coords-outside {
+    margin: 20px; /* Make space */
+    overflow: visible;
+}
+
+#chessboard.coords-outside .coordinate.rank {
+    left: -15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--grafana-text-secondary);
+}
+
+#chessboard.coords-outside .coordinate.file {
+    bottom: -15px;
+    right: 50%;
+    transform: translateX(50%);
+    color: var(--grafana-text-secondary);
+}
+
+/* Zen Mode */
+body.zen-mode #dashboard {
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+body.zen-mode .sidebar {
+    display: none;
+}
+
+body.zen-mode .panel-header {
+    display: none;
+}
+
+body.zen-mode .panel {
+    border: none;
+    background: transparent;
+}
+
+body.zen-mode .container {
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+body.zen-mode .sidebar-toggle {
+    display: none;
+}
+
+/* Streamer Mode */
+body.streamer-mode {
+    background-color: #00FF00 !important;
+    padding: 0;
+    overflow: hidden;
+}
+
+body.streamer-mode .sidebar,
+body.streamer-mode .panel-header,
+body.streamer-mode #eval-bar-container,
+body.streamer-mode .sidebar-toggle {
+    display: none !important;
+}
+
+body.streamer-mode .container {
+    margin: 0;
+    max-width: 100%;
+}
+
+body.streamer-mode #dashboard {
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+body.streamer-mode .panel {
+    background: transparent;
+    border: none;
+}
+
+body.streamer-mode .player-info {
+    background: transparent;
+    color: black; /* High contrast against green? Or user preference? Usually streamers want transparent bg for board, but let's keep board opaque */
+}
+/* Ensure board remains visible and distinct */
+body.streamer-mode #chessboard {
+    border-color: black;
+}
+
 /* Board Themes */
 #chessboard.theme-green {
     --board-light-square: #EEEED2;
@@ -523,6 +697,28 @@ button:hover {
 
     .option-item {
         flex-wrap: wrap;
+    }
+
+    /* Compact Layout tweaks */
+    body {
+        padding: 5px;
+    }
+
+    .panel-content {
+        padding: 10px;
+    }
+
+    .square {
+        /* Ensure font size scales down on mobile if needed */
+        font-size: 12px;
+    }
+
+    .piece-text {
+        font-size: 32px;
+    }
+
+    #chessboard.coords-outside {
+        margin: 15px;
     }
 }
 

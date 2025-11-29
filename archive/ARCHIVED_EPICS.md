@@ -1110,3 +1110,86 @@ The following Epics were part of the initial development phase and are either co
     *   *Testing Plan:* Observe bar during analysis.
     *   *Acceptance Criteria:*
         - [x] Bar grows/shrinks smoothly, not jerkily.
+
+### Epic 66: User Interface Layout
+**Size:** Medium (3-5 days)
+**Description:** Improvements to the application layout, responsiveness, and display modes.
+
+**User Stories:**
+
+17. **Fullscreen Mode (S)**
+    *   *Description:* Add a button to toggle fullscreen mode for the board interface.
+    *   *Implementation:* Use `document.documentElement.requestFullscreen()`.
+    *   *Tasks:*
+        - [x] Add Fullscreen icon button.
+        - [x] Handle `fullscreenchange` event to update icon.
+    *   *Testing Plan:* Click button, verify browser enters fullscreen.
+    *   *Acceptance Criteria:*
+        - [x] Toggles in/out of fullscreen.
+
+18. **Zen Mode (S)**
+    *   *Description:* A toggle to hide all UI elements except the board and clock.
+    *   *Implementation:* Add class `.zen-mode` to body, hiding sidebar/panels via CSS.
+    *   *Tasks:*
+        - [x] Add Zen toggle.
+        - [x] CSS: `.zen-mode .sidebar { display: none }`.
+    *   *Testing Plan:* Verify distraction-free view.
+    *   *Acceptance Criteria:*
+        - [x] Only Board and Clocks visible.
+
+19. **Compact Layout (M)**
+    *   *Description:* A dense UI layout for small screens/mobile.
+    *   *Implementation:* Enhanced Media Queries. Move notation below board, reduce padding.
+    *   *Tasks:*
+        - [x] Refine CSS Grid for mobile breakpoint.
+    *   *Testing Plan:* Chrome DevTools Device Mode.
+    *   *Acceptance Criteria:*
+        - [x] No horizontal scrolling on 320px width.
+
+20. **Sidebar Toggle (S)**
+    *   *Description:* Button to collapse the sidebar (move list/controls) for a larger board view.
+    *   *Implementation:* Toggle CSS class reducing sidebar width to 0.
+    *   *Tasks:*
+        - [x] Add hamburger menu/collapse arrow.
+        - [x] Animate width change.
+    *   *Testing Plan:* Verify board expands to fill space.
+    *   *Acceptance Criteria:*
+        - [x] Sidebar collapses/expands.
+
+21. **Coordinate Toggle (S)**
+    *   *Description:* Add a setting to show/hide rank and file coordinates on the board edges.
+    *   *Implementation:* Toggle visibility of `.coordinate` elements.
+    *   *Tasks:*
+        - [x] Add checkbox.
+        - [x] Update render loop.
+    *   *Testing Plan:* Toggle, verify labels appear/disappear.
+    *   *Acceptance Criteria:*
+        - [x] Coordinates can be hidden.
+
+22. **Coordinates Outside Board (S)**
+    *   *Description:* Option to render coordinates outside the board square instead of overlaying them.
+    *   *Implementation:* Change grid layout to add gutter for coordinates or padding.
+    *   *Tasks:*
+        - [x] CSS adjustment for "External" coordinate mode.
+    *   *Testing Plan:* Verify no overlap with pieces.
+    *   *Acceptance Criteria:*
+        - [x] Supports both Inside and Outside modes.
+
+23. **Streamer Mode (S)**
+    *   *Description:* A layout optimized for OBS capture with chroma key background.
+    *   *Implementation:* Preset green background `#00FF00` for body, hide non-essential UI.
+    *   *Tasks:*
+        - [x] Add "Streamer Mode" button.
+    *   *Testing Plan:* Verify pure green background.
+    *   *Acceptance Criteria:*
+        - [x] Ready for chroma keying.
+
+24. **System Messages Panel (S)**
+    *   *Description:* A dedicated area for system notifications and errors.
+    *   *Implementation:* Fixed container at bottom or top for persistent logs.
+    *   *Tasks:*
+        - [x] Create log container.
+        - [x] Redirect `console.error` or toast history here.
+    *   *Testing Plan:* Trigger error, check panel.
+    *   *Acceptance Criteria:*
+        - [x] Errors are logged visibly.
