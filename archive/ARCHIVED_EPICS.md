@@ -1731,3 +1731,64 @@ The following Epics were part of the initial development phase and are either co
     *   *Description:* Track win/loss stats for different engine versions.
     *   *Acceptance Criteria:*
         - [x] Stats update.
+
+### Epic 73: Engine Configuration & Tuning
+**Size:** Medium (3 days)
+**Description:** Fine-tuning controls for the engine's behavior and performance.
+**User Stories:**
+1.  **Engine "Thinking" State (S)**
+    *   *Description:* Add a visual indicator (spinner/bar) when the engine is searching.
+    *   *Acceptance Criteria:*
+        *   [x] Indicator active.
+2.  **Engine Elo Spinner (S)**
+    *   *Description:* A numeric input to fine-tune the `UCI_Elo` setting directly.
+    *   *Acceptance Criteria:*
+        *   [x] Engine plays weaker/stronger.
+3.  **Contempt Factor Spinner (S)**
+    *   *Description:* Input to adjust the engine's contempt for draws.
+    *   *Acceptance Criteria:*
+        *   [x] Value updates.
+4.  **MultiPV Slider (S)**
+    *   *Description:* Slider to adjust the number of PV lines shown.
+    *   *Acceptance Criteria:*
+        *   [x] 3 lines shown.
+5.  **Hash Size Slider (S)**
+    *   *Description:* Slider to adjust the hash table size.
+    *   *Acceptance Criteria:*
+        *   [x] Engine acknowledges.
+6.  **Syzygy Path Input (S)**
+    *   *Description:* Text field to set the path to Syzygy tablebases.
+    *   *Acceptance Criteria:*
+        *   [x] Option sent.
+7.  **Show DTZ/DTM (S)**
+    *   *Description:* Toggle to show Distance to Zero/Mate for endgame tablebases.
+    *   *Acceptance Criteria:*
+        *   [x] DTZ shown.
+8.  **Pondering Toggle (S)**
+    *   *Description:* UI checkbox to enable/disable the "Ponder" UCI option.
+    *   *Acceptance Criteria:*
+        *   [x] Engine ponders during user time.
+9.  **UCI Option Presets (S)**
+    *   *Description:* Ability to save and load configuration profiles.
+    *   *Acceptance Criteria:*
+        *   [x] All options update.
+10. **Reset Engine (S)**
+    *   *Description:* Button to completely restart the engine process.
+    *   *Acceptance Criteria:*
+        *   [x] Engine re-initializes.
+11. **Clear Hash Button (S)**
+    *   *Description:* Button to explicitly clear the transposition table.
+    *   *Acceptance Criteria:*
+        *   [x] Hash cleared.
+12. **Live Tuning UI (S)**
+    *   *Description:* Sliders to adjust evaluation parameters in real-time.
+    *   *Acceptance Criteria:*
+        *   [x] Eval changes immediately.
+13. **Book Upload (S)**
+    *   *Description:* Allow user to upload a `.bin` Polyglot book to use.
+    *   *Acceptance Criteria:*
+        *   [x] Book moves played.
+14. **Network Upload (S)**
+    *   *Description:* Allow user to upload an `.nnue` file to use.
+    *   *Acceptance Criteria:*
+        *   [x] Net loaded.

@@ -1,3 +1,6 @@
+/**
+ * Handles Syzygy Endgame Tablebase probing.
+ */
 const fs = require('fs').promises
 
 class Syzygy {
