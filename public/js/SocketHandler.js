@@ -37,24 +37,41 @@ window.SocketHandler = class SocketHandler {
 
   _handleMessage (msg) {
     if (msg.startsWith('{')) {
-      try {
-        const data = JSON.parse(msg)
-        if (this.callbacks.onVoteMessage) this.callbacks.onVoteMessage(data)
-        return
-      } catch (e) {}
+      this._handleJsonMessage(msg)
+      return
     }
 
-    const parts = msg.split(' ')
     if (msg.startsWith('option name')) {
       if (this.callbacks.onOption) this.callbacks.onOption(msg)
-    } else if (parts[0] === 'uciok') {
-      this.send('isready')
-    } else if (parts[0] === 'readyok') {
-      if (this.callbacks.onReadyOk) this.callbacks.onReadyOk()
-    } else if (parts[0] === 'bestmove') {
-      if (this.callbacks.onBestMove) this.callbacks.onBestMove(parts)
-    } else if (parts[0] === 'info') {
-      if (this.callbacks.onInfo) this.callbacks.onInfo(msg)
+      return
+    }
+
+    this._handleUciCommand(msg)
+  }
+
+  _handleJsonMessage (msg) {
+    try {
+      const data = JSON.parse(msg)
+      if (this.callbacks.onVoteMessage) this.callbacks.onVoteMessage(data)
+    } catch (e) {}
+  }
+
+  _handleUciCommand (msg) {
+    const parts = msg.split(' ')
+    const cmd = parts[0]
+    switch (cmd) {
+      case 'uciok':
+        this.send('isready')
+        break
+      case 'readyok':
+        if (this.callbacks.onReadyOk) this.callbacks.onReadyOk()
+        break
+      case 'bestmove':
+        if (this.callbacks.onBestMove) this.callbacks.onBestMove(parts)
+        break
+      case 'info':
+        if (this.callbacks.onInfo) this.callbacks.onInfo(msg)
+        break
     }
   }
 }

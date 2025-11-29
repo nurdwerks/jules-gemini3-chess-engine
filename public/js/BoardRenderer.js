@@ -227,15 +227,7 @@ window.BoardRenderer = class BoardRenderer {
   }
 
   _applySquareHighlights (square, row, col, alg, chess, state) {
-    if (state.selectedSquare && state.selectedSquare.row === row && state.selectedSquare.col === col) {
-      square.classList.add('selected')
-    }
-    if (state.pendingConfirmationMove && state.pendingConfirmationMove.to === alg) {
-      square.classList.add('selected')
-    }
-    if (state.premove && (alg === state.premove.from || alg === state.premove.to)) {
-      square.classList.add('premove-highlight')
-    }
+    this._applySelectionHighlights(square, row, col, alg, state)
 
     if (ArrowManager) {
       const userH = ArrowManager.getUserHighlight(alg)
@@ -245,7 +237,22 @@ window.BoardRenderer = class BoardRenderer {
     this._applyLastMoveHighlight(square, alg, state)
     this._applyCheckHighlight(square, row, col, chess)
     this._applyThreatHighlight(square, alg, chess)
+    this._applyVisualizationHighlights(square, alg)
+  }
 
+  _applySelectionHighlights (square, row, col, alg, state) {
+    if (state.selectedSquare && state.selectedSquare.row === row && state.selectedSquare.col === col) {
+      square.classList.add('selected')
+    }
+    if (state.pendingConfirmationMove && state.pendingConfirmationMove.to === alg) {
+      square.classList.add('selected')
+    }
+    if (state.premove && (alg === state.premove.from || alg === state.premove.to)) {
+      square.classList.add('premove-highlight')
+    }
+  }
+
+  _applyVisualizationHighlights (square, alg) {
     if (VisualizationManager) {
       const vizHighlights = VisualizationManager.getHighlights(alg)
       vizHighlights.forEach(c => square.classList.add(c))
@@ -300,10 +307,7 @@ window.BoardRenderer = class BoardRenderer {
   }
 
   _isSquareThreatened (alg, chess) {
-    // Basic threat check logic (simplified from client.js)
-    // We can't cache easily on the instance without managing cache invalidation carefully.
-    // For now, re-calculate or expect cache management externally?
-    // Let's implement the simple version.
+    // Basic threat check logic
     const currentTurn = chess.turn()
     const opponent = currentTurn === 'w' ? 'b' : 'w'
     const tokens = chess.fen().split(' ')
