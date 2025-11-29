@@ -21,6 +21,8 @@
             <div class="panel-content">
                 <div class="player-info" id="top-player">
                     <span class="player-name" id="top-player-name">Black</span>
+                    <div id="top-material-diff" class="material-diff"></div>
+                    <div id="top-captured-pieces" class="captured-pieces"></div>
                     <span class="clock" id="top-player-clock">05:00</span>
                 </div>
                 <div class="board-container">
@@ -34,6 +36,8 @@
                 </div>
                 <div class="player-info" id="bottom-player">
                     <span class="player-name" id="bottom-player-name">White</span>
+                    <div id="bottom-material-diff" class="material-diff"></div>
+                    <div id="bottom-captured-pieces" class="captured-pieces"></div>
                     <span class="clock" id="bottom-player-clock">05:00</span>
                 </div>
             </div>
@@ -324,6 +328,9 @@
                             <div class="stat-label">NPS</div>
                             <div class="stat-value" id="nps-value">-</div>
                         </div>
+                    </div>
+                    <div class="graph-container">
+                         <svg id="eval-graph" width="100%" height="100%" style="display: block;"></svg>
                     </div>
                     <div class="pv-container">
                         <div class="pv-label">Principal Variation</div>

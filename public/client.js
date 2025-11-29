@@ -79,6 +79,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const bottomPlayerClock = document.getElementById('bottom-player-clock')
   const soundEnabledCheckbox = document.getElementById('sound-enabled')
   const evalBarFill = document.getElementById('eval-bar-fill')
+  const topMaterialDiff = document.getElementById('top-material-diff')
+  const bottomMaterialDiff = document.getElementById('bottom-material-diff')
+  const topCapturedPieces = document.getElementById('top-captured-pieces')
+  const bottomCapturedPieces = document.getElementById('bottom-captured-pieces')
+  const evalGraphSvg = document.getElementById('eval-graph')
 
   const timeBaseInput = document.getElementById('time-base')
   const timeIncInput = document.getElementById('time-inc')
@@ -456,6 +461,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let pendingConfirmationMove = null
   let premove = null
   let lastEngineEval = 0 // cp
+  let evalHistory = [] // Array of { ply, score }
 
   let whiteTime = 300000 // 5 minutes in ms
   let blackTime = 300000
@@ -628,8 +634,34 @@ document.addEventListener('DOMContentLoaded', () => {
     if (result) SoundManager.playSound(result, game)
     currentViewIndex = -1
 
+    _updateGraphAfterEngineMove(result)
+
     ArrowManager.clearEngineArrows()
 
+    _handleAutoFlip()
+
+    renderBoard()
+    renderHistory()
+    ArrowManager.render()
+    checkGameOver()
+  }
+
+  function _updateGraphAfterEngineMove (result) {
+    const ply = game.history().length
+    const targetPly = ply - 1
+    if (targetPly >= 0) {
+      let score = lastEngineEval
+      if (result.color === 'b') score = -score
+
+      if (!evalHistory.find(e => e.ply === targetPly)) {
+        evalHistory.push({ ply: targetPly, score })
+        evalHistory.sort((a, b) => a.ply - b.ply)
+        renderEvalGraph()
+      }
+    }
+  }
+
+  function _handleAutoFlip () {
     if (autoFlipCheckbox && autoFlipCheckbox.checked) {
       const turn = game.turn()
       if (turn === 'w') {
@@ -639,13 +671,8 @@ document.addEventListener('DOMContentLoaded', () => {
         isFlipped = true
         boardElement.classList.add('flipped')
       }
-      renderClocks() // updates names/clocks
+      renderClocks()
     }
-
-    renderBoard()
-    renderHistory()
-    ArrowManager.render()
-    checkGameOver()
   }
 
   function _handleInfoMsg (msg) {
@@ -1066,6 +1093,8 @@ document.addEventListener('DOMContentLoaded', () => {
     isSelfPlay = false
     isDuelActive = false
     updateSelfPlayButton()
+    evalHistory = []
+    renderEvalGraph()
     startClock()
     renderBoard()
     renderHistory()
@@ -1287,6 +1316,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
     updateLastMoveArrow()
+    updateCapturedPieces()
   }
 
   function updateLastMoveArrow () {
@@ -1501,6 +1531,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function _applySquareHighlights (square, row, col, alg, chess) {
+    _applySelectionHighlights(square, row, col, alg)
+    _applyUserHighlights(square, alg)
+    _applyLastMoveHighlight(square, alg)
+    _applyCheckHighlight(square, row, col, chess)
+    _applyThreatHighlight(square, alg, chess)
+  }
+
+  function _applySelectionHighlights (square, row, col, alg) {
     if (selectedSquare && selectedSquare.row === row && selectedSquare.col === col) {
       square.classList.add('selected')
     }
@@ -1510,10 +1548,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (premove && (alg === premove.from || alg === premove.to)) {
       square.classList.add('premove-highlight')
     }
+  }
+
+  function _applyUserHighlights (square, alg) {
     const userH = ArrowManager.getUserHighlight(alg)
     if (userH) square.classList.add(userH)
+  }
 
-    // Last Move Highlight
+  function _applyLastMoveHighlight (square, alg) {
     const history = game.history({ verbose: true })
     let lastMove = null
     if (currentViewIndex === -1) {
@@ -1525,8 +1567,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (lastMove && (alg === lastMove.from || alg === lastMove.to)) {
       square.classList.add('last-move')
     }
+  }
 
-    // Check Highlight
+  function _applyCheckHighlight (square, row, col, chess) {
     if (chess && chess.in_check()) {
       const turn = chess.turn()
       const pieceObj = chess.board()[row][col]
@@ -1534,8 +1577,6 @@ document.addEventListener('DOMContentLoaded', () => {
         square.classList.add('check-highlight')
       }
     }
-
-    _applyThreatHighlight(square, alg, chess)
   }
 
   function _applyThreatHighlight (square, alg, chess) {
@@ -1549,7 +1590,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  let _cachedThreats = { fen: null, squares: [] }
+  const _cachedThreats = { fen: null, squares: [] }
   function _isSquareThreatened (alg, chess) {
     const fen = chess.fen()
     if (_cachedThreats.fen !== fen) {
@@ -1853,6 +1894,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (result.color === 'w') whiteTime += whiteIncrement
       else blackTime += blackIncrement
     }
+
+    // Update graph for Human move if we want, but we don't have a fresh score.
+    // We could push 'null' or skip. Skipping is fine.
 
     selectedSquare = null
     legalMovesForSelectedPiece = []
@@ -3168,6 +3212,162 @@ document.addEventListener('DOMContentLoaded', () => {
     rep.splice(index, 1)
     localStorage.setItem('my-repertoire', JSON.stringify(rep))
     renderRepertoireList()
+  }
+
+  function updateCapturedPieces () {
+    if (!topCapturedPieces || !bottomCapturedPieces) return
+
+    const board = game.board()
+    const counts = calculateBoardCounts(board)
+    const startCounts = getPieceCounts(startingFen)
+
+    _renderCapturedUI(counts, startCounts)
+    _renderMaterialDiffUI(counts)
+  }
+
+  function calculateBoardCounts (board) {
+    const counts = {
+      w: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 },
+      b: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 }
+    }
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const piece = board[r][c]
+        if (piece) counts[piece.color][piece.type]++
+      }
+    }
+    return counts
+  }
+
+  function _renderCapturedUI (counts, startCounts) {
+    const topColor = isFlipped ? 'w' : 'b'
+    const topOpponent = topColor === 'w' ? 'b' : 'w'
+    const bottomOpponent = topColor
+
+    renderCaptured(counts[topOpponent], startCounts[topOpponent], topCapturedPieces, topOpponent)
+    renderCaptured(counts[bottomOpponent], startCounts[bottomOpponent], bottomCapturedPieces, bottomOpponent)
+  }
+
+  function _renderMaterialDiffUI (counts) {
+    const topColor = isFlipped ? 'w' : 'b'
+
+    const values = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 }
+    const diff = calculateMaterial(counts.w, values) - calculateMaterial(counts.b, values)
+
+    topMaterialDiff.textContent = ''
+    bottomMaterialDiff.textContent = ''
+
+    if (diff === 0) return
+
+    const absDiff = Math.abs(diff)
+    const isWhiteUp = diff > 0
+
+    if (isWhiteUp) {
+      if (topColor === 'w') topMaterialDiff.textContent = `+${absDiff}`
+      else bottomMaterialDiff.textContent = `+${absDiff}`
+    } else {
+      if (topColor === 'b') topMaterialDiff.textContent = `+${absDiff}`
+      else bottomMaterialDiff.textContent = `+${absDiff}`
+    }
+  }
+
+  function getPieceCounts (fen) {
+    const counts = {
+      w: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 },
+      b: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 }
+    }
+    if (fen === 'startpos') {
+      fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+    }
+    const boardPart = fen.split(' ')[0]
+    for (const char of boardPart) {
+      if (['P', 'N', 'B', 'R', 'Q', 'K'].includes(char)) counts.w[char.toLowerCase()]++
+      else if (['p', 'n', 'b', 'r', 'q', 'k'].includes(char)) counts.b[char]++
+    }
+    return counts
+  }
+
+  function renderCaptured (current, start, container, color) {
+    container.innerHTML = ''
+    const types = ['q', 'r', 'b', 'n', 'p']
+    types.forEach(type => {
+      const diff = Math.max(0, start[type] - current[type])
+      for (let i = 0; i < diff; i++) {
+        if (currentPieceSet === 'unicode') {
+          const span = document.createElement('span')
+          span.textContent = getUnicodePiece(color, type)
+          span.style.fontSize = '18px'
+          container.appendChild(span)
+        } else if (currentPieceSet === 'custom-upload') {
+          const img = document.createElement('img')
+          const key = color + type
+          img.src = customPieceImages[key] || `images/cburnett/${color}${type}.svg`
+          container.appendChild(img)
+        } else {
+          const img = document.createElement('img')
+          img.src = `images/${currentPieceSet}/${color}${type}.svg`
+          container.appendChild(img)
+        }
+      }
+    })
+  }
+
+  function calculateMaterial (counts, values) {
+    let sum = 0
+    for (const t in counts) {
+      sum += counts[t] * values[t]
+    }
+    return sum
+  }
+
+  function renderEvalGraph () {
+    if (!evalGraphSvg) return
+    if (evalHistory.length === 0) {
+      evalGraphSvg.innerHTML = ''
+      return
+    }
+
+    evalGraphSvg.innerHTML = ''
+
+    const width = evalGraphSvg.clientWidth || 300
+    const height = evalGraphSvg.clientHeight || 100
+    const padding = 5
+
+    // Scales
+    const maxPly = Math.max(20, evalHistory.length)
+    const minScore = -500 // -5 pawns
+    const maxScore = 500 // +5 pawns
+
+    // Helper to map logic
+    const getX = (ply) => (ply / maxPly) * (width - 2 * padding) + padding
+    const getY = (score) => {
+      // Clamp
+      const s = Math.max(minScore, Math.min(maxScore, score))
+      // Map to 0..height (inverted, +score is top)
+      const pct = (s - minScore) / (maxScore - minScore)
+      return height - (pct * (height - 2 * padding) + padding)
+    }
+
+    // Zero line
+    const zeroY = getY(0)
+    const line0 = document.createElementNS('http://www.w3.org/2000/svg', 'line')
+    line0.setAttribute('x1', 0)
+    line0.setAttribute('y1', zeroY)
+    line0.setAttribute('x2', width)
+    line0.setAttribute('y2', zeroY)
+    line0.setAttribute('stroke', '#444')
+    line0.setAttribute('stroke-width', '1')
+    line0.setAttribute('stroke-dasharray', '4')
+    evalGraphSvg.appendChild(line0)
+
+    // Polyline
+    const points = evalHistory.map(p => `${getX(p.ply)},${getY(p.score)}`).join(' ')
+    const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline')
+    polyline.setAttribute('points', points)
+    polyline.setAttribute('fill', 'none')
+    polyline.setAttribute('stroke', '#33B5E5')
+    polyline.setAttribute('stroke-width', '2')
+    evalGraphSvg.appendChild(polyline)
   }
 
   connect()
