@@ -17,16 +17,16 @@ describe('SoundManager', () => {
       stop: jest.fn()
     }
     gainMock = {
-        gain: { setValueAtTime: jest.fn(), exponentialRampToValueAtTime: jest.fn() },
-        connect: jest.fn()
+      gain: { setValueAtTime: jest.fn(), exponentialRampToValueAtTime: jest.fn() },
+      connect: jest.fn()
     }
     audioContextMock = {
-        createOscillator: jest.fn().mockReturnValue(oscillatorMock),
-        createGain: jest.fn().mockReturnValue(gainMock),
-        currentTime: 0,
-        state: 'running',
-        resume: jest.fn().mockResolvedValue(),
-        destination: {}
+      createOscillator: jest.fn().mockReturnValue(oscillatorMock),
+      createGain: jest.fn().mockReturnValue(gainMock),
+      currentTime: 0,
+      state: 'running',
+      resume: jest.fn().mockResolvedValue(),
+      destination: {}
     }
 
     window.AudioContext = jest.fn(() => audioContextMock)
@@ -42,50 +42,50 @@ describe('SoundManager', () => {
   })
 
   test('init creates AudioContext', () => {
-      SoundManager.init()
-      expect(window.AudioContext).toHaveBeenCalled()
+    SoundManager.init()
+    expect(window.AudioContext).toHaveBeenCalled()
   })
 
   test('playTick creates oscillator and plays', () => {
-      SoundManager.playTick()
-      expect(audioContextMock.createOscillator).toHaveBeenCalled()
-      expect(oscillatorMock.start).toHaveBeenCalled()
-      expect(oscillatorMock.stop).toHaveBeenCalled()
+    SoundManager.playTick()
+    expect(audioContextMock.createOscillator).toHaveBeenCalled()
+    expect(oscillatorMock.start).toHaveBeenCalled()
+    expect(oscillatorMock.stop).toHaveBeenCalled()
   })
 
   test('playSound plays move sound', () => {
-      const move = { flags: 'n' }
-      const game = { in_check: () => false }
-      SoundManager.playSound(move, game)
-      expect(audioContextMock.createOscillator).toHaveBeenCalled()
-      expect(oscillatorMock.type).toBe('triangle')
+    const move = { flags: 'n' }
+    const game = { in_check: () => false }
+    SoundManager.playSound(move, game)
+    expect(audioContextMock.createOscillator).toHaveBeenCalled()
+    expect(oscillatorMock.type).toBe('triangle')
   })
 
   test('playSound plays capture sound', () => {
-      const move = { flags: 'c' }
-      const game = { in_check: () => false }
-      SoundManager.playSound(move, game)
-      expect(audioContextMock.createOscillator).toHaveBeenCalled()
-      expect(oscillatorMock.type).toBe('square')
+    const move = { flags: 'c' }
+    const game = { in_check: () => false }
+    SoundManager.playSound(move, game)
+    expect(audioContextMock.createOscillator).toHaveBeenCalled()
+    expect(oscillatorMock.type).toBe('square')
   })
 
   test('playSound plays check sound', () => {
-      const move = { flags: 'n' }
-      const game = { in_check: () => true }
-      SoundManager.playSound(move, game)
-      // Check plays 2 tones
-      expect(audioContextMock.createOscillator).toHaveBeenCalledTimes(2)
+    const move = { flags: 'n' }
+    const game = { in_check: () => true }
+    SoundManager.playSound(move, game)
+    // Check plays 2 tones
+    expect(audioContextMock.createOscillator).toHaveBeenCalledTimes(2)
   })
 
   test('disabled sound does not play', () => {
-      SoundManager.setEnabled(false)
-      SoundManager.playTick()
-      expect(audioContextMock.createOscillator).not.toHaveBeenCalled()
+    SoundManager.setEnabled(false)
+    SoundManager.playTick()
+    expect(audioContextMock.createOscillator).not.toHaveBeenCalled()
   })
 
   test('resumes context if suspended', () => {
-      audioContextMock.state = 'suspended'
-      SoundManager.init()
-      expect(audioContextMock.resume).toHaveBeenCalled()
+    audioContextMock.state = 'suspended'
+    SoundManager.init()
+    expect(audioContextMock.resume).toHaveBeenCalled()
   })
 })

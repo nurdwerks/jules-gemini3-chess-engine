@@ -26,6 +26,13 @@ const initApp = () => {
       uiManager.elements.status.textContent = 'Status: Disconnected'
       uiManager.logSystemMessage('Disconnected from server', 'error')
     },
+    onSent: (cmd) => {
+      if (cmd.startsWith('go ')) {
+        uiManager.setThinking(true)
+      } else if (cmd === 'stop') {
+        uiManager.setThinking(false)
+      }
+    },
     onOption: (line) => { uiManager.parseOption(line, (n, v) => sendOption(n, v)) },
     onReadyOk: () => {
       if (!gameManager.gameStarted) gameManager.startNewGame()
@@ -41,6 +48,7 @@ const initApp = () => {
       }
     },
     onBestMove: (parts) => {
+      uiManager.setThinking(false)
       analysisManager.handleBestMove()
       handleBestMove(parts)
     },
@@ -48,6 +56,8 @@ const initApp = () => {
   })
 
   const uiManager = new UIManager({
+    onSendOption: (n, v) => sendOption(n, v),
+    onResetEngine: () => window.location.reload(),
     onNewGame: () => gameManager.startNewGame(),
     onNew960: () => {
       const fen = ClientUtils.generate960Fen()

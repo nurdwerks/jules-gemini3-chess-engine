@@ -1263,3 +1263,14 @@ body.light-mode {
 .viz-discovered-revealer {
     background-color: rgba(154, 196, 42, 0.4);
 }
+
+/* Engine Thinking Indicator */
+.thinking-border {
+    box-shadow: 0 0 15px 2px var(--grafana-accent-blue);
+    border-color: var(--grafana-accent-blue) !important;
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+#eval-bar-container.thinking {
+    box-shadow: 0 0 10px var(--grafana-accent-blue);
+}
