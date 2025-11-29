@@ -1,5 +1,5 @@
 /* eslint-env browser */
-/* global Chess, SoundManager, GraphManager, ClientUtils */
+/* global SoundManager, GraphManager */
 
 window.GameManager = class GameManager {
   constructor (game, socketHandler, callbacks) {
@@ -110,24 +110,31 @@ window.GameManager = class GameManager {
     const delta = now - this.lastFrameTime
     this.lastFrameTime = now
 
-    if (this.game.turn() === 'w') {
-      const prev = this.whiteTime
-      this.whiteTime = Math.max(0, this.whiteTime - delta)
-      if (this.whiteTime < 10000 && Math.floor(prev / 1000) !== Math.floor(this.whiteTime / 1000)) {
-        if (SoundManager) SoundManager.playTick()
-      }
-    } else {
-      const prev = this.blackTime
-      this.blackTime = Math.max(0, this.blackTime - delta)
-      if (this.blackTime < 10000 && Math.floor(prev / 1000) !== Math.floor(this.blackTime / 1000)) {
-        if (SoundManager) SoundManager.playTick()
-      }
-    }
+    const color = this.game.turn() === 'w' ? 'white' : 'black'
+    this._updatePlayerClock(color, delta)
 
     if (this.callbacks.onClockUpdate) this.callbacks.onClockUpdate()
 
     if (this.whiteTime <= 0 || this.blackTime <= 0) {
       this.checkGameOver()
+    }
+  }
+
+  _updatePlayerClock (color, delta) {
+    if (color === 'white') {
+      const prev = this.whiteTime
+      this.whiteTime = Math.max(0, this.whiteTime - delta)
+      this._checkSound(prev, this.whiteTime)
+    } else {
+      const prev = this.blackTime
+      this.blackTime = Math.max(0, this.blackTime - delta)
+      this._checkSound(prev, this.blackTime)
+    }
+  }
+
+  _checkSound (prev, current) {
+    if (current < 10000 && Math.floor(prev / 1000) !== Math.floor(current / 1000)) {
+      if (SoundManager) SoundManager.playTick()
     }
   }
 
@@ -200,7 +207,7 @@ window.GameManager = class GameManager {
   _updateTensionHistory () {
     // Simply count captures/checks available
     const moves = this.game.moves({ verbose: true })
-    let count = moves.filter(m => m.flags.includes('c') || m.flags.includes('e')).length
+    const count = moves.filter(m => m.flags.includes('c') || m.flags.includes('e')).length
     this.tensionHistory.push({ ply: this.game.history().length, value: count })
     if (GraphManager) GraphManager.renderTensionGraph(this.tensionHistory)
   }

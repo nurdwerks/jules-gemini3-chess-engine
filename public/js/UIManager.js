@@ -1,10 +1,11 @@
 /* eslint-env browser */
-/* global GraphManager, ClientUtils */
+/* global BoardInfoRenderer */
 
 window.UIManager = class UIManager {
   constructor (callbacks) {
     this.callbacks = callbacks || {}
     this.elements = this._cacheElements()
+    this.boardInfoRenderer = new BoardInfoRenderer(this.elements)
     this._bindEvents()
 
     this.OPTION_GROUPS = {
@@ -298,13 +299,6 @@ window.UIManager = class UIManager {
     if (!this.elements.evalBarFill) return
     let percent = 50
     let val = score.value
-    // If score is relative to side to move, and turn is black, we negate for white perspective?
-    // Engine 'score cp' is usually white-centric or side-centric depending on engine.
-    // Stockfish (and this engine likely) reports score relative to side to move.
-    // So if it's Black's turn and score is +100, Black is winning.
-    // My previous client logic assumed:
-    // "Calculate White's advantage"
-    // val = score.value; if (turn === 'b') val = -val;
     if (turn === 'b') val = -val
 
     if (score.type === 'mate') {
@@ -441,46 +435,71 @@ window.UIManager = class UIManager {
     label.textContent = name + ': '
     container.appendChild(label)
 
-    let input
-    if (type === 'spin') {
-      input = document.createElement('input')
-      input.type = 'number'
-      if (min) input.min = min
-      if (max) input.max = max
-      if (defaultValue) input.value = defaultValue
-      input.addEventListener('change', () => onSendOption(name, input.value))
-    } else if (type === 'check') {
-      input = document.createElement('input')
-      input.type = 'checkbox'
-      if (defaultValue === 'true') input.checked = true
-      input.addEventListener('change', () => onSendOption(name, input.checked))
-    } else if (type === 'string') {
-      input = document.createElement('input')
-      input.type = 'text'
-      if (defaultValue) input.value = defaultValue
-      input.addEventListener('change', () => onSendOption(name, input.value))
-    } else if (type === 'button') {
-      input = document.createElement('button')
-      input.textContent = 'Trigger'
-      input.addEventListener('click', () => onSendOption(name))
-    } else if (type === 'combo') {
-      input = document.createElement('select')
-      if (vars) {
-        vars.forEach(v => {
-          const opt = document.createElement('option')
-          opt.value = v
-          opt.textContent = v
-          if (v === defaultValue) opt.selected = true
-          input.appendChild(opt)
-        })
-      }
-      input.addEventListener('change', () => onSendOption(name, input.value))
+    let input = null
+    const creators = {
+      spin: () => this._createSpinInput(min, max, defaultValue, onSendOption, name),
+      check: () => this._createCheckInput(defaultValue, onSendOption, name),
+      string: () => this._createStringInput(defaultValue, onSendOption, name),
+      button: () => this._createButtonInput(onSendOption, name),
+      combo: () => this._createComboInput(vars, defaultValue, onSendOption, name)
+    }
+
+    if (creators[type]) {
+      input = creators[type]()
     }
 
     if (input) {
       container.appendChild(input)
       group.appendChild(container)
     }
+  }
+
+  _createSpinInput (min, max, defaultValue, onSendOption, name) {
+    const input = document.createElement('input')
+    input.type = 'number'
+    if (min) input.min = min
+    if (max) input.max = max
+    if (defaultValue) input.value = defaultValue
+    input.addEventListener('change', () => onSendOption(name, input.value))
+    return input
+  }
+
+  _createCheckInput (defaultValue, onSendOption, name) {
+    const input = document.createElement('input')
+    input.type = 'checkbox'
+    if (defaultValue === 'true') input.checked = true
+    input.addEventListener('change', () => onSendOption(name, input.checked))
+    return input
+  }
+
+  _createStringInput (defaultValue, onSendOption, name) {
+    const input = document.createElement('input')
+    input.type = 'text'
+    if (defaultValue) input.value = defaultValue
+    input.addEventListener('change', () => onSendOption(name, input.value))
+    return input
+  }
+
+  _createButtonInput (onSendOption, name) {
+    const input = document.createElement('button')
+    input.textContent = 'Trigger'
+    input.addEventListener('click', () => onSendOption(name))
+    return input
+  }
+
+  _createComboInput (vars, defaultValue, onSendOption, name) {
+    const input = document.createElement('select')
+    if (vars) {
+      vars.forEach(v => {
+        const opt = document.createElement('option')
+        opt.value = v
+        opt.textContent = v
+        if (v === defaultValue) opt.selected = true
+        input.appendChild(opt)
+      })
+    }
+    input.addEventListener('change', () => onSendOption(name, input.value))
+    return input
   }
 
   renderAnalysisRow (task, result) {
@@ -518,104 +537,6 @@ window.UIManager = class UIManager {
   }
 
   updateCapturedPieces (game, startingFen, pieceSet, isFlipped) {
-    if (!this.elements.topCaptured || !this.elements.bottomCaptured) return
-
-    const board = game.board()
-    const counts = this._calculateBoardCounts(board)
-    const startCounts = this._getPieceCounts(startingFen)
-
-    this._renderCapturedUI(counts, startCounts, pieceSet, isFlipped)
-    this._renderMaterialDiffUI(counts, isFlipped)
-  }
-
-  _calculateBoardCounts (board) {
-    const counts = {
-      w: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 },
-      b: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 }
-    }
-    for (let r = 0; r < 8; r++) {
-      for (let c = 0; c < 8; c++) {
-        const piece = board[r][c]
-        if (piece) counts[piece.color][piece.type]++
-      }
-    }
-    return counts
-  }
-
-  _getPieceCounts (fen) {
-    const counts = {
-      w: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 },
-      b: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 }
-    }
-    if (fen === 'startpos') {
-      fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
-    }
-    const boardPart = fen.split(' ')[0]
-    for (const char of boardPart) {
-      if (['P', 'N', 'B', 'R', 'Q', 'K'].includes(char)) counts.w[char.toLowerCase()]++
-      else if (['p', 'n', 'b', 'r', 'q', 'k'].includes(char)) counts.b[char]++
-    }
-    return counts
-  }
-
-  _renderCapturedUI (counts, startCounts, pieceSet, isFlipped) {
-    const topColor = isFlipped ? 'w' : 'b'
-    const topOpponent = topColor === 'w' ? 'b' : 'w'
-    const bottomOpponent = topColor
-
-    this._renderCaptured(counts[topOpponent], startCounts[topOpponent], this.elements.topCaptured, topOpponent, pieceSet)
-    this._renderCaptured(counts[bottomOpponent], startCounts[bottomOpponent], this.elements.bottomCaptured, bottomOpponent, pieceSet)
-  }
-
-  _renderCaptured (current, start, container, color, pieceSet) {
-    container.innerHTML = ''
-    const types = ['q', 'r', 'b', 'n', 'p']
-    types.forEach(type => {
-      const diff = Math.max(0, start[type] - current[type])
-      for (let i = 0; i < diff; i++) {
-        const img = document.createElement('img')
-        img.src = `images/${pieceSet}/${color}${type}.svg`
-        container.appendChild(img)
-      }
-    })
-  }
-
-  _renderMaterialDiffUI (counts, isFlipped) {
-    const values = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 }
-    const wMat = this._calculateMaterial(counts.w, values)
-    const bMat = this._calculateMaterial(counts.b, values)
-    const diff = wMat - bMat
-
-    this.elements.topMaterialDiff.textContent = ''
-    this.elements.bottomMaterialDiff.textContent = ''
-    if (this.elements.topMaterialBar) this.elements.topMaterialBar.style.width = '0%'
-    if (this.elements.bottomMaterialBar) this.elements.bottomMaterialBar.style.width = '0%'
-
-    if (diff !== 0) {
-      const topColor = isFlipped ? 'w' : 'b'
-      const absDiff = Math.abs(diff)
-      const barWidth = Math.min(100, (absDiff / 20) * 100)
-
-      const leader = diff > 0 ? 'w' : 'b'
-      const isTopLeader = leader === topColor
-
-      const targetDiff = isTopLeader ? this.elements.topMaterialDiff : this.elements.bottomMaterialDiff
-      const targetBar = isTopLeader ? this.elements.topMaterialBar : this.elements.bottomMaterialBar
-      const color = leader === 'w' ? '#E3E3E3' : '#6B6B6B'
-
-      targetDiff.textContent = `+${absDiff}`
-      if (targetBar) {
-        targetBar.style.width = `${barWidth}%`
-        targetBar.style.backgroundColor = color
-      }
-    }
-  }
-
-  _calculateMaterial (counts, values) {
-    let sum = 0
-    for (const t in counts) {
-      sum += counts[t] * values[t]
-    }
-    return sum
+    this.boardInfoRenderer.updateCapturedPieces(game, startingFen, pieceSet, isFlipped)
   }
 }
