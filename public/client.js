@@ -17,6 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const toastContainer = document.getElementById('toast-container')
 
   const boardThemeSelect = document.getElementById('board-theme')
+  const uiThemeSelect = document.getElementById('ui-theme')
+  const boardSizeInput = document.getElementById('board-size')
   const pieceSetSelect = document.getElementById('piece-set')
 
   const evalValueElement = document.getElementById('eval-value')
@@ -132,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let isFlipped = false
   let gameStarted = false
   let currentViewIndex = -1 // -1 means live view
-  let currentPieceSet = 'svg' // 'svg' or 'unicode'
+  let currentPieceSet = 'cburnett' // 'cburnett', 'alpha', 'merida', or 'unicode'
   let legalMovesForSelectedPiece = [] // Array of move objects from chess.js
   let startingFen = 'startpos' // Track the initial position
   let isAnalysisMode = false
@@ -637,8 +639,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function _createSquare (r, c, board) {
-    const row = isFlipped ? 7 - r : r
-    const col = isFlipped ? 7 - c : c
+    const row = r
+    const col = c
     const alg = coordsToAlgebraic(row, col)
 
     const square = document.createElement('div')
@@ -660,8 +662,9 @@ document.addEventListener('DOMContentLoaded', () => {
         square.appendChild(div)
       } else {
         const img = document.createElement('img')
-        img.src = `images/${color}${type}.svg`
+        img.src = `images/${currentPieceSet}/${color}${type}.svg`
         img.classList.add('piece')
+        img.classList.add(`piece-set-${currentPieceSet}`)
         square.appendChild(img)
       }
     }
@@ -773,7 +776,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   flipBoardBtn.addEventListener('click', () => {
     isFlipped = !isFlipped
-    renderBoard()
+    if (isFlipped) {
+      boardElement.classList.add('flipped')
+    } else {
+      boardElement.classList.remove('flipped')
+    }
     renderClocks()
   })
 
@@ -789,8 +796,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   })
 
+  // Load UI Theme
+  const savedUiTheme = localStorage.getItem('ui-theme') || 'dark'
+  if (savedUiTheme === 'light') document.body.classList.add('light-mode')
+  if (uiThemeSelect) uiThemeSelect.value = savedUiTheme
+
+  uiThemeSelect.addEventListener('change', (e) => {
+    const theme = e.target.value
+    if (theme === 'light') {
+      document.body.classList.add('light-mode')
+    } else {
+      document.body.classList.remove('light-mode')
+    }
+    localStorage.setItem('ui-theme', theme)
+  })
+
   boardThemeSelect.addEventListener('change', (e) => {
     setBoardTheme(e.target.value)
+  })
+
+  boardSizeInput.addEventListener('input', (e) => {
+    const val = e.target.value
+    boardElement.style.setProperty('--board-max-width', `${val}px`)
   })
 
   pieceSetSelect.addEventListener('change', (e) => {
@@ -800,7 +827,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function setBoardTheme (theme) {
     // Remove existing theme classes
-    ['theme-green', 'theme-blue', 'theme-wood'].forEach(cls => {
+    ['theme-green', 'theme-blue', 'theme-wood', 'theme-glass', 'theme-newspaper'].forEach(cls => {
       boardElement.classList.remove(cls)
     })
 
