@@ -12,7 +12,26 @@ Benchmarking functions can be written and verified, but performance-critical ben
 
 ## Active Roadmap
 
-*No active epics. Please select the next epic from the backlog.*
+The active roadmap and backlog of future enhancements has been moved to a dedicated document to allow for detailed tracking of Epics and User Stories.
+
+**[View the Full Future Enhancements Roadmap](docs/FUTURE_ENHANCEMENTS.md)**
+
+The roadmap includes detailed plans for:
+1.  **Board Customization & Aesthetics** (Themes, 3D pieces, Animations)
+2.  **User Interface Layout** (Fullscreen, Zen Mode, Mobile Layouts)
+3.  **Game Modes & Variations** (PvP, Chess960, Training Modes)
+4.  **Training & Puzzles** (Tactics, Blindfold, Endgames)
+5.  **Game Controls & Mechanics** (Premoves, Time Controls, Auto-Queen)
+6.  **Time Control** (Clocks, Increments, Low Time Alerts)
+7.  **Analysis Visualizations** (Arrows, Heatmaps, Threat Indicators)
+8.  **Statistics & Graphs** (Evaluation, NPS, Material)
+9.  **Engine Configuration** (Tuning, Presets, Cloud Engines)
+10. **Data Management** (PGN/FEN Import/Export)
+11. **Board Editor** (Setup Position, Castling Rights)
+12. **Developer Tools** (Debug Overlay, Perft, Logging)
+13. **Move List & Annotation** (Variations, Comments, Symbols)
+14. **Accessibility & Audio** (Screen Readers, Voice Control, Sounds)
+15. **Integration & Social** (Sharing, API Integrations)
 
 ## Archived Roadmap (Completed or Superseded)
 
