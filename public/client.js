@@ -77,6 +77,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const soundEnabledCheckbox = document.getElementById('sound-enabled')
   const evalBarFill = document.getElementById('eval-bar-fill')
 
+  const timeBaseInput = document.getElementById('time-base')
+  const timeIncInput = document.getElementById('time-inc')
+
   const engineDuelBtn = document.getElementById('engine-duel-btn')
   const duelSetupModal = document.getElementById('duel-setup-modal')
   const closeDuelModalBtn = document.getElementById('close-duel-modal')
@@ -198,6 +201,24 @@ document.addEventListener('DOMContentLoaded', () => {
     return {
       setEnabled: (val) => { enabled = val; if (val) init() },
       init,
+      playTick: () => {
+        if (!enabled || !context) return
+        init()
+        try {
+          const osc = context.createOscillator()
+          const gain = context.createGain()
+          osc.type = 'square'
+          osc.frequency.setValueAtTime(800, context.currentTime)
+          gain.gain.setValueAtTime(0.05, context.currentTime)
+          gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.05)
+          osc.connect(gain)
+          gain.connect(context.destination)
+          osc.start(context.currentTime)
+          osc.stop(context.currentTime + 0.05)
+        } catch (e) {
+          console.warn('Audio play failed', e)
+        }
+      },
       playSound: (moveResult, game) => {
         if (!enabled) return
         init()
@@ -261,6 +282,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let whiteTime = 300000 // 5 minutes in ms
   let blackTime = 300000
+  let whiteIncrement = 0
+  let blackIncrement = 0
   let clockInterval = null
   let lastFrameTime = 0
 
@@ -844,8 +867,14 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedSquare = null
     legalMovesForSelectedPiece = []
     currentViewIndex = -1
-    whiteTime = 300000
-    blackTime = 300000
+
+    const baseMin = parseInt(timeBaseInput.value) || 5
+    const incSec = parseInt(timeIncInput.value) || 0
+    whiteTime = baseMin * 60 * 1000
+    blackTime = baseMin * 60 * 1000
+    whiteIncrement = incSec * 1000
+    blackIncrement = incSec * 1000
+
     isSelfPlay = false
     isDuelActive = false
     updateSelfPlayButton()
@@ -867,9 +896,17 @@ document.addEventListener('DOMContentLoaded', () => {
       lastFrameTime = now
 
       if (game.turn() === 'w') {
+        const prev = whiteTime
         whiteTime = Math.max(0, whiteTime - delta)
+        if (whiteTime < 10000 && Math.floor(prev / 1000) !== Math.floor(whiteTime / 1000)) {
+          SoundManager.playTick()
+        }
       } else {
+        const prev = blackTime
         blackTime = Math.max(0, blackTime - delta)
+        if (blackTime < 10000 && Math.floor(prev / 1000) !== Math.floor(blackTime / 1000)) {
+          SoundManager.playTick()
+        }
       }
 
       renderClocks()
@@ -1403,7 +1440,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const result = game.move(targetMove)
-    if (result) SoundManager.playSound(result, game)
+    if (result) {
+      SoundManager.playSound(result, game)
+      if (result.color === 'w') whiteTime += whiteIncrement
+      else blackTime += blackIncrement
+    }
 
     selectedSquare = null
     legalMovesForSelectedPiece = []
