@@ -21,7 +21,12 @@
                     <span class="player-name" id="top-player-name">Black</span>
                     <span class="clock" id="top-player-clock">05:00</span>
                 </div>
-                <div id="chessboard"></div>
+                <div class="board-container">
+                    <div id="eval-bar-container">
+                        <div id="eval-bar-fill"></div>
+                    </div>
+                    <div id="chessboard"></div>
+                </div>
                 <div class="player-info" id="bottom-player">
                     <span class="player-name" id="bottom-player-name">White</span>
                     <span class="clock" id="bottom-player-clock">05:00</span>
@@ -89,7 +94,25 @@
                             <option value="wood">Wood</option>
                             <option value="glass">Glass</option>
                             <option value="newspaper">Newspaper</option>
+                            <option value="custom">Custom</option>
                         </select>
+                     </div>
+                     <div id="custom-theme-controls" style="display: none;">
+                         <div class="option-item">
+                             <label for="custom-light-square">Light Square:</label>
+                             <input type="color" id="custom-light-square" value="#E3E3E3">
+                         </div>
+                         <div class="option-item">
+                             <label for="custom-dark-square">Dark Square:</label>
+                             <input type="color" id="custom-dark-square" value="#6B6B6B">
+                         </div>
+                     </div>
+                     <div class="option-item">
+                         <label for="custom-css">Custom CSS:</label>
+                         <textarea id="custom-css" rows="3" placeholder="Enter CSS here..."></textarea>
+                     </div>
+                     <div class="option-item">
+                         <button id="apply-custom-css">Apply CSS</button>
                      </div>
                      <div class="option-item">
                         <label for="board-size">Max Width:</label>
@@ -107,8 +130,25 @@
                         </select>
                      </div>
                      <div class="option-item">
+                         <label for="animation-speed">Animation Speed:</label>
+                         <select id="animation-speed">
+                             <option value="0">Instant</option>
+                             <option value="200" selected>Fast</option>
+                             <option value="500">Normal</option>
+                             <option value="1000">Slow</option>
+                         </select>
+                     </div>
+                     <div class="option-item">
                         <label for="sound-enabled">Sound Effects:</label>
                         <input type="checkbox" id="sound-enabled" checked>
+                     </div>
+                     <div class="option-item">
+                         <label for="upload-theme-file">Upload Theme (JSON):</label>
+                         <input type="file" id="upload-theme-file" accept=".json">
+                     </div>
+                     <div class="option-item">
+                         <label for="upload-piece-set-files">Upload Piece Set:</label>
+                         <input type="file" id="upload-piece-set-files" multiple accept="image/*">
                      </div>
                 </div>
             </div>

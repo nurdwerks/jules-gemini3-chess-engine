@@ -1,6 +1,7 @@
 /* eslint-env browser */
 /* global Chess */
 
+// eslint-disable-next-line complexity
 document.addEventListener('DOMContentLoaded', () => {
   const boardElement = document.getElementById('chessboard')
   const statusElement = document.getElementById('status')
@@ -17,9 +18,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const toastContainer = document.getElementById('toast-container')
 
   const boardThemeSelect = document.getElementById('board-theme')
+  const customThemeControls = document.getElementById('custom-theme-controls')
+  const customLightSquareInput = document.getElementById('custom-light-square')
+  const customDarkSquareInput = document.getElementById('custom-dark-square')
+  const customCssInput = document.getElementById('custom-css')
+  const applyCustomCssBtn = document.getElementById('apply-custom-css')
+
+  const uploadThemeFile = document.getElementById('upload-theme-file')
+  const uploadPieceSetFiles = document.getElementById('upload-piece-set-files')
+
   const uiThemeSelect = document.getElementById('ui-theme')
   const boardSizeInput = document.getElementById('board-size')
   const pieceSetSelect = document.getElementById('piece-set')
+  const animationSpeedSelect = document.getElementById('animation-speed')
 
   const evalValueElement = document.getElementById('eval-value')
   const depthValueElement = document.getElementById('depth-value')
@@ -31,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const bottomPlayerName = document.getElementById('bottom-player-name')
   const bottomPlayerClock = document.getElementById('bottom-player-clock')
   const soundEnabledCheckbox = document.getElementById('sound-enabled')
+  const evalBarFill = document.getElementById('eval-bar-fill')
 
   // Initialize chess.js
   const game = new Chess()
@@ -182,16 +194,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function _handleBestMoveMsg (parts) {
+  async function _handleBestMoveMsg (parts) {
     isAnalyzing = false
-    if (isAnalysisMode && pendingAnalysisCmd) {
-      ignoreNextBestMove = false
-      socket.send(pendingAnalysisCmd)
-      socket.send('go infinite')
-      isAnalyzing = true
-      pendingAnalysisCmd = null
-      return
-    }
+    if (handleAnalysisBestMove()) return
 
     if (ignoreNextBestMove) {
       ignoreNextBestMove = false
@@ -201,18 +206,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const move = parts[1]
     if (move && move !== '(none)') {
-      // Engine sends long algebraic (e.g., e2e4, a7a8q)
-      const from = move.substring(0, 2)
-      const to = move.substring(2, 4)
-      const promotion = move.length > 4 ? move[4] : undefined
-
-      const result = game.move({ from, to, promotion })
-      if (result) SoundManager.playSound(result, game)
-      currentViewIndex = -1
-      renderBoard()
-      renderHistory()
-      checkGameOver()
+      await performMove(move)
     }
+  }
+
+  function handleAnalysisBestMove () {
+    if (isAnalysisMode && pendingAnalysisCmd) {
+      ignoreNextBestMove = false
+      socket.send(pendingAnalysisCmd)
+      socket.send('go infinite')
+      isAnalyzing = true
+      pendingAnalysisCmd = null
+      return true
+    }
+    return false
+  }
+
+  async function performMove (move) {
+    const from = move.substring(0, 2)
+    const to = move.substring(2, 4)
+    const promotion = move.length > 4 ? move[4] : undefined
+
+    const speed = animationSpeedSelect ? parseInt(animationSpeedSelect.value) : 0
+    if (speed > 0 && currentViewIndex === -1) {
+      await animateMove(from, to, speed)
+    }
+
+    const result = game.move({ from, to, promotion })
+    if (result) SoundManager.playSound(result, game)
+    currentViewIndex = -1
+    renderBoard()
+    renderHistory()
+    checkGameOver()
   }
 
   function _handleInfoMsg (msg) {
@@ -263,8 +288,33 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateSearchStats (info) {
     if (info.depth) depthValueElement.textContent = info.depth
     if (info.nps) npsValueElement.textContent = formatNps(info.nps)
-    if (info.score) evalValueElement.textContent = formatScore(info.score)
+    if (info.score) {
+      evalValueElement.textContent = formatScore(info.score)
+      updateEvalBar(info.score)
+    }
     if (info.pv) updatePvDisplay(info.pv)
+  }
+
+  function updateEvalBar (score) {
+    if (!evalBarFill) return
+    let percent = 50
+
+    // Calculate White's advantage
+    let val = score.value
+    if (game.turn() === 'b') {
+      val = -val
+    }
+
+    if (score.type === 'mate') {
+      percent = val > 0 ? 100 : 0
+    } else {
+      // val is cp from White's perspective
+      // Sigmoid function
+      percent = (1 / (1 + Math.exp(-val / 300))) * 100
+    }
+
+    percent = Math.max(0, Math.min(100, percent))
+    evalBarFill.style.height = `${percent}%`
   }
 
   function formatNps (nps) {
@@ -660,6 +710,12 @@ document.addEventListener('DOMContentLoaded', () => {
         div.classList.add(color === 'w' ? 'white-piece' : 'black-piece')
         div.textContent = getUnicodePiece(color, type)
         square.appendChild(div)
+      } else if (currentPieceSet === 'custom-upload') {
+        const img = document.createElement('img')
+        const key = color + type
+        img.src = customPieceImages[key] || ''
+        img.classList.add('piece')
+        square.appendChild(img)
       } else {
         const img = document.createElement('img')
         img.src = `images/${currentPieceSet}/${color}${type}.svg`
@@ -719,7 +775,12 @@ document.addEventListener('DOMContentLoaded', () => {
     return files[col] + rank
   }
 
-  function attemptMove (targetMove) {
+  async function attemptMove (targetMove) {
+    const speed = animationSpeedSelect ? parseInt(animationSpeedSelect.value) : 0
+    if (speed > 0) {
+      await animateMove(targetMove.from, targetMove.to, speed)
+    }
+
     const result = game.move(targetMove)
     if (result) SoundManager.playSound(result, game)
 
@@ -729,6 +790,40 @@ document.addEventListener('DOMContentLoaded', () => {
     renderBoard()
     renderHistory()
     sendPositionAndGo()
+  }
+
+  function animateMove (from, to, duration) {
+    return new Promise(resolve => {
+      const fromSquare = boardElement.querySelector(`.square[data-alg="${from}"]`)
+      const toSquare = boardElement.querySelector(`.square[data-alg="${to}"]`)
+
+      if (!fromSquare || !toSquare) {
+        resolve()
+        return
+      }
+
+      const piece = fromSquare.querySelector('.piece')
+      if (!piece) {
+        resolve()
+        return
+      }
+
+      const fromRect = fromSquare.getBoundingClientRect()
+      const toRect = toSquare.getBoundingClientRect()
+
+      const dx = toRect.left - fromRect.left
+      const dy = toRect.top - fromRect.top
+
+      piece.style.position = 'relative' // Ensure translation works relative to original flow
+      piece.style.zIndex = '100'
+      piece.style.transition = `transform ${duration}ms ease-in-out`
+      piece.style.transform = `translate(${dx}px, ${dy}px)`
+
+      // Wait for animation
+      setTimeout(() => {
+        resolve()
+      }, duration)
+    })
   }
 
   function sendPositionAndGo () {
@@ -815,6 +910,154 @@ document.addEventListener('DOMContentLoaded', () => {
     setBoardTheme(e.target.value)
   })
 
+  if (customLightSquareInput) {
+    customLightSquareInput.addEventListener('input', (e) => {
+      if (boardThemeSelect.value === 'custom') {
+        boardElement.style.setProperty('--board-light-square', e.target.value)
+        localStorage.setItem('custom-light-square', e.target.value)
+      }
+    })
+  }
+
+  if (customDarkSquareInput) {
+    customDarkSquareInput.addEventListener('input', (e) => {
+      if (boardThemeSelect.value === 'custom') {
+        boardElement.style.setProperty('--board-dark-square', e.target.value)
+        localStorage.setItem('custom-dark-square', e.target.value)
+      }
+    })
+  }
+
+  if (applyCustomCssBtn) {
+    applyCustomCssBtn.addEventListener('click', () => {
+      applyCustomCss(customCssInput.value)
+    })
+  }
+
+  // Load Custom CSS from local storage
+  const savedCss = localStorage.getItem('custom-css')
+  if (savedCss) {
+    customCssInput.value = savedCss
+    applyCustomCss(savedCss)
+  }
+
+  // Load Custom Colors
+  const savedCustomLight = localStorage.getItem('custom-light-square')
+  if (savedCustomLight) customLightSquareInput.value = savedCustomLight
+  const savedCustomDark = localStorage.getItem('custom-dark-square')
+  if (savedCustomDark) customDarkSquareInput.value = savedCustomDark
+
+  if (uploadThemeFile) {
+    uploadThemeFile.addEventListener('change', (e) => {
+      const file = e.target.files[0]
+      if (!file) return
+
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        try {
+          const theme = JSON.parse(event.target.result)
+          if (theme.light && theme.dark) {
+            customLightSquareInput.value = theme.light
+            customDarkSquareInput.value = theme.dark
+            boardThemeSelect.value = 'custom'
+            // Trigger change manually
+            boardThemeSelect.dispatchEvent(new Event('change'))
+            // Trigger input events to save to local storage
+            customLightSquareInput.dispatchEvent(new Event('input'))
+            customDarkSquareInput.dispatchEvent(new Event('input'))
+            showToast('Theme loaded successfully', 'success')
+          } else {
+            showToast('Invalid theme format', 'error')
+          }
+        } catch (err) {
+          console.error(err)
+          showToast('Error parsing theme file', 'error')
+        }
+      }
+      reader.readAsText(file)
+    })
+  }
+
+  const customPieceImages = {}
+
+  if (uploadPieceSetFiles) {
+    uploadPieceSetFiles.addEventListener('change', (e) => {
+      const files = Array.from(e.target.files)
+      if (files.length === 0) return
+      handlePieceSetUpload(files)
+    })
+  }
+
+  function handlePieceSetUpload (files) {
+    let loadedCount = 0
+    files.forEach(file => {
+      const pieceKey = identifyPieceKey(file.name)
+      if (pieceKey) {
+        customPieceImages[pieceKey] = URL.createObjectURL(file)
+        loadedCount++
+      }
+    })
+
+    updatePieceSetUI(loadedCount)
+  }
+
+  function identifyPieceKey (filename) {
+    const name = filename.toLowerCase()
+
+    const shortKey = identifyShortKey(name)
+    if (shortKey) return shortKey
+
+    return identifyPieceFromTokens(name)
+  }
+
+  function identifyShortKey (name) {
+    if (name.length >= 10) return null
+    const matches = ['wp', 'wn', 'wb', 'wr', 'wq', 'wk', 'bp', 'bn', 'bb', 'br', 'bq', 'bk']
+    for (const m of matches) {
+      if (name.includes(m)) return m
+    }
+    return null
+  }
+
+  function identifyPieceFromTokens (name) {
+    const color = identifyColor(name)
+    const type = identifyType(name)
+
+    if (color && type) return color + type
+    return null
+  }
+
+  function identifyColor (name) {
+    if (name.includes('white') || name.startsWith('w')) return 'w'
+    if (name.includes('black') || name.startsWith('b')) return 'b'
+    return null
+  }
+
+  function identifyType (name) {
+    const types = { pawn: 'p', knight: 'n', bishop: 'b', rook: 'r', queen: 'q', king: 'k' }
+    for (const [key, val] of Object.entries(types)) {
+      if (name.includes(key)) return val
+    }
+    return null
+  }
+
+  function updatePieceSetUI (loadedCount) {
+    if (loadedCount > 0) {
+      if (!pieceSetSelect.querySelector('option[value="custom-upload"]')) {
+        const option = document.createElement('option')
+        option.value = 'custom-upload'
+        option.textContent = 'Custom Uploaded'
+        pieceSetSelect.appendChild(option)
+      }
+      pieceSetSelect.value = 'custom-upload'
+      currentPieceSet = 'custom-upload'
+      renderBoard()
+      showToast(`Loaded ${loadedCount} piece images`, 'success')
+    } else {
+      showToast('Could not identify piece images from filenames', 'error')
+    }
+  }
+
   boardSizeInput.addEventListener('input', (e) => {
     const val = e.target.value
     boardElement.style.setProperty('--board-max-width', `${val}px`)
@@ -827,13 +1070,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function setBoardTheme (theme) {
     // Remove existing theme classes
-    ['theme-green', 'theme-blue', 'theme-wood', 'theme-glass', 'theme-newspaper'].forEach(cls => {
+    ['theme-green', 'theme-blue', 'theme-wood', 'theme-glass', 'theme-newspaper', 'theme-custom'].forEach(cls => {
       boardElement.classList.remove(cls)
     })
 
-    if (theme !== 'classic') {
+    // Remove inline styles if not custom (to allow CSS classes to take over)
+    if (theme !== 'custom') {
+      boardElement.style.removeProperty('--board-light-square')
+      boardElement.style.removeProperty('--board-dark-square')
+      customThemeControls.style.display = 'none'
+    }
+
+    if (theme === 'custom') {
+      customThemeControls.style.display = 'block'
+      boardElement.style.setProperty('--board-light-square', customLightSquareInput.value)
+      boardElement.style.setProperty('--board-dark-square', customDarkSquareInput.value)
+    } else if (theme !== 'classic') {
       boardElement.classList.add(`theme-${theme}`)
     }
+  }
+
+  function applyCustomCss (css) {
+    // Basic sanitization: prevent breaking out of style tag
+    if (css.includes('</style>')) {
+      showToast('Invalid CSS: Contains closing tag', 'error')
+      return
+    }
+
+    let style = document.getElementById('custom-user-css')
+    if (!style) {
+      style = document.createElement('style')
+      style.id = 'custom-user-css'
+      document.head.appendChild(style)
+    }
+    style.textContent = css
+    localStorage.setItem('custom-css', css)
+    showToast('Custom CSS applied', 'success')
   }
 
   function getUnicodePiece (color, type) {
