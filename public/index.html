@@ -398,9 +398,21 @@
             <div class="panel uci-options-panel">
                  <div class="panel-header">
                     <h2 class="panel-title">Engine Options</h2>
+                    <button id="reset-engine-btn" class="icon-btn" title="Reset Engine">↻</button>
                 </div>
-                <div class="panel-content" id="uci-options">
-                    <!-- UCI options will be generated here -->
+                <div class="panel-content">
+                    <div class="option-item">
+                        <label>Presets:</label>
+                        <select id="uci-preset-select">
+                            <option value="">-- Select --</option>
+                            <option value="blitz">Blitz</option>
+                            <option value="analysis">Analysis</option>
+                            <option value="stock">Defaults</option>
+                        </select>
+                    </div>
+                    <div id="uci-options">
+                        <!-- UCI options will be generated here -->
+                    </div>
                 </div>
             </div>
             <div class="panel search-stats-panel">
@@ -642,6 +654,7 @@
   <script src="js/GameManager.js"></script>
   <script src="js/AnalysisManager.js"></script>
   <script src="js/TrainingManager.js"></script>
+  <script src="js/UIOptionFactory.js"></script>
   <script src="js/UIManager.js"></script>
   <script src="js/MoveHandler.js"></script>
   <script src="js/LeaderboardManager.js"></script>

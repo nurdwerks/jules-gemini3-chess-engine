@@ -2,6 +2,8 @@
  * @jest-environment jsdom
  */
 
+/* global GraphManager, SoundManager */
+
 const fs = require('fs')
 const path = require('path')
 
