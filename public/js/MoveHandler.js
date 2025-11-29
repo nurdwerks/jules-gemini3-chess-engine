@@ -57,7 +57,7 @@ window.MoveHandler = class MoveHandler {
     }
 
     if (move) {
-      this.attemptMove(move)
+      return this.attemptMove(move)
     }
   }
 
