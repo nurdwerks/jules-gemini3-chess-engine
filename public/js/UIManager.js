@@ -1,5 +1,5 @@
 /* eslint-env browser */
-/* global BoardInfoRenderer */
+/* global BoardInfoRenderer, UIOptionFactory */
 
 window.UIManager = class UIManager {
   constructor (callbacks) {
@@ -48,6 +48,7 @@ window.UIManager = class UIManager {
       status: document.getElementById('status'),
       engineOutput: document.getElementById('engine-output'),
       uciOptions: document.getElementById('uci-options'),
+      uciPresetSelect: document.getElementById('uci-preset-select'),
       moveHistory: document.getElementById('move-history'),
       pvLines: document.getElementById('pv-lines'),
       systemLog: document.getElementById('system-log'),
@@ -105,6 +106,7 @@ window.UIManager = class UIManager {
       if (el) el.addEventListener('click', callback)
     }
 
+    bindClick('reset-engine-btn', () => this.callbacks.onResetEngine())
     bindClick('new-game-btn', () => this.callbacks.onNewGame())
     bindClick('new-960-btn', () => this.callbacks.onNew960())
     bindClick('flip-board-btn', () => this.callbacks.onFlipBoard())
@@ -198,6 +200,7 @@ window.UIManager = class UIManager {
     bindChange('show-threats', (e) => this.callbacks.onShowThreatsChange(e.target.checked))
     bindChange('analysis-mode', (e) => this.callbacks.onAnalysisModeChange(e.target.checked))
     bindChange('game-mode', (e) => this.callbacks.onGameModeChange(e.target.value))
+    bindChange('uci-preset-select', (e) => this._applyPreset(e.target.value))
 
     // Theme & Styling
     bindChange('ui-theme', (e) => this._setUITheme(e.target.value))
@@ -414,7 +417,7 @@ window.UIManager = class UIManager {
   }
 
   createOptionUI (name, type, defaultValue, min, max, vars, onSendOption) {
-    const groupName = this.OPTION_GROUPS[name] || 'Other'
+    const groupName = this.OPTION_GROUPS[name] || this._inferGroup(name)
     let group = this.elements.uciOptions.querySelector(`.option-group[data-group="${groupName}"]`)
     if (!group) {
       group = document.createElement('fieldset')
@@ -436,70 +439,19 @@ window.UIManager = class UIManager {
     container.appendChild(label)
 
     let input = null
-    const creators = {
-      spin: () => this._createSpinInput(min, max, defaultValue, onSendOption, name),
-      check: () => this._createCheckInput(defaultValue, onSendOption, name),
-      string: () => this._createStringInput(defaultValue, onSendOption, name),
-      button: () => this._createButtonInput(onSendOption, name),
-      combo: () => this._createComboInput(vars, defaultValue, onSendOption, name)
-    }
+    const factory = UIOptionFactory
+    const showToast = (m, t) => this.showToast(m, t)
 
-    if (creators[type]) {
-      input = creators[type]()
-    }
+    if (type === 'spin') input = factory.createSpinInput(min, max, defaultValue, onSendOption, name)
+    else if (type === 'check') input = factory.createCheckInput(defaultValue, onSendOption, name)
+    else if (type === 'string') input = factory.createStringInput(defaultValue, onSendOption, name, showToast)
+    else if (type === 'button') input = factory.createButtonInput(onSendOption, name)
+    else if (type === 'combo') input = factory.createComboInput(vars, defaultValue, onSendOption, name)
 
     if (input) {
       container.appendChild(input)
       group.appendChild(container)
     }
-  }
-
-  _createSpinInput (min, max, defaultValue, onSendOption, name) {
-    const input = document.createElement('input')
-    input.type = 'number'
-    if (min) input.min = min
-    if (max) input.max = max
-    if (defaultValue) input.value = defaultValue
-    input.addEventListener('change', () => onSendOption(name, input.value))
-    return input
-  }
-
-  _createCheckInput (defaultValue, onSendOption, name) {
-    const input = document.createElement('input')
-    input.type = 'checkbox'
-    if (defaultValue === 'true') input.checked = true
-    input.addEventListener('change', () => onSendOption(name, input.checked))
-    return input
-  }
-
-  _createStringInput (defaultValue, onSendOption, name) {
-    const input = document.createElement('input')
-    input.type = 'text'
-    if (defaultValue) input.value = defaultValue
-    input.addEventListener('change', () => onSendOption(name, input.value))
-    return input
-  }
-
-  _createButtonInput (onSendOption, name) {
-    const input = document.createElement('button')
-    input.textContent = 'Trigger'
-    input.addEventListener('click', () => onSendOption(name))
-    return input
-  }
-
-  _createComboInput (vars, defaultValue, onSendOption, name) {
-    const input = document.createElement('select')
-    if (vars) {
-      vars.forEach(v => {
-        const opt = document.createElement('option')
-        opt.value = v
-        opt.textContent = v
-        if (v === defaultValue) opt.selected = true
-        input.appendChild(opt)
-      })
-    }
-    input.addEventListener('change', () => onSendOption(name, input.value))
-    return input
   }
 
   renderAnalysisRow (task, result) {
@@ -536,7 +488,64 @@ window.UIManager = class UIManager {
     if (this.elements.analysisProgressFill) this.elements.analysisProgressFill.style.width = `${pct}%`
   }
 
+  _inferGroup (name) {
+    if (['Pawn', 'Knight', 'Bishop', 'Rook', 'Queen', 'King', 'Doubled', 'Isolated', 'Backward', 'Shield', 'Outpost', 'Mobility'].some(k => name.includes(k))) {
+      return 'Tuning'
+    }
+    return 'Other'
+  }
+
   updateCapturedPieces (game, startingFen, pieceSet, isFlipped) {
     this.boardInfoRenderer.updateCapturedPieces(game, startingFen, pieceSet, isFlipped)
+  }
+
+  setThinking (isThinking) {
+    const board = document.getElementById('chessboard')
+    const evalContainer = document.getElementById('eval-bar-container')
+    if (isThinking) {
+      if (board) board.classList.add('thinking-border')
+      if (evalContainer) evalContainer.classList.add('thinking')
+    } else {
+      if (board) board.classList.remove('thinking-border')
+      if (evalContainer) evalContainer.classList.remove('thinking')
+    }
+  }
+
+  _applyPreset (preset) {
+    const send = (n, v) => {
+      if (this.callbacks.onSendOption) this.callbacks.onSendOption(n, v)
+      // Update UI
+      const input = this.elements.uciOptions.querySelector(`[data-option-name="${n}"]`)
+      if (input) {
+        if (input.type === 'checkbox') input.checked = v
+        else input.value = v
+        // Trigger change event if needed? No, we are setting it programmatically.
+        // But for slider, we need to update the number input too.
+        if (input.type === 'range') {
+          const number = input.nextElementSibling
+          if (number && number.type === 'number') number.value = v
+        }
+      }
+    }
+
+    if (preset === 'blitz') {
+      send('Hash', 64)
+      send('Threads', 1)
+      send('MultiPV', 1)
+      send('Contempt', 0)
+      send('UCI_LimitStrength', false)
+    } else if (preset === 'analysis') {
+      send('Hash', 256)
+      send('Threads', 4)
+      send('MultiPV', 3)
+      send('Contempt', 0)
+      send('UCI_LimitStrength', false)
+    } else if (preset === 'stock') {
+      send('Hash', 16)
+      send('Threads', 1)
+      send('MultiPV', 1)
+      send('Contempt', 0)
+      send('UCI_LimitStrength', false)
+    }
   }
 }

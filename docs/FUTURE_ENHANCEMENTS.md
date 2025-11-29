@@ -7,162 +7,6 @@ This document outlines the detailed backlog of future enhancements for the Jules
 
 
 
-### Epic 73: Engine Configuration & Tuning
-**Size:** Medium (3 days)
-**Description:** Fine-tuning controls for the engine's behavior and performance.
-
-**User Stories:**
-
-102. **Engine "Thinking" State (S)**
-    *   *Description:* Add a visual indicator (spinner/bar) when the engine is searching.
-    *   *Implementation:* Toggle CSS class `thinking` on board border or show icon.
-    *   *Tasks:*
-        - [ ] UI indicator.
-        - [ ] Bind to `search start/stop`.
-    *   *Testing Plan:* Start search.
-    *   *Acceptance Criteria:*
-        - [ ] Indicator active.
-
-103. **Engine Elo Spinner (S)**
-    *   *Description:* A numeric input to fine-tune the `UCI_Elo` setting directly.
-    *   *Implementation:* UCI `setoption name UCI_Elo value X`.
-    *   *Tasks:*
-        - [ ] Number input.
-        - [ ] Debounce logic.
-    *   *Testing Plan:* Change Elo.
-    *   *Acceptance Criteria:*
-        - [ ] Engine plays weaker/stronger.
-
-104. **Contempt Factor Spinner (S)**
-    *   *Description:* Input to adjust the engine's contempt for draws.
-    *   *Implementation:* `setoption name Contempt`.
-    *   *Tasks:*
-        - [ ] Input UI.
-    *   *Testing Plan:* Verify option sent.
-    *   *Acceptance Criteria:*
-        - [ ] Value updates.
-
-105. **MultiPV Slider (S)**
-    *   *Description:* Slider to adjust the number of PV lines shown.
-    *   *Implementation:* `setoption name MultiPV`.
-    *   *Tasks:*
-        - [ ] Slider (1-10).
-    *   *Testing Plan:* Slide to 3.
-    *   *Acceptance Criteria:*
-        - [ ] 3 lines shown.
-
-106. **Hash Size Slider (S)**
-    *   *Description:* Slider to adjust the hash table size.
-    *   *Implementation:* `setoption name Hash`. Requires restart usually.
-    *   *Tasks:*
-        - [ ] Slider (MB).
-    *   *Testing Plan:* Change hash.
-    *   *Acceptance Criteria:*
-        - [ ] Engine acknowledges.
-
-107. **Syzygy Path Input (S)**
-    *   *Description:* Text field to set the path to Syzygy tablebases.
-    *   *Implementation:* `setoption name SyzygyPath`.
-    *   *Tasks:*
-        - [ ] Text Input.
-    *   *Testing Plan:* Set path.
-    *   *Acceptance Criteria:*
-        - [ ] Option sent.
-
-108. **Show DTZ/DTM (S)**
-    *   *Description:* Toggle to show Distance to Zero/Mate for endgame tablebases.
-    *   *Implementation:* `setoption name SyzygyProbeLimit`.
-    *   *Tasks:*
-        - [ ] Toggle.
-    *   *Testing Plan:* Endgame position.
-    *   *Acceptance Criteria:*
-        - [ ] DTZ shown.
-
-109. **Pondering Toggle (S)**
-    *   *Description:* UI checkbox to enable/disable the "Ponder" UCI option.
-    *   *Implementation:* `setoption name Ponder`.
-    *   *Tasks:*
-        - [ ] Checkbox.
-    *   *Testing Plan:* Enable.
-    *   *Acceptance Criteria:*
-        - [ ] Engine ponders during user time.
-
-110. **UCI Option Presets (S)**
-    *   *Description:* Ability to save and load configuration profiles.
-    *   *Implementation:* Save option map to LocalStorage.
-    *   *Tasks:*
-        - [ ] Preset dropdown (Blitz, Analysis).
-        - [ ] Save/Load logic.
-    *   *Testing Plan:* Switch presets.
-    *   *Acceptance Criteria:*
-        - [ ] All options update.
-
-111. **Reset Engine (S)**
-    *   *Description:* Button to completely restart the engine process.
-    *   *Implementation:* Send custom `restart` command to server or reload page.
-    *   *Tasks:*
-        - [ ] Button.
-    *   *Testing Plan:* Click reset.
-    *   *Acceptance Criteria:*
-        - [ ] Engine re-initializes.
-
-112. **Clear Hash Button (S)**
-    *   *Description:* Button to explicitly clear the transposition table.
-    *   *Implementation:* `setoption name Clear Hash`.
-    *   *Tasks:*
-        - [ ] Button.
-    *   *Testing Plan:* Click.
-    *   *Acceptance Criteria:*
-        - [ ] Hash cleared.
-
-113. **Live Tuning UI (S)**
-    *   *Description:* Sliders to adjust evaluation parameters in real-time.
-    *   *Implementation:* Expose weights via custom UCI options or side-channel.
-    *   *Tasks:*
-        - [ ] Dynamic slider generation from `Evaluation.js` params.
-    *   *Testing Plan:* Adjust Pawn value.
-    *   *Acceptance Criteria:*
-        - [ ] Eval changes immediately.
-
-114. **Local Engine Upload (S)**
-    *   *Description:* Allow user to upload a `.wasm` or `.js` engine file to run locally.
-    *   *Implementation:* Web Workers with user blob.
-    *   *Tasks:*
-        - [ ] File upload.
-        - [ ] Worker instantiation.
-    *   *Testing Plan:* Upload Stockfish.js.
-    *   *Acceptance Criteria:*
-        - [ ] External engine runs.
-
-115. **Book Upload (S)**
-    *   *Description:* Allow user to upload a `.bin` Polyglot book to use.
-    *   *Implementation:* Send file to server or read in browser (if client-side engine).
-    *   *Tasks:*
-        - [ ] Upload UI.
-    *   *Testing Plan:* Upload book.
-    *   *Acceptance Criteria:*
-        - [ ] Book moves played.
-
-116. **Network Upload (S)**
-    *   *Description:* Allow user to upload an `.nnue` file to use.
-    *   *Implementation:* `setoption name UCI_NNUE_File`.
-    *   *Tasks:*
-        - [ ] Upload UI.
-    *   *Testing Plan:* Upload net.
-    *   *Acceptance Criteria:*
-        - [ ] Net loaded.
-
-117. **Cloud Engine Support (S)**
-    *   *Description:* Connect to a remote UCI engine.
-    *   *Implementation:* WebSocket proxy to external server.
-    *   *Tasks:*
-        - [ ] Connection UI (IP/Port).
-    *   *Testing Plan:* Connect.
-    *   *Acceptance Criteria:*
-        - [ ] Remote analysis.
-
----
-
 ### Epic 74: Data Management (PGN/FEN)
 **Size:** Medium (3 days)
 **Description:** Import, export, and manage chess game data.
@@ -1022,3 +866,28 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Testing Plan:* End game.
     *   *Acceptance Criteria:*
         - [ ] Modal appears.
+
+### Epic 80: Advanced Engine Integrations
+**Size:** Medium (3 days)
+**Description:** Integration with external engines (local and cloud) for extended analysis capability.
+
+**User Stories:**
+
+1. **Local Engine Upload (S)**
+    *   *Description:* Allow user to upload a `.wasm` or `.js` engine file to run locally.
+    *   *Implementation:* Web Workers with user blob.
+    *   *Tasks:*
+        - [ ] File upload.
+        - [ ] Worker instantiation.
+    *   *Testing Plan:* Upload Stockfish.js.
+    *   *Acceptance Criteria:*
+        - [ ] External engine runs.
+
+2. **Cloud Engine Support (S)**
+    *   *Description:* Connect to a remote UCI engine.
+    *   *Implementation:* WebSocket proxy to external server.
+    *   *Tasks:*
+        - [ ] Connection UI (IP/Port).
+    *   *Testing Plan:* Connect.
+    *   *Acceptance Criteria:*
+        - [ ] Remote analysis.

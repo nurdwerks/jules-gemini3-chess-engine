@@ -8,37 +8,66 @@ const VoteRoom = require('./VoteRoom')
 const PORT = 3000
 const voteRoom = new VoteRoom()
 
-// HTTP Server to serve static files
-const server = http.createServer((req, res) => {
+const handleUpload = (req, res) => {
+  const filename = req.headers['x-filename']
+  if (!filename) {
+    res.writeHead(400)
+    res.end('Missing filename')
+    return
+  }
+
+  // Security: Validate Extension
+  const ext = path.extname(filename).toLowerCase()
+  if (ext !== '.bin' && ext !== '.nnue') {
+    res.writeHead(400)
+    res.end('Invalid file type. Only .bin and .nnue allowed.')
+    return
+  }
+
+  // Security: Validate Size
+  const contentLength = req.headers['content-length']
+  if (contentLength && parseInt(contentLength, 10) > 50 * 1024 * 1024) {
+    res.writeHead(413)
+    res.end('File too large (max 50MB)')
+    return
+  }
+
+  const safeName = path.basename(filename)
+  const targetDir = path.join(__dirname, '../uploads')
+  const targetPath = path.join(targetDir, safeName)
+
+  if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir)
+
+  const writeStream = fs.createWriteStream(targetPath)
+  req.pipe(writeStream)
+
+  writeStream.on('finish', () => {
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({ path: `uploads/${safeName}` }))
+  })
+
+  writeStream.on('error', (err) => {
+    res.writeHead(500)
+    res.end('Upload failed: ' + err.message)
+  })
+}
+
+const getContentType = (extname) => {
+  switch (extname) {
+    case '.js': return 'text/javascript; charset=utf-8'
+    case '.css': return 'text/css; charset=utf-8'
+    case '.json': return 'application/json; charset=utf-8'
+    case '.png': return 'image/png'
+    case '.jpg': return 'image/jpg'
+    case '.svg': return 'image/svg+xml'
+    default: return 'text/html; charset=utf-8'
+  }
+}
+
+const serveStatic = (req, res) => {
   const filePath = path.join(__dirname, '../public', req.url === '/' ? 'index.html' : req.url)
   const extname = path.extname(filePath)
-  let contentType = 'text/html'
-
-  switch (extname) {
-    case '.js':
-      contentType = 'text/javascript; charset=utf-8'
-      break
-    case '.css':
-      contentType = 'text/css; charset=utf-8'
-      break
-    case '.json':
-      contentType = 'application/json; charset=utf-8'
-      break
-    case '.png':
-      contentType = 'image/png'
-      break
-    case '.jpg':
-      contentType = 'image/jpg'
-      break
-    case '.svg':
-      contentType = 'image/svg+xml'
-      break
-  }
-
-  // Default HTML to utf-8
-  if (contentType === 'text/html') {
-    contentType = 'text/html; charset=utf-8'
-  }
+  const contentType = getContentType(extname)
 
   fs.readFile(filePath, (err, content) => {
     if (err) {
@@ -61,6 +90,15 @@ const server = http.createServer((req, res) => {
       res.end(content, 'utf-8')
     }
   })
+}
+
+// HTTP Server to serve static files
+const server = http.createServer((req, res) => {
+  if (req.method === 'POST' && req.url === '/upload') {
+    handleUpload(req, res)
+  } else {
+    serveStatic(req, res)
+  }
 })
 
 // WebSocket Server

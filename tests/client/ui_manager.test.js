@@ -3,6 +3,7 @@
  */
 
 /* eslint-env jest */
+/* global localStorage */
 
 describe('UIManager', () => {
   let uiManager
@@ -14,10 +15,12 @@ describe('UIManager', () => {
       constructor (elements) {
         this.elements = elements
       }
+
       updateCapturedPieces () {}
     }
 
     // Load UIManager
+    require('../../public/js/UIOptionFactory.js')
     require('../../public/js/UIManager.js')
   })
 
@@ -300,95 +303,94 @@ describe('UIManager', () => {
   })
 
   test('toggles Blindfold Mode', () => {
-      const checkbox = document.getElementById('blindfold-mode')
-      const board = document.getElementById('chessboard')
-      checkbox.checked = true
-      checkbox.dispatchEvent(new Event('change'))
-      expect(board.classList.contains('blindfold')).toBe(true)
+    const checkbox = document.getElementById('blindfold-mode')
+    const board = document.getElementById('chessboard')
+    checkbox.checked = true
+    checkbox.dispatchEvent(new Event('change'))
+    expect(board.classList.contains('blindfold')).toBe(true)
 
-      checkbox.checked = false
-      checkbox.dispatchEvent(new Event('change'))
-      expect(board.classList.contains('blindfold')).toBe(false)
+    checkbox.checked = false
+    checkbox.dispatchEvent(new Event('change'))
+    expect(board.classList.contains('blindfold')).toBe(false)
   })
 
   test('sets UI Theme', () => {
-      const select = document.getElementById('ui-theme')
-      select.value = 'light'
-      select.dispatchEvent(new Event('change'))
-      expect(document.body.classList.contains('light-mode')).toBe(true)
-      expect(localStorage.getItem('ui-theme')).toBe('light')
+    const select = document.getElementById('ui-theme')
+    select.value = 'light'
+    select.dispatchEvent(new Event('change'))
+    expect(document.body.classList.contains('light-mode')).toBe(true)
+    expect(localStorage.getItem('ui-theme')).toBe('light')
 
-      select.value = 'dark'
-      select.dispatchEvent(new Event('change'))
-      expect(document.body.classList.contains('light-mode')).toBe(false)
+    select.value = 'dark'
+    select.dispatchEvent(new Event('change'))
+    expect(document.body.classList.contains('light-mode')).toBe(false)
   })
 
   test('Board resizing', () => {
-      const input = document.getElementById('board-size')
-      input.value = 800
-      input.dispatchEvent(new Event('change'))
-      expect(document.getElementById('chessboard').style.getPropertyValue('--board-max-width')).toBe('800px')
+    const input = document.getElementById('board-size')
+    input.value = 800
+    input.dispatchEvent(new Event('change'))
+    expect(document.getElementById('chessboard').style.getPropertyValue('--board-max-width')).toBe('800px')
   })
 
   test('renderAnalysisRow renders row', () => {
-      const task = { moveIndex: 1, san: 'e4' }
-      const result = { best: 'e4', diff: 0, eval: '+0.50' }
-      uiManager.renderAnalysisRow(task, result)
+    const task = { moveIndex: 1, san: 'e4' }
+    const result = { best: 'e4', diff: 0, eval: '+0.50' }
+    uiManager.renderAnalysisRow(task, result)
 
-      const rows = document.querySelectorAll('#analysis-table tr')
-      expect(rows.length).toBe(1)
-      expect(rows[0].textContent).toContain('e4')
-      expect(rows[0].textContent).toContain('+0.50')
+    const rows = document.querySelectorAll('#analysis-table tr')
+    expect(rows.length).toBe(1)
+    expect(rows[0].textContent).toContain('e4')
+    expect(rows[0].textContent).toContain('+0.50')
   })
 
   test('renderAnalysisRow handles blunders', () => {
-      // Clear previous
-      document.querySelector('#analysis-table tbody').innerHTML = ''
+    // Clear previous
+    document.querySelector('#analysis-table tbody').innerHTML = ''
 
-      const task = { moveIndex: 2, san: 'h5' }
-      const result = { best: 'd4', diff: 400, eval: '-4.00' } // Blunder
-      uiManager.renderAnalysisRow(task, result)
+    const task = { moveIndex: 2, san: 'h5' }
+    const result = { best: 'd4', diff: 400, eval: '-4.00' } // Blunder
+    uiManager.renderAnalysisRow(task, result)
 
-      const rows = document.querySelectorAll('#analysis-table tr')
-      expect(rows.length).toBe(1)
-      const lastRow = rows[0]
-      expect(lastRow.innerHTML).toContain('color: #F2495C') // Red for blunder
-      expect(lastRow.innerHTML).toContain('??')
+    const rows = document.querySelectorAll('#analysis-table tr')
+    expect(rows.length).toBe(1)
+    const lastRow = rows[0]
+    expect(lastRow.innerHTML).toContain('color: #F2495C') // Red for blunder
+    expect(lastRow.innerHTML).toContain('??')
   })
 
   test('updateAnalysisProgress', () => {
-      uiManager.updateAnalysisProgress(5, 10)
-      const bar = document.getElementById('analysis-progress-fill')
-      expect(bar.style.width).toBe('50%')
+    uiManager.updateAnalysisProgress(5, 10)
+    const bar = document.getElementById('analysis-progress-fill')
+    expect(bar.style.width).toBe('50%')
   })
 
   test('showPromotionModal resolves with piece type', async () => {
-      const promise = uiManager.showPromotionModal('w', 'cburnett')
+    const promise = uiManager.showPromotionModal('w', 'cburnett')
 
-      expect(document.getElementById('promotion-modal').classList.contains('active')).toBe(true)
+    expect(document.getElementById('promotion-modal').classList.contains('active')).toBe(true)
 
-      const q = document.querySelector('.promo-piece[data-piece="q"]')
-      // The event listener is attached to the CLONED node in showPromotionModal.
-      // We need to find the new node.
-      // showPromotionModal implementation:
-      // const newEl = p.cloneNode(true)
-      // p.parentNode.replaceChild(newEl, p)
+    // The event listener is attached to the CLONED node in showPromotionModal.
+    // We need to find the new node.
+    // showPromotionModal implementation:
+    // const newEl = p.cloneNode(true)
+    // p.parentNode.replaceChild(newEl, p)
 
-      // So querying again should get the new element
-      const newQ = document.querySelector('.promo-piece[data-piece="q"]')
-      newQ.click()
+    // So querying again should get the new element
+    const newQ = document.querySelector('.promo-piece[data-piece="q"]')
+    newQ.click()
 
-      const result = await promise
-      expect(result).toBe('q')
-      expect(document.getElementById('promotion-modal').classList.contains('active')).toBe(false)
+    const result = await promise
+    expect(result).toBe('q')
+    expect(document.getElementById('promotion-modal').classList.contains('active')).toBe(false)
   })
 
   test('showPromotionModal rejects on cancel', async () => {
-      const promise = uiManager.showPromotionModal('w', 'cburnett')
+    const promise = uiManager.showPromotionModal('w', 'cburnett')
 
-      const modal = document.getElementById('promotion-modal')
-      modal.click()
+    const modal = document.getElementById('promotion-modal')
+    modal.click()
 
-      await expect(promise).rejects.toThrow('Cancelled')
+    await expect(promise).rejects.toThrow('Cancelled')
   })
 })

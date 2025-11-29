@@ -2,3 +2,4 @@ node_modules/
 tuned_evaluation_params.json
 *.log
 coverage/
+uploads/

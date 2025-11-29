@@ -144,8 +144,8 @@ describe('MoveHandler', () => {
   })
 
   test('handles memory training click', () => {
-      trainingManager.isMemoryTraining = true
-      moveHandler.handleSquareClick(6, 4)
-      expect(trainingManager.handleMemoryClick).toHaveBeenCalled()
+    trainingManager.isMemoryTraining = true
+    moveHandler.handleSquareClick(6, 4)
+    expect(trainingManager.handleMemoryClick).toHaveBeenCalled()
   })
 })

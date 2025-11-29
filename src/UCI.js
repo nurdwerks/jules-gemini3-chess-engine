@@ -5,6 +5,7 @@ const Search = require('./Search')
 const Bench = require('./Bench')
 const Evaluation = require('./Evaluation')
 const Polyglot = require('./Polyglot')
+const Syzygy = require('./Syzygy')
 const { TranspositionTable } = require('./TranspositionTable')
 const { Worker } = require('worker_threads')
 
@@ -28,7 +29,9 @@ class UCI {
       UseCaptureHistory: true,
       UCI_UseNNUE: !((process.env.TEST_MODE === 'true' || process.env.NODE_ENV === 'test')),
       UCI_NNUE_File: 'https://tests.stockfishchess.org/api/nn/nn-46832cfbead3.nnue',
-      BookFile: 'polyglot/gm2001.bin'
+      BookFile: 'polyglot/gm2001.bin',
+      SyzygyPath: '<empty>',
+      SyzygyProbeLimit: 6
     }
 
     this.tt = new TranspositionTable(this.options.Hash)
@@ -42,6 +45,7 @@ class UCI {
 
     this.book = new Polyglot()
     this.book.loadBook(this.options.BookFile)
+    this.syzygy = new Syzygy()
     this.workers = []
     this.startWorkers()
   }
@@ -127,6 +131,16 @@ class UCI {
     this.output(`option name UCI_UseNNUE type check default ${this.options.UCI_UseNNUE}`)
     this.output(`option name UCI_NNUE_File type string default ${this.options.UCI_NNUE_File}`)
     this.output(`option name BookFile type string default ${this.options.BookFile}`)
+    this.output(`option name SyzygyPath type string default ${this.options.SyzygyPath}`)
+    this.output(`option name SyzygyProbeLimit type spin default ${this.options.SyzygyProbeLimit} min 0 max 7`)
+
+    const params = Evaluation.getParams()
+    for (const [key, value] of Object.entries(params)) {
+      if (typeof value === 'number') {
+        this.output(`option name ${key} type spin default ${value} min -2000 max 2000`)
+      }
+    }
+
     this.output('uciok')
   }
 
@@ -324,24 +338,30 @@ class UCI {
 
     if (Object.prototype.hasOwnProperty.call(this.options, name)) {
       this.options[name] = value
-      if (name === 'Hash' && this.options.Threads === 1) {
-        this.tt.resize(value)
-        this.output(`info string Hash resized to ${value} MB`)
-      } else if (name === 'Threads') {
-        this.stopWorkers()
-        this.startWorkers()
-      } else if (name === 'UCI_UseNNUE' || name === 'UCI_NNUE_File') {
-        if (this.options.UCI_UseNNUE) {
-          this.nnue.loadNetwork(this.options.UCI_NNUE_File).catch(err => {
-            this.output(`info string Failed to load NNUE: ${err.message}`)
-            this.options.UCI_UseNNUE = false
-          })
-        }
-      } else if (name === 'BookFile') {
-        this.book.loadBook(value)
-      }
+      this._handleSpecialOption(name, value)
     } else {
       Evaluation.updateParam(name, value)
+    }
+  }
+
+  _handleSpecialOption (name, value) {
+    if (name === 'Hash' && this.options.Threads === 1) {
+      this.tt.resize(value)
+      this.output(`info string Hash resized to ${value} MB`)
+    } else if (name === 'Threads') {
+      this.stopWorkers()
+      this.startWorkers()
+    } else if (name === 'UCI_UseNNUE' || name === 'UCI_NNUE_File') {
+      if (this.options.UCI_UseNNUE) {
+        this.nnue.loadNetwork(this.options.UCI_NNUE_File).catch(err => {
+          this.output(`info string Failed to load NNUE: ${err.message}`)
+          this.options.UCI_UseNNUE = false
+        })
+      }
+    } else if (name === 'BookFile') {
+      this.book.loadBook(value)
+    } else if (name === 'SyzygyPath') {
+      this.syzygy.path = value
     }
   }
 }

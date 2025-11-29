@@ -132,27 +132,27 @@ describe('BoardRenderer', () => {
   })
 
   test('adds coordinates', () => {
-     const renderer = new BoardRenderer(boardElement, game, callbacks)
-     renderer.showCoords = true
-     renderer.render({ board: game.board(), chess: game, legalMoves: [] })
+    const renderer = new BoardRenderer(boardElement, game, callbacks)
+    renderer.showCoords = true
+    renderer.render({ board: game.board(), chess: game, legalMoves: [] })
 
-     // Rank 8 on a8 (row 0, col 0)
-     const a8 = boardElement.querySelector('.square[data-alg="a8"]')
-     expect(a8.querySelector('.rank')).not.toBeNull()
+    // Rank 8 on a8 (row 0, col 0)
+    const a8 = boardElement.querySelector('.square[data-alg="a8"]')
+    expect(a8.querySelector('.rank')).not.toBeNull()
 
-     // File h on h1 (row 7, col 7)
-     const h1 = boardElement.querySelector('.square[data-alg="h1"]')
-     expect(h1.querySelector('.file')).not.toBeNull()
+    // File h on h1 (row 7, col 7)
+    const h1 = boardElement.querySelector('.square[data-alg="h1"]')
+    expect(h1.querySelector('.file')).not.toBeNull()
   })
 
   test('highlights last move', () => {
     const renderer = new BoardRenderer(boardElement, game, callbacks)
     game.move('e4')
     const state = {
-       board: game.board(),
-       chess: game,
-       legalMoves: [],
-       currentViewIndex: -1
+      board: game.board(),
+      chess: game,
+      legalMoves: [],
+      currentViewIndex: -1
     }
     renderer.render(state)
 
