@@ -16,21 +16,21 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* Visualize the engine's current best move and PV on the board using arrows.
     *   *Implementation:* SVG overlay on top of board. Draw arrow from `from` to `to`.
     *   *Tasks:*
-        - [ ] SVG container.
-        - [ ] Arrow drawing function (math for coords).
-        - [ ] Parse `bestmove`.
+        - [x] SVG container.
+        - [x] Arrow drawing function (math for coords).
+        - [x] Parse `bestmove`.
     *   *Testing Plan:* Enable analysis.
     *   *Acceptance Criteria:*
-        - [ ] Arrow points correctly.
+        - [x] Arrow points correctly.
 
 64. **Best Move Arrow (S)**
     *   *Description:* Display a distinct arrow color for the engine's "best move" vs. "ponder move".
     *   *Implementation:* CSS classes `.arrow-best` (Blue), `.arrow-ponder` (Green).
     *   *Tasks:*
-        - [ ] Style definitions.
+        - [x] Style definitions.
     *   *Testing Plan:* Visual check.
     *   *Acceptance Criteria:*
-        - [ ] Distinct colors used.
+        - [x] Distinct colors used.
 
 65. **Threat Arrow (S)**
     *   *Description:* A specific arrow color/style to show the opponent's immediate threat.
@@ -45,47 +45,47 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* Option to draw an arrow for the last move instead of just highlighting squares.
     *   *Implementation:* Draw yellow arrow for `lastMove`.
     *   *Tasks:*
-        - [ ] Integration with arrow layer.
+        - [x] Integration with arrow layer.
     *   *Testing Plan:* Make move.
     *   *Acceptance Criteria:*
-        - [ ] Arrow appears.
+        - [x] Arrow appears.
 
 67. **Right-Click to Draw Arrows (S)**
     *   *Description:* Allow the user to draw custom analysis arrows on the board.
     *   *Implementation:* Mouse events on board. Right-down (start), Right-up (end). Store user arrows.
     *   *Tasks:*
-        - [ ] Event handling.
-        - [ ] Arrow storage/rendering.
+        - [x] Event handling.
+        - [x] Arrow storage/rendering.
     *   *Testing Plan:* Draw multiple arrows.
     *   *Acceptance Criteria:*
-        - [ ] Arrows persist until cleared or clicked.
+        - [x] Arrows persist until cleared or clicked.
 
 68. **Right-Click to Highlight Squares (S)**
     *   *Description:* Allow the user to highlight specific squares for analysis.
     *   *Implementation:* Right-click square -> toggle highlight class (Red/Green/Blue/Yellow cycle).
     *   *Tasks:*
-        - [ ] Cycle logic.
+        - [x] Cycle logic.
     *   *Testing Plan:* Right click squares.
     *   *Acceptance Criteria:*
-        - [ ] Highlights appear.
+        - [x] Highlights appear.
 
 69. **Clear Analysis (S)**
     *   *Description:* Button to clear all user-drawn arrows and highlights.
     *   *Implementation:* Clear local state arrays. Re-render.
     *   *Tasks:*
-        - [ ] "Clear" button (or click off board).
+        - [x] "Clear" button (or click off board).
     *   *Testing Plan:* Draw then clear.
     *   *Acceptance Criteria:*
-        - [ ] Board clean.
+        - [x] Board clean.
 
 70. **Hover Square Highlight (S)**
     *   *Description:* Highlight the square under the mouse cursor.
     *   *Implementation:* CSS `:hover` on square elements (if div based) or JS mouseover.
     *   *Tasks:*
-        - [ ] CSS rule.
+        - [x] CSS rule.
     *   *Testing Plan:* Move mouse.
     *   *Acceptance Criteria:*
-        - [ ] Subtle highlight follows cursor.
+        - [x] Subtle highlight follows cursor.
 
 71. **Drag and Drop Ghost (S)**
     *   *Description:* Show a semi-transparent ghost of the piece being dragged.
@@ -100,28 +100,28 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* Improve the visual hints (dots/circles) for legal moves.
     *   *Implementation:* Small circular `div` centered on target squares.
     *   *Tasks:*
-        - [ ] SVG dot overlay.
+        - [x] SVG dot overlay.
     *   *Testing Plan:* Select Knight.
     *   *Acceptance Criteria:*
-        - [ ] Valid moves clearly marked.
+        - [x] Valid moves clearly marked.
 
 73. **Last Move Highlight (S)**
     *   *Description:* Visually emphasize the `from` and `to` squares of the last played move.
     *   *Implementation:* Add `.highlight-last` class to squares.
     *   *Tasks:*
-        - [ ] CSS background color (yellowish).
+        - [x] CSS background color (yellowish).
     *   *Testing Plan:* Move piece.
     *   *Acceptance Criteria:*
-        - [ ] Source and Dest highlighted.
+        - [x] Source and Dest highlighted.
 
 74. **Check Highlight (S)**
     *   *Description:* Red radial gradient on the square of the king when in check.
     *   *Implementation:* Check detection -> find King -> apply `.check-highlight`.
     *   *Tasks:*
-        - [ ] CSS radial gradient.
+        - [x] CSS radial gradient.
     *   *Testing Plan:* Put king in check.
     *   *Acceptance Criteria:*
-        - [ ] King glows red.
+        - [x] King glows red.
 
 75. **Threat Indicator (S)**
     *   *Description:* Optional toggle to highlight pieces that are currently under attack.

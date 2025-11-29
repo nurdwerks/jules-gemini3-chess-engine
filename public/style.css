@@ -1019,3 +1019,71 @@ body.light-mode {
     height: 100%;
 }
 .premove-highlight { background-color: rgba(255, 0, 0, 0.5) !important; }
+
+.board-wrapper {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+}
+
+#arrow-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 20;
+}
+
+/* Arrow Styles */
+.arrow {
+    stroke-width: 12; /* Will be scaled */
+    stroke-linecap: round;
+    opacity: 0.7;
+}
+
+.arrow-head {
+    fill-opacity: 0.7;
+}
+
+.arrow-best {
+    stroke: var(--grafana-accent-blue);
+    fill: var(--grafana-accent-blue);
+}
+
+.arrow-ponder {
+    stroke: var(--grafana-accent-green);
+    fill: var(--grafana-accent-green);
+}
+
+.arrow-threat {
+    stroke: #F2495C;
+    fill: #F2495C;
+}
+
+.arrow-last {
+    stroke: #EAB839; /* Grafana Orange/Yellow */
+    fill: #EAB839;
+}
+
+.arrow-user {
+    stroke: #EAB839; /* Default user arrow color */
+    fill: #EAB839;
+}
+
+/* User Highlights */
+.highlight-red { background-color: rgba(242, 73, 92, 0.5) !important; }
+.highlight-green { background-color: rgba(154, 196, 42, 0.5) !important; }
+.highlight-blue { background-color: rgba(51, 181, 229, 0.5) !important; }
+.highlight-yellow { background-color: rgba(234, 184, 57, 0.5) !important; }
+
+/* Check Highlight */
+.check-highlight {
+    background-image: radial-gradient(circle, rgba(242, 73, 92, 0.8) 0%, transparent 70%);
+}
+
+/* Hover Highlight */
+.square:hover {
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.5);
+}
