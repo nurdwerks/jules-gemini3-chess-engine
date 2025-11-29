@@ -1193,3 +1193,53 @@ The following Epics were part of the initial development phase and are either co
     *   *Testing Plan:* Trigger error, check panel.
     *   *Acceptance Criteria:*
         - [x] Errors are logged visibly.
+
+### Epic 67: Game Modes & Variations
+**Size:** Large (1-2 weeks)
+**Description:** Implement new ways to play chess, including variants and multiplayer setups.
+**User Stories:**
+1.  **PvP Mode (S)**
+    *   *Description:* A "Two Player" mode that disables the engine and allows two humans to play on the same screen.
+    *   *Acceptance Criteria:*
+        *   [x] Engine does not reply.
+        *   [x] Game Mode selector added.
+2.  **Engine Self-Play Button (S)**
+    *   *Description:* A button to make the engine play against itself from the current position.
+    *   *Acceptance Criteria:*
+        *   [x] Plays until mate/draw.
+3.  **Engine Duel: UI (S)**
+    *   *Description:* UI to configure and run a match between two different engine settings.
+    *   *Acceptance Criteria:*
+        *   [x] Settings readable.
+4.  **Engine Duel: Logic (S)**
+    *   *Description:* Logic to arbitrate a match between two engine configs.
+    *   *Acceptance Criteria:*
+        *   [x] Result tracked correctly.
+5.  **Blindfold Mode (S)**
+    *   *Description:* Add an option to hide pieces on the board for visualization training.
+    *   *Acceptance Criteria:*
+        *   [x] Pieces invisible, interaction remains.
+6.  **Chess960 Generator: Logic (S)**
+    *   *Description:* Algorithm to generate a random Fischer Random (Chess960) starting position.
+    *   *Acceptance Criteria:*
+        *   [x] Valid 960 positions generated.
+7.  **Chess960 Generator: UI (S)**
+    *   *Description:* Button to trigger 960 generation.
+    *   *Acceptance Criteria:*
+        *   [x] Board updates to 960 position.
+8.  **Handicap Mode (S)**
+    *   *Description:* Allow starting the game with material odds (e.g., Knight odds).
+    *   *Acceptance Criteria:*
+        *   [x] Game starts with correct material imbalance.
+9.  **Armageddon Mode (S)**
+    *   *Description:* Preset time controls for Armageddon (White has more time but must win).
+    *   *Acceptance Criteria:*
+        *   [x] Correct time and win conditions.
+10. **Guess the Move: Logic (S)**
+    *   *Description:* Logic to compare user move against a loaded PGN game.
+    *   *Acceptance Criteria:*
+        *   [x] Correct/Incorrect feedback.
+11. **Guess the Move: UI (S)**
+    *   *Description:* UI for "Guess the Move" mode.
+    *   *Acceptance Criteria:*
+        *   [x] User can play through game.

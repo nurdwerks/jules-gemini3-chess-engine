@@ -47,12 +47,27 @@
                         <button id="new-960-btn">New Chess960</button>
                         <button id="flip-board-btn">Flip Board</button>
                         <button id="self-play-btn">Self Play</button>
+                        <button id="engine-duel-btn">Engine Duel</button>
+                        <button id="armageddon-btn">Armageddon</button>
                      </div>
                      <div class="option-item mt-10">
                         <label for="game-mode">Game Mode:</label>
                         <select id="game-mode">
                             <option value="pve">Player vs Engine</option>
                             <option value="pvp">Player vs Player</option>
+                            <option value="guess">Guess the Move</option>
+                        </select>
+                     </div>
+                     <div class="option-item">
+                        <label for="handicap-select">Handicap:</label>
+                        <select id="handicap-select">
+                            <option value="none">None</option>
+                            <option value="knight-b1">Knight Odds (b1)</option>
+                            <option value="knight-g1">Knight Odds (g1)</option>
+                            <option value="rook-a1">Rook Odds (a1)</option>
+                            <option value="rook-h1">Rook Odds (h1)</option>
+                            <option value="queen">Queen Odds</option>
+                            <option value="pawn-f2">Pawn Odds (f2)</option>
                         </select>
                      </div>
                      <div class="option-item">
@@ -72,6 +87,7 @@
                     </div>
                     <div class="button-group mt-10">
                         <button id="copy-fen-btn">Copy FEN</button>
+                        <button id="import-pgn-btn">Import PGN</button>
                         <button id="export-pgn-btn">Export PGN</button>
                     </div>
                 </div>
@@ -234,6 +250,63 @@
            </div>
         </div>
     </main>
+  </div>
+  <div id="pgn-import-modal" class="modal-overlay">
+      <div class="modal">
+          <div class="modal-header">
+              <h3 class="modal-title">Import PGN</h3>
+              <button class="modal-close-btn" id="close-pgn-modal">&times;</button>
+          </div>
+          <div class="modal-content">
+              <textarea id="pgn-input-area" rows="10" style="width: 100%; background: var(--grafana-input-bg); color: var(--grafana-text-primary); border: 1px solid var(--grafana-border); border-radius: 4px; padding: 10px;" placeholder="Paste PGN here..."></textarea>
+          </div>
+          <div class="modal-footer">
+              <button id="load-pgn-confirm-btn">Load PGN</button>
+          </div>
+      </div>
+  </div>
+  <div id="duel-setup-modal" class="modal-overlay">
+      <div class="modal">
+          <div class="modal-header">
+              <h3 class="modal-title">Engine Duel Setup</h3>
+              <button class="modal-close-btn" id="close-duel-modal">&times;</button>
+          </div>
+          <div class="modal-content">
+              <div class="engine-config-section">
+                  <h4 class="engine-config-title">Engine A (White)</h4>
+                  <div class="option-item">
+                      <label for="engine-a-name">Name:</label>
+                      <input type="text" id="engine-a-name" value="Engine A">
+                  </div>
+                  <div class="option-item">
+                      <label for="engine-a-elo">UCI_Elo (Rating):</label>
+                      <input type="number" id="engine-a-elo" value="1500" min="100" max="4000">
+                  </div>
+                  <div class="option-item">
+                    <label for="engine-a-limit">Limit Strength:</label>
+                    <input type="checkbox" id="engine-a-limit" checked>
+                </div>
+              </div>
+              <div class="engine-config-section">
+                  <h4 class="engine-config-title">Engine B (Black)</h4>
+                  <div class="option-item">
+                      <label for="engine-b-name">Name:</label>
+                      <input type="text" id="engine-b-name" value="Engine B">
+                  </div>
+                  <div class="option-item">
+                      <label for="engine-b-elo">UCI_Elo (Rating):</label>
+                      <input type="number" id="engine-b-elo" value="2000" min="100" max="4000">
+                  </div>
+                  <div class="option-item">
+                    <label for="engine-b-limit">Limit Strength:</label>
+                    <input type="checkbox" id="engine-b-limit" checked>
+                </div>
+              </div>
+          </div>
+          <div class="modal-footer">
+              <button id="start-duel-btn">Start Duel</button>
+          </div>
+      </div>
   </div>
   <script src="libs/chess.js"></script>
   <script src="client.js"></script>

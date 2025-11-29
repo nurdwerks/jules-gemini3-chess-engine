@@ -24,7 +24,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const fenInput = document.getElementById('fen-input')
   const loadFenBtn = document.getElementById('load-fen-btn')
   const copyFenBtn = document.getElementById('copy-fen-btn')
+  const importPgnBtn = document.getElementById('import-pgn-btn')
   const exportPgnBtn = document.getElementById('export-pgn-btn')
+
+  const pgnImportModal = document.getElementById('pgn-import-modal')
+  const closePgnModalBtn = document.getElementById('close-pgn-modal')
+  const pgnInputArea = document.getElementById('pgn-input-area')
+  const loadPgnConfirmBtn = document.getElementById('load-pgn-confirm-btn')
+
   const toastContainer = document.getElementById('toast-container')
 
   const boardThemeSelect = document.getElementById('board-theme')
@@ -55,6 +62,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const soundEnabledCheckbox = document.getElementById('sound-enabled')
   const evalBarFill = document.getElementById('eval-bar-fill')
 
+  const engineDuelBtn = document.getElementById('engine-duel-btn')
+  const duelSetupModal = document.getElementById('duel-setup-modal')
+  const closeDuelModalBtn = document.getElementById('close-duel-modal')
+  const startDuelBtn = document.getElementById('start-duel-btn')
+
+  const engineANameInput = document.getElementById('engine-a-name')
+  const engineAEloInput = document.getElementById('engine-a-elo')
+  const engineALimitCheckbox = document.getElementById('engine-a-limit')
+  const engineBNameInput = document.getElementById('engine-b-name')
+  const engineBEloInput = document.getElementById('engine-b-elo')
+  const engineBLimitCheckbox = document.getElementById('engine-b-limit')
+
+  const handicapSelect = document.getElementById('handicap-select')
+  const armageddonBtn = document.getElementById('armageddon-btn')
+
   // Initialize chess.js
   const game = new Chess()
 
@@ -73,6 +95,16 @@ document.addEventListener('DOMContentLoaded', () => {
     BookFile: 'Search',
     UCI_UseNNUE: 'Evaluation',
     UCI_NNUE_File: 'Evaluation'
+  }
+
+  const HANDICAP_FENS = {
+    none: 'startpos',
+    'knight-b1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R1BQKBNR w KQkq - 0 1',
+    'knight-g1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKB1R w KQkq - 0 1',
+    'rook-a1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/1NBQKBNR w Kkq - 0 1',
+    'rook-h1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBN1 w Qkq - 0 1',
+    queen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNB1KBNR w KQkq - 0 1',
+    'pawn-f2': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPP1PP/RNBQKBNR w KQkq - 0 1'
   }
 
   const OPTION_TOOLTIPS = {
@@ -162,6 +194,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let startingFen = 'startpos' // Track the initial position
   let gameMode = 'pve' // 'pve' or 'pvp'
   let isSelfPlay = false
+  let isDuelActive = false
+  let isArmageddon = false
+  let engineAConfig = { name: 'Engine A', elo: 1500, limitStrength: true }
+  let engineBConfig = { name: 'Engine B', elo: 2000, limitStrength: true }
+  let guessModeData = { moves: [], index: 0, active: false }
   let isAnalysisMode = false
   let ignoreNextBestMove = false
   let isAnalyzing = false
@@ -222,9 +259,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const move = parts[1]
     if (move && move !== '(none)') {
       await performMove(move)
-      if (isSelfPlay && !game.game_over()) {
+      if ((isSelfPlay || isDuelActive) && !game.game_over()) {
         setTimeout(() => {
-          if (isSelfPlay) sendPositionAndGo()
+          if (isSelfPlay || isDuelActive) {
+            if (isDuelActive) {
+              const nextTurn = game.turn()
+              const config = nextTurn === 'w' ? engineAConfig : engineBConfig
+              applyEngineConfig(config)
+            }
+            sendPositionAndGo()
+          }
         }, 500) // Small delay for visual pacing
       }
     }
@@ -523,7 +567,73 @@ document.addEventListener('DOMContentLoaded', () => {
     logToOutput(`> ${command}`)
   }
 
-  function startNewGame () {
+  if (engineDuelBtn) {
+    engineDuelBtn.addEventListener('click', () => {
+      duelSetupModal.classList.add('active')
+    })
+  }
+
+  if (closeDuelModalBtn) {
+    closeDuelModalBtn.addEventListener('click', () => {
+      duelSetupModal.classList.remove('active')
+    })
+  }
+
+  // Close modal when clicking outside
+  if (duelSetupModal) {
+    duelSetupModal.addEventListener('click', (e) => {
+      if (e.target === duelSetupModal) {
+        duelSetupModal.classList.remove('active')
+      }
+    })
+  }
+
+  if (startDuelBtn) {
+    startDuelBtn.addEventListener('click', () => {
+      engineAConfig = {
+        name: engineANameInput.value,
+        elo: parseInt(engineAEloInput.value),
+        limitStrength: engineALimitCheckbox.checked
+      }
+      engineBConfig = {
+        name: engineBNameInput.value,
+        elo: parseInt(engineBEloInput.value),
+        limitStrength: engineBLimitCheckbox.checked
+      }
+      duelSetupModal.classList.remove('active')
+      startDuel()
+    })
+  }
+
+  function startGuessMode () {
+    // Store current history
+    guessModeData.moves = game.history({ verbose: true })
+    guessModeData.index = 0
+    guessModeData.active = true
+
+    // Reset board to start
+    const headers = game.header()
+    if (headers.FEN) {
+      game.load(headers.FEN)
+    } else {
+      game.reset()
+    }
+
+    currentViewIndex = -1
+    renderBoard()
+    renderHistory()
+    showToast('Guess Mode: Play the move you think was played!', 'info')
+  }
+
+  function startDuel () {
+    isDuelActive = true
+    isSelfPlay = false // Ensure standard self-play is off
+    updateSelfPlayButton()
+
+    // Update names
+    topPlayerName.textContent = engineBConfig.name
+    bottomPlayerName.textContent = engineAConfig.name
+
     game.reset()
     startingFen = 'startpos'
     selectedSquare = null
@@ -531,7 +641,54 @@ document.addEventListener('DOMContentLoaded', () => {
     currentViewIndex = -1
     whiteTime = 300000
     blackTime = 300000
+
+    startClock()
+    renderBoard()
+    renderHistory()
+    renderClocks()
+
+    socket.send('ucinewgame')
+
+    // Start with Engine A (White)
+    applyEngineConfig(engineAConfig)
+    sendPositionAndGo()
+  }
+
+  function applyEngineConfig (config) {
+    sendOption('UCI_LimitStrength', config.limitStrength)
+    sendOption('UCI_Elo', config.elo)
+    showToast(`Active: ${config.name} (${config.elo})`)
+  }
+
+  function startNewGame () {
+    game.reset()
+    startingFen = 'startpos'
+
+    isArmageddon = false
+
+    if (handicapSelect && handicapSelect.value !== 'none') {
+      startingFen = HANDICAP_FENS[handicapSelect.value]
+      if (!game.load(startingFen)) {
+        console.error('Invalid Handicap FEN')
+        startingFen = 'startpos'
+      }
+    } else {
+      startingFen = 'startpos'
+    }
+
+    if (startingFen === 'startpos') {
+      game.reset()
+    } else {
+      game.load(startingFen)
+    }
+
+    selectedSquare = null
+    legalMovesForSelectedPiece = []
+    currentViewIndex = -1
+    whiteTime = 300000
+    blackTime = 300000
     isSelfPlay = false
+    isDuelActive = false
     updateSelfPlayButton()
     startClock()
     renderBoard()
@@ -576,7 +733,10 @@ document.addEventListener('DOMContentLoaded', () => {
       updateSelfPlayButton()
     } else if (game.game_over()) {
       if (game.in_checkmate()) logToOutput('Game Over: Checkmate')
-      else if (game.in_draw()) logToOutput('Game Over: Draw')
+      else if (game.in_draw()) {
+        if (isArmageddon) logToOutput('Game Over: Draw (Black Wins by Armageddon Rule)')
+        else logToOutput('Game Over: Draw')
+      }
       clearInterval(clockInterval)
       isSelfPlay = false
       updateSelfPlayButton()
@@ -603,18 +763,27 @@ document.addEventListener('DOMContentLoaded', () => {
     // Determine who is top/bottom based on flip
     // Default: Top=Black, Bottom=White
     // Flipped: Top=White, Bottom=Black
+
+    let wName = 'White'
+    let bName = 'Black'
+
+    if (isDuelActive) {
+      wName = engineAConfig.name
+      bName = engineBConfig.name
+    }
+
     if (isFlipped) {
-      topPlayerName.textContent = 'White'
+      topPlayerName.textContent = wName
       topPlayerClock.textContent = wStr
-      bottomPlayerName.textContent = 'Black'
+      bottomPlayerName.textContent = bName
       bottomPlayerClock.textContent = bStr
 
       _updateClockStyle(topPlayerClock, 'w')
       _updateClockStyle(bottomPlayerClock, 'b')
     } else {
-      topPlayerName.textContent = 'Black'
+      topPlayerName.textContent = bName
       topPlayerClock.textContent = bStr
-      bottomPlayerName.textContent = 'White'
+      bottomPlayerName.textContent = wName
       bottomPlayerClock.textContent = wStr
 
       _updateClockStyle(topPlayerClock, 'b')
@@ -840,6 +1009,58 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function attemptMove (targetMove) {
+    // Guess Mode Logic
+    if (gameMode === 'guess' && guessModeData.active) {
+      const expected = guessModeData.moves[guessModeData.index]
+      if (!expected) {
+        showToast('Game finished!', 'success')
+        return
+      }
+
+      // Compare targetMove (from, to, promotion) with expected
+      if (targetMove.from === expected.from && targetMove.to === expected.to) {
+        // Correct!
+        showToast('Correct!', 'success')
+
+        // Make the move
+        const speed = animationSpeedSelect ? parseInt(animationSpeedSelect.value) : 0
+        if (speed > 0) await animateMove(targetMove.from, targetMove.to, speed)
+
+        let result = game.move(targetMove)
+        if (result) SoundManager.playSound(result, game)
+
+        guessModeData.index++
+        renderBoard()
+        renderHistory()
+
+        // Play opponent move automatically
+        if (guessModeData.index < guessModeData.moves.length) {
+          const reply = guessModeData.moves[guessModeData.index]
+          setTimeout(async () => {
+            if (speed > 0) await animateMove(reply.from, reply.to, speed)
+            result = game.move(reply)
+            if (result) SoundManager.playSound(result, game)
+            guessModeData.index++
+            renderBoard()
+            renderHistory()
+
+            if (guessModeData.index >= guessModeData.moves.length) {
+              showToast('Game finished!', 'success')
+            }
+          }, 500)
+        } else {
+          showToast('Game finished!', 'success')
+        }
+      } else {
+        showToast('Incorrect move. Try again.', 'error')
+      }
+
+      selectedSquare = null
+      legalMovesForSelectedPiece = []
+      renderBoard()
+      return
+    }
+
     const speed = animationSpeedSelect ? parseInt(animationSpeedSelect.value) : 0
     if (speed > 0) {
       await animateMove(targetMove.from, targetMove.to, speed)
@@ -939,6 +1160,79 @@ document.addEventListener('DOMContentLoaded', () => {
   newGameBtn.addEventListener('click', () => {
     startNewGame()
   })
+
+  if (armageddonBtn) {
+    armageddonBtn.addEventListener('click', () => {
+      isArmageddon = true
+      isDuelActive = false
+      isSelfPlay = false
+      updateSelfPlayButton()
+
+      if (handicapSelect) handicapSelect.value = 'none'
+
+      game.reset()
+      startingFen = 'startpos'
+
+      whiteTime = 300000 // 5m
+      blackTime = 240000 // 4m
+
+      startClock()
+      renderBoard()
+      renderHistory()
+      renderClocks()
+
+      socket.send('ucinewgame')
+      showToast('Armageddon Mode: White 5m, Black 4m. Black wins draws.', 'info')
+    })
+  }
+
+  if (importPgnBtn) {
+    importPgnBtn.addEventListener('click', () => {
+      pgnImportModal.classList.add('active')
+    })
+  }
+
+  if (closePgnModalBtn) {
+    closePgnModalBtn.addEventListener('click', () => {
+      pgnImportModal.classList.remove('active')
+    })
+  }
+
+  if (pgnImportModal) {
+    pgnImportModal.addEventListener('click', (e) => {
+      if (e.target === pgnImportModal) {
+        pgnImportModal.classList.remove('active')
+      }
+    })
+  }
+
+  if (loadPgnConfirmBtn) {
+    loadPgnConfirmBtn.addEventListener('click', () => {
+      const pgn = pgnInputArea.value
+      if (pgn) {
+        // chess.js 0.10+ load_pgn returns true/false
+        const result = game.load_pgn(pgn)
+        if (result) {
+          pgnImportModal.classList.remove('active')
+
+          // If Guess Mode, prepare it
+          if (gameMode === 'guess') {
+            startGuessMode()
+          } else {
+            // Normal load
+            currentViewIndex = -1
+            selectedSquare = null
+            legalMovesForSelectedPiece = []
+            renderBoard()
+            renderHistory()
+            showToast('PGN loaded', 'success')
+          }
+        } else {
+          showToast('Invalid PGN', 'error')
+        }
+      }
+    })
+  }
 
   if (new960Btn) {
     new960Btn.addEventListener('click', () => {
@@ -1079,11 +1373,13 @@ document.addEventListener('DOMContentLoaded', () => {
   if (gameModeSelect) {
     gameModeSelect.addEventListener('change', (e) => {
       gameMode = e.target.value
-      // If switching to PvE and it's engine's turn, we might need to trigger it.
-      // But usually we start new games or assume user knows what they are doing.
-      if (gameMode === 'pve' && !game.game_over() && ((game.turn() === 'b' && !isFlipped) || (game.turn() === 'w' && isFlipped))) {
-        // Simple heuristic: if we switch to PvE and it looks like engine turn, go.
-        // But better to just let user play or hit "Move Now" (future feature).
+      if (gameMode === 'guess') {
+        if (game.history().length === 0) {
+          showToast('Load a PGN to start guessing!', 'info')
+        } else {
+          // Restart guess mode from current game?
+          startGuessMode()
+        }
       }
     })
   }

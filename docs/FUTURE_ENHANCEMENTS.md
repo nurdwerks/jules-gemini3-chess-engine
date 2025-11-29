@@ -11,42 +11,6 @@ This document outlines the detailed backlog of future enhancements for the Jules
 
 **User Stories:**
 
-25. **PvP Mode (S)**
-    *   *Description:* A "Two Player" mode that disables the engine and allows two humans to play on the same screen.
-    *   *Implementation:* Disable automatic engine response. Unlock board for both sides.
-    *   *Tasks:*
-        - [x] Add Game Mode selector (Engine vs Human, Human vs Human).
-        - [ ] Logic to flip board automatically (optional).
-    *   *Testing Plan:* Play a full game manually.
-    *   *Acceptance Criteria:*
-        - [x] Engine does not reply.
-
-26. **Engine Self-Play Button (S)**
-    *   *Description:* A button to make the engine play against itself from the current position.
-    *   *Implementation:* Loop: Engine move -> make move -> request engine move.
-    *   *Tasks:*
-        - [x] Add "Self Play" button.
-        - [x] Implement loop in `client.js`.
-    *   *Testing Plan:* Watch engine play a game.
-    *   *Acceptance Criteria:*
-        - [x] Plays until mate/draw.
-
-27. **Engine Duel: UI (S)**
-    *   *Description:* UI to configure and run a match between two different engine settings.
-    *   *Implementation:* Settings panel for Engine A and B.
-    *   *Tasks:*
-        - [ ] UI to configure Engine A and Engine B options.
-    *   *Acceptance Criteria:*
-        - [ ] Settings readable.
-
-28. **Engine Duel: Logic (S)**
-    *   *Description:* Logic to arbitrate a match between two engine configs.
-    *   *Implementation:* State machine switching configs between moves.
-    *   *Tasks:*
-        - [ ] Arbitration logic.
-    *   *Acceptance Criteria:*
-        - [ ] Result tracked correctly.
-
 29. **Tournament Manager: Queue (S)**
     *   *Description:* Queue system for matches.
     *   *Implementation:* Array of match pairs.
@@ -63,32 +27,6 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Acceptance Criteria:*
         - [ ] Scores update.
 
-31. **Blindfold Mode (S)**
-    *   *Description:* Add an option to hide pieces on the board for visualization training.
-    *   *Implementation:* Set piece opacity to 0 via CSS class.
-    *   *Tasks:*
-        - [x] Toggle button.
-        - [x] CSS: `.blindfold .piece { opacity: 0 }`.
-    *   *Testing Plan:* Verify board looks empty but accepts moves.
-    *   *Acceptance Criteria:*
-        - [x] Pieces invisible, interaction remains.
-
-32. **Chess960 Generator: Logic (S)**
-    *   *Description:* Algorithm to generate a random Fischer Random (Chess960) starting position.
-    *   *Implementation:* Logic to place Bishops (opposite), King between Rooks. Generate FEN.
-    *   *Tasks:*
-        - [x] Implement `generate960FEN()`.
-    *   *Acceptance Criteria:*
-        - [x] Valid 960 positions generated.
-
-33. **Chess960 Generator: UI (S)**
-    *   *Description:* Button to trigger 960 generation.
-    *   *Implementation:* Button -> call logic -> `loadFen`.
-    *   *Tasks:*
-        - [x] Button.
-    *   *Acceptance Criteria:*
-        - [x] Board updates to 960 position.
-
 34. **Vote Chess (S)**
     *   *Description:* Allow multiple viewers to vote on the next move (mockup).
     *   *Implementation:* Connect to a voting backend or mock via multiple browser tabs (websockets).
@@ -97,43 +35,6 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Testing Plan:* Simulate votes.
     *   *Acceptance Criteria:*
         - [ ] Most voted move is played.
-
-35. **Handicap Mode (S)**
-    *   *Description:* Allow starting the game with material odds (e.g., Knight odds).
-    *   *Implementation:* Pre-defined FENs for common handicaps.
-    *   *Tasks:*
-        - [ ] Dropdown for "Odds".
-        - [ ] Load corresponding FEN.
-    *   *Testing Plan:* Verify missing pieces.
-    *   *Acceptance Criteria:*
-        - [ ] Game starts with correct material imbalance.
-
-36. **Armageddon Mode (S)**
-    *   *Description:* Preset time controls for Armageddon (White has more time but must win).
-    *   *Implementation:* Set clocks: White 5m, Black 4m. Logic: Draw = Black Win.
-    *   *Tasks:*
-        - [ ] Armageddon preset button.
-        - [ ] Result logic update.
-    *   *Testing Plan:* Simulate Draw, check winner.
-    *   *Acceptance Criteria:*
-        - [ ] Correct time and win conditions.
-
-37. **Guess the Move: Logic (S)**
-    *   *Description:* Logic to compare user move against a loaded PGN game.
-    *   *Implementation:* State `expectedMove`.
-    *   *Tasks:*
-        - [ ] Guess validation logic.
-    *   *Acceptance Criteria:*
-        - [ ] Correct/Incorrect feedback.
-
-38. **Guess the Move: UI (S)**
-    *   *Description:* UI for "Guess the Move" mode.
-    *   *Implementation:* Scoreboard, Feedback banner.
-    *   *Tasks:*
-        - [ ] Mode selector.
-        - [ ] Feedback UI.
-    *   *Acceptance Criteria:*
-        - [ ] User can play through game.
 
 ---
 
