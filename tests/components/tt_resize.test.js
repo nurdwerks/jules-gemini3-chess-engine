@@ -34,12 +34,18 @@ describe('TranspositionTable Resizing', () => {
 })
 
 describe('UCI Hash Option', () => {
+  let uci
+
   beforeEach(() => {
     output = []
   })
 
+  afterEach(async () => {
+    if (uci) await uci.stopWorkers()
+  })
+
   test('setoption name Hash updates TT size', () => {
-    const uci = new UCI(mockOutput)
+    uci = new UCI(mockOutput)
 
     // Verify initial size (default 16MB)
     expect(uci.tt.size).toBe(1048576)
