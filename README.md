@@ -12,19 +12,6 @@ Benchmarking functions can be written and verified, but performance-critical ben
 
 ## Active Roadmap
 
-### Epic 63: Responsive Layout Improvements
-**Size:** Medium (3 days)
-**Description:** Optimize the interface for mobile and tablet devices.
-**User Stories:**
-1.  **Flexible Grid (S)**
-    *   *Description:* Adjust CSS Grid/Flexbox layouts to stack panels vertically on smaller screens.
-    *   *Acceptance Criteria:*
-        *   [ ] UI is usable on a mobile width (e.g., 375px).
-2.  **Touch Optimizations (S)**
-    *   *Description:* Ensure piece dragging (or tap-to-move) works smoothly on touch screens.
-    *   *Acceptance Criteria:*
-        *   [ ] Mobile users can play a game without issues.
-
 ### Epic 64: Advanced UCI Option Controls
 **Size:** Small (2 days)
 **Description:** Improve the usability of the engine configuration panel.
@@ -40,4 +27,4 @@ Benchmarking functions can be written and verified, but performance-critical ben
 
 ## Archived Roadmap (Completed or Superseded)
 
-See [archive/ARCHIVED_EPICS.md](archive/ARCHIVED_EPICS.md) for Epics 1-56.
+See [archive/ARCHIVED_EPICS.md](archive/ARCHIVED_EPICS.md) for Epics 1-63.
