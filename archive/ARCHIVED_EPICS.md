@@ -904,3 +904,16 @@ The following Epics were part of the initial development phase and are either co
     *   *Description:* Allow the user to make moves on the board during analysis to see how the evaluation changes.
     *   *Acceptance Criteria:*
         *   [x] Making a move updates the position and restarts the analysis automatically.
+
+### Epic 62: Sound Effects Integration
+**Size:** Small (1 day)
+**Description:** Add audio feedback for better game immersion.
+**User Stories:**
+1.  **Audio Events (S)**
+    *   *Description:* Play distinct sounds for moves, captures, and checks.
+    *   *Acceptance Criteria:*
+        *   [x] Sounds play at appropriate times.
+2.  **Mute Control (S)**
+    *   *Description:* Provide a volume/mute toggle.
+    *   *Acceptance Criteria:*
+        *   [x] Users can disable sound effects.

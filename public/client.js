@@ -28,9 +28,70 @@ document.addEventListener('DOMContentLoaded', () => {
   const topPlayerClock = document.getElementById('top-player-clock')
   const bottomPlayerName = document.getElementById('bottom-player-name')
   const bottomPlayerClock = document.getElementById('bottom-player-clock')
+  const soundEnabledCheckbox = document.getElementById('sound-enabled')
 
   // Initialize chess.js
   const game = new Chess()
+
+  const SoundManager = (() => {
+    let context = null
+    let enabled = true
+
+    const init = () => {
+      if (!context) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext
+        context = new AudioContext()
+      }
+      if (context.state === 'suspended') {
+        context.resume().catch(e => console.warn(e))
+      }
+    }
+
+    const playTone = (freq, type, duration, startTime = 0) => {
+      if (!enabled || !context) return
+      try {
+        const osc = context.createOscillator()
+        const gain = context.createGain()
+        osc.type = type
+        osc.frequency.setValueAtTime(freq, context.currentTime + startTime)
+        gain.gain.setValueAtTime(0.1, context.currentTime + startTime)
+        gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + startTime + duration)
+        osc.connect(gain)
+        gain.connect(context.destination)
+        osc.start(context.currentTime + startTime)
+        osc.stop(context.currentTime + startTime + duration)
+      } catch (e) {
+        console.warn('Audio play failed', e)
+      }
+    }
+
+    return {
+      setEnabled: (val) => { enabled = val; if (val) init() },
+      init,
+      playSound: (moveResult, game) => {
+        if (!enabled) return
+        init()
+
+        // Priority: Check > Capture > Move
+        if (game.in_check()) {
+          // Check sound: Two tones
+          playTone(600, 'sine', 0.15)
+          playTone(800, 'sine', 0.15, 0.1)
+        } else if (moveResult.flags.includes('c') || moveResult.flags.includes('e')) {
+          // Capture sound: Sharp snap (high square wave)
+          playTone(600, 'square', 0.1)
+        } else {
+          // Move sound: Soft tap (low triangle)
+          playTone(200, 'triangle', 0.1)
+        }
+      }
+    }
+  })()
+
+  if (soundEnabledCheckbox) {
+    SoundManager.setEnabled(soundEnabledCheckbox.checked)
+    soundEnabledCheckbox.addEventListener('change', (e) => SoundManager.setEnabled(e.target.checked))
+  }
 
   let socket
   let selectedSquare = null // { row, col }
@@ -109,7 +170,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const to = move.substring(2, 4)
       const promotion = move.length > 4 ? move[4] : undefined
 
-      game.move({ from, to, promotion })
+      const result = game.move({ from, to, promotion })
+      if (result) SoundManager.playSound(result, game)
       currentViewIndex = -1
       renderBoard()
       renderHistory()
@@ -599,7 +661,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function attemptMove (targetMove) {
-    game.move(targetMove)
+    const result = game.move(targetMove)
+    if (result) SoundManager.playSound(result, game)
 
     selectedSquare = null
     legalMovesForSelectedPiece = []
