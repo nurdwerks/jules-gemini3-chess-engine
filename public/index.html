@@ -20,8 +20,13 @@
             </div>
             <div class="panel-content">
                 <div class="player-info" id="top-player">
-                    <span class="player-name" id="top-player-name">Black</span>
-                    <div id="top-material-diff" class="material-diff"></div>
+                    <div class="player-details">
+                        <span class="player-name" id="top-player-name">Black</span>
+                        <div id="top-material-diff" class="material-diff"></div>
+                    </div>
+                    <div class="material-bar-container">
+                        <div id="top-material-bar" class="material-bar-fill"></div>
+                    </div>
                     <div id="top-captured-pieces" class="captured-pieces"></div>
                     <span class="clock" id="top-player-clock">05:00</span>
                 </div>
@@ -35,8 +40,13 @@
                     </div>
                 </div>
                 <div class="player-info" id="bottom-player">
-                    <span class="player-name" id="bottom-player-name">White</span>
-                    <div id="bottom-material-diff" class="material-diff"></div>
+                    <div class="player-details">
+                        <span class="player-name" id="bottom-player-name">White</span>
+                        <div id="bottom-material-diff" class="material-diff"></div>
+                    </div>
+                    <div class="material-bar-container">
+                        <div id="bottom-material-bar" class="material-bar-fill"></div>
+                    </div>
                     <div id="bottom-captured-pieces" class="captured-pieces"></div>
                     <span class="clock" id="bottom-player-clock">05:00</span>
                 </div>
@@ -63,6 +73,7 @@
                         <button id="self-play-btn">Self Play</button>
                         <button id="engine-duel-btn">Engine Duel</button>
                         <button id="tournament-btn">Tournament</button>
+                        <button id="leaderboard-btn">Leaderboard</button>
                         <button id="armageddon-btn">Armageddon</button>
                      </div>
                      <div class="option-item mt-10">
@@ -150,6 +161,39 @@
                     </div>
                 </div>
             </div>
+            <div class="panel graphs-panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">Game Analysis Graphs</h2>
+                </div>
+                <div class="panel-content">
+                    <div class="tabs">
+                        <button class="tab-btn active" data-tab="material-chart">Material</button>
+                        <button class="tab-btn" data-tab="time-chart">Time</button>
+                        <button class="tab-btn" data-tab="nps-chart">NPS</button>
+                        <button class="tab-btn" data-tab="tension-chart">Tension</button>
+                    </div>
+                    <div class="tab-content active" id="material-chart-tab">
+                        <div class="graph-container large">
+                            <svg id="material-graph" width="100%" height="100%"></svg>
+                        </div>
+                    </div>
+                    <div class="tab-content" id="time-chart-tab">
+                        <div class="graph-container large">
+                            <svg id="time-graph" width="100%" height="100%"></svg>
+                        </div>
+                    </div>
+                    <div class="tab-content" id="nps-chart-tab">
+                         <div class="graph-container large">
+                            <svg id="nps-graph" width="100%" height="100%"></svg>
+                        </div>
+                    </div>
+                    <div class="tab-content" id="tension-chart-tab">
+                         <div class="graph-container large">
+                            <svg id="tension-graph" width="100%" height="100%"></svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="panel import-export-panel">
                 <div class="panel-header">
                     <h2 class="panel-title">Import / Export</h2>
@@ -176,6 +220,7 @@
                     <div class="history-controls mt-10" style="display: flex; gap: 10px; align-items: center;">
                          <label for="replay-speed" style="color: var(--grafana-text-secondary); font-size: 14px;">Replay Speed:</label>
                          <input type="range" id="replay-speed" min="100" max="2000" step="100" value="800" style="flex: 1;">
+                         <button id="analyze-game-btn" class="icon-btn" title="Analyze Game" style="font-size: 18px; margin-left: 10px;">📊</button>
                     </div>
                 </div>
             </div>
@@ -376,6 +421,10 @@
                             <div class="stat-label">NPS</div>
                             <div class="stat-value" id="nps-value">-</div>
                         </div>
+                        <div class="stat-card">
+                            <div class="stat-label">WDL</div>
+                            <div class="stat-value" id="wdl-value">-</div>
+                        </div>
                     </div>
                     <div class="graph-container">
                          <svg id="eval-graph" width="100%" height="100%" style="display: block;"></svg>
@@ -454,6 +503,58 @@
           </div>
           <div class="modal-footer">
               <button id="start-tournament-confirm-btn">Start Tournament</button>
+          </div>
+      </div>
+  </div>
+  <div id="leaderboard-modal" class="modal-overlay">
+      <div class="modal">
+          <div class="modal-header">
+              <h3 class="modal-title">Engine Leaderboard</h3>
+              <button class="modal-close-btn" id="close-leaderboard-modal">&times;</button>
+          </div>
+          <div class="modal-content">
+              <table id="leaderboard-table" style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                  <thead>
+                      <tr style="text-align: left; border-bottom: 1px solid var(--grafana-border);">
+                          <th style="padding: 5px;">Engine</th>
+                          <th style="padding: 5px;">Games</th>
+                          <th style="padding: 5px;">W</th>
+                          <th style="padding: 5px;">D</th>
+                          <th style="padding: 5px;">L</th>
+                          <th style="padding: 5px;">Score %</th>
+                      </tr>
+                  </thead>
+                  <tbody></tbody>
+              </table>
+              <div style="margin-top: 10px; text-align: right;">
+                  <button id="reset-leaderboard-btn" style="background-color: #F2495C; padding: 5px 10px; font-size: 12px;">Reset Data</button>
+              </div>
+          </div>
+      </div>
+  </div>
+  <div id="analysis-report-modal" class="modal-overlay">
+      <div class="modal">
+          <div class="modal-header">
+              <h3 class="modal-title">Game Analysis Report</h3>
+              <button class="modal-close-btn" id="close-analysis-modal">&times;</button>
+          </div>
+          <div class="modal-content">
+              <div id="analysis-progress-bar" style="width: 100%; height: 5px; background: #333; margin-bottom: 10px; display: none;">
+                  <div id="analysis-progress-fill" style="width: 0%; height: 100%; background: var(--grafana-accent-blue);"></div>
+              </div>
+              <div id="analysis-summary" style="margin-bottom: 20px;"></div>
+              <table id="analysis-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                  <thead>
+                      <tr style="text-align: left; border-bottom: 1px solid var(--grafana-border);">
+                          <th style="padding: 5px;">Move</th>
+                          <th style="padding: 5px;">Played</th>
+                          <th style="padding: 5px;">Best</th>
+                          <th style="padding: 5px;">Diff</th>
+                          <th style="padding: 5px;">Eval</th>
+                      </tr>
+                  </thead>
+                  <tbody></tbody>
+              </table>
           </div>
       </div>
   </div>
