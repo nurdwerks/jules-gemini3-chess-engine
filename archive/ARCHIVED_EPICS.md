@@ -1351,3 +1351,122 @@ The following Epics were part of the initial development phase and are either co
         - [x] Persistence logic.
     *   *Acceptance Criteria:*
         - [x] Repertoire persists.
+
+### Epic 69: Game Controls & Mechanics
+**Size:** Medium (3 days)
+**Description:** Fine-grained control over game flow and interactions.
+
+**User Stories:**
+
+47. **Resign Button (S)**
+    *   *Description:* A button for the human player to resign the game.
+    *   *Implementation:* End game state, declare Engine winner.
+    *   *Tasks:*
+        - [x] UI Button.
+        - [x] State update.
+    *   *Testing Plan:* Click Resign.
+    *   *Acceptance Criteria:*
+        - [x] Game ends, Result 0-1 or 1-0.
+
+48. **Draw Offer (S)**
+    *   *Description:* A button to offer a draw to the engine.
+    *   *Implementation:* Engine accepts if eval is within `[-0.10, 0.10]` (contempt).
+    *   *Tasks:*
+        - [x] "Offer Draw" button.
+        - [x] Engine logic check.
+    *   *Testing Plan:* Offer draw in equal/unequal positions.
+    *   *Acceptance Criteria:*
+        - [x] Engine accepts/declines appropriately.
+
+49. **Takeback Move (S)**
+    *   *Description:* Button to undo the last half-move or full turn during a game against the engine.
+    *   *Implementation:* Call `board.undo()` twice (human + engine move).
+    *   *Tasks:*
+        - [x] Undo logic.
+    *   *Testing Plan:* Play moves, take back, replay.
+    *   *Acceptance Criteria:*
+        - [x] State reverts correctly.
+
+50. **Force Move (S)**
+    *   *Description:* Add a button to force the engine to move immediately.
+    *   *Implementation:* Send `stop` command to UCI.
+    *   *Tasks:*
+        - [x] "Move Now" button.
+    *   *Testing Plan:* Click while engine thinking.
+    *   *Acceptance Criteria:*
+        - [x] Engine outputs move immediately.
+
+51. **Premoves (S)**
+    *   *Description:* Allow the user to input a move while the engine is still thinking.
+    *   *Implementation:* Store move in `pendingMove`. Execute immediately after engine move arrives.
+    *   *Tasks:*
+        - [x] Allow UI interaction during "thinking".
+        - [x] Queue logic.
+    *   *Testing Plan:* Premove a capture.
+    *   *Acceptance Criteria:*
+        - [x] Move happens instantly after engine reply.
+
+52. **Move Confirmation (S)**
+    *   *Description:* Optional setting to require a second click to confirm a move.
+    *   *Implementation:* First click highlights "Confirm", second click sends move.
+    *   *Tasks:*
+        - [x] Setting toggle.
+        - [x] Confirmation UI.
+    *   *Testing Plan:* Attempt move with setting on.
+    *   *Acceptance Criteria:*
+        - [x] Move requires confirmation.
+
+53. **Auto-Queen Toggle (S)**
+    *   *Description:* Option to always automatically promote to Queen without showing a selection modal.
+    *   *Implementation:* Checkbox setting. If true, append 'q' automatically.
+    *   *Tasks:*
+        - [x] Setting logic.
+    *   *Testing Plan:* Promote pawn.
+    *   *Acceptance Criteria:*
+        - [x] Skips modal if enabled.
+
+54. **Promotion Modal (S)**
+    *   *Description:* Custom modal for selecting promotion piece.
+    *   *Implementation:* HTML overlay with Q/R/B/N images.
+    *   *Tasks:*
+        - [x] Create Modal UI.
+        - [x] Promise-based selection flow.
+    *   *Testing Plan:* Verify all 4 options work.
+    *   *Acceptance Criteria:*
+        - [x] Replaces browser prompt.
+
+55. **Auto-Flip Board (S)**
+    *   *Description:* Automatically rotate the board to face the side whose turn it is.
+    *   *Implementation:* On move, check `turn`, call `flipBoard()`.
+    *   *Tasks:*
+        - [x] Setting toggle "Auto-Flip".
+    *   *Testing Plan:* Play game.
+    *   *Acceptance Criteria:*
+        - [x] Board flips every move.
+
+56. **Click-to-Move (S)**
+    *   *Description:* Support click-origin-then-click-destination interaction.
+    *   *Implementation:* State `selectedSquare`. First click sets it, second click executes move.
+    *   *Tasks:*
+        - [x] Logic to handle click vs drag.
+    *   *Testing Plan:* Play game with clicks only.
+    *   *Acceptance Criteria:*
+        - [x] Works alongside D&D.
+
+57. **Right-Click to Cancel (S)**
+    *   *Description:* Right-clicking while dragging a piece cancels the move.
+    *   *Implementation:* `mousedown` (right) resets drag state.
+    *   *Tasks:*
+        - [x] Event listener.
+    *   *Testing Plan:* Drag, right click.
+    *   *Acceptance Criteria:*
+        - [x] Piece returns to source.
+
+58. **Game Speed Slider (S)**
+    *   *Description:* Control the playback speed of game history (autoplay).
+    *   *Implementation:* Interval timer duration variable.
+    *   *Tasks:*
+        - [x] Slider UI.
+    *   *Testing Plan:* Autoplay game at diff speeds.
+    *   *Acceptance Criteria:*
+        - [x] Speed varies.
