@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const streamerModeBtn = document.getElementById('streamer-mode-btn')
   const showCoordsCheckbox = document.getElementById('show-coords')
   const showArrowLastCheckbox = document.getElementById('show-arrow-last')
+  const showThreatsCheckbox = document.getElementById('show-threats')
   const coordsOutsideCheckbox = document.getElementById('coords-outside')
   const gameModeSelect = document.getElementById('game-mode')
   const analysisModeCheckbox = document.getElementById('analysis-mode')
@@ -1336,7 +1337,7 @@ document.addEventListener('DOMContentLoaded', () => {
     _addLegalMoveHints(square, alg)
 
     const pieceObj = board[row][col]
-    _addPieceToSquare(square, pieceObj)
+    _addPieceToSquare(square, pieceObj, alg)
 
     square.dataset.row = row
     square.dataset.col = col
@@ -1345,31 +1346,157 @@ document.addEventListener('DOMContentLoaded', () => {
     _applySquareHighlights(square, row, col, alg, chess)
 
     square.addEventListener('click', () => handleSquareClick(row, col))
+
+    // Drag and Drop Events for Squares (Drop Targets)
+    square.addEventListener('dragover', handleDragOver)
+    square.addEventListener('dragenter', handleDragEnter)
+    square.addEventListener('dragleave', handleDragLeave)
+    square.addEventListener('drop', handleDrop)
+
     boardElement.appendChild(square)
   }
 
-  function _addPieceToSquare (square, pieceObj) {
+  function _addPieceToSquare (square, pieceObj, alg) {
     if (!pieceObj) return
     const color = pieceObj.color
     const type = pieceObj.type
+    let el
+
     if (currentPieceSet === 'unicode') {
       const div = document.createElement('div')
       div.classList.add('piece', 'piece-text')
       div.classList.add(color === 'w' ? 'white-piece' : 'black-piece')
       div.textContent = getUnicodePiece(color, type)
-      square.appendChild(div)
+      el = div
     } else if (currentPieceSet === 'custom-upload') {
       const img = document.createElement('img')
       const key = color + type
       img.src = customPieceImages[key] || ''
       img.classList.add('piece')
-      square.appendChild(img)
+      el = img
     } else {
       const img = document.createElement('img')
       img.src = `images/${currentPieceSet}/${color}${type}.svg`
       img.classList.add('piece')
       img.classList.add(`piece-set-${currentPieceSet}`)
-      square.appendChild(img)
+      el = img
+    }
+
+    if (el) {
+      // Make Draggable
+      el.draggable = true
+      el.dataset.alg = alg // Store source square on the piece element for convenience
+      el.addEventListener('dragstart', handleDragStart)
+      el.addEventListener('dragend', handleDragEnd)
+      square.appendChild(el)
+    }
+  }
+
+  // Drag and Drop Handlers
+  let draggedPiece = null
+  let draggedFrom = null
+
+  function handleDragStart (e) {
+    if (currentViewIndex !== -1) {
+      e.preventDefault()
+      return
+    }
+    draggedPiece = e.target
+    draggedFrom = draggedPiece.dataset.alg
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', draggedFrom)
+    setTimeout(() => {
+      draggedPiece.classList.add('dragging')
+    }, 0)
+  }
+
+  function handleDragOver (e) {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    return false
+  }
+
+  function handleDragEnter (e) {
+    e.preventDefault()
+    const square = e.target.closest('.square')
+    if (square) {
+      square.classList.add('drag-target')
+    }
+  }
+
+  function handleDragLeave (e) {
+    const square = e.target.closest('.square')
+    if (square) {
+      square.classList.remove('drag-target')
+    }
+  }
+
+  function handleDragEnd (e) {
+    if (draggedPiece) {
+      draggedPiece.classList.remove('dragging')
+    }
+    document.querySelectorAll('.drag-target').forEach(el => el.classList.remove('drag-target'))
+    draggedPiece = null
+    draggedFrom = null
+  }
+
+  function handleDrop (e) {
+    e.stopPropagation()
+    e.preventDefault()
+
+    const targetSquare = e.target.closest('.square')
+    if (!targetSquare) {
+      handleDragEnd(e)
+      return
+    }
+
+    const to = targetSquare.dataset.alg
+    const from = draggedFrom
+
+    if (from && to && from !== to) {
+      _processDropMove(from, to)
+    }
+
+    handleDragEnd(e)
+  }
+
+  function _processDropMove (from, to) {
+    const moves = game.moves({ verbose: true })
+    const matches = moves.filter(m => m.from === from && m.to === to)
+
+    if (matches.length > 0) {
+      if (matches.some(m => m.flags.includes('p'))) {
+        const candidate = matches.find(m => m.promotion === 'q') || matches[0]
+        attemptMove(candidate)
+      } else {
+        attemptMove(matches[0])
+      }
+    } else {
+      _handleInvalidDrop(from, to)
+    }
+  }
+
+  function _handleInvalidDrop (from, to) {
+    if (gameMode === 'pve' && !isSelfPlay && !game.game_over()) {
+      const piece = game.get(from)
+      if (piece) {
+        const move = {
+          from,
+          to,
+          color: piece.color,
+          flags: '',
+          piece: piece.type
+        }
+        const isPawn = piece.type === 'p'
+        const lastRank = piece.color === 'w' ? '8' : '1'
+        if (isPawn && to[1] === lastRank) {
+          move.flags = 'p'
+          move.promotion = 'q'
+        }
+        attemptMove(move)
+      }
+    } else {
+      showToast('Illegal move', 'error')
     }
   }
 
@@ -1406,6 +1533,47 @@ document.addEventListener('DOMContentLoaded', () => {
       if (pieceObj && pieceObj.type === 'k' && pieceObj.color === turn) {
         square.classList.add('check-highlight')
       }
+    }
+
+    _applyThreatHighlight(square, alg, chess)
+  }
+
+  function _applyThreatHighlight (square, alg, chess) {
+    if (showThreatsCheckbox && showThreatsCheckbox.checked && chess) {
+      if (_isSquareThreatened(alg, chess)) {
+        const p = chess.get(alg)
+        if (p && p.color === chess.turn()) {
+          square.classList.add('threat-highlight')
+        }
+      }
+    }
+  }
+
+  let _cachedThreats = { fen: null, squares: [] }
+  function _isSquareThreatened (alg, chess) {
+    const fen = chess.fen()
+    if (_cachedThreats.fen !== fen) {
+      _cachedThreats.fen = fen
+      _cachedThreats.squares = _calculateThreats(chess)
+    }
+    return _cachedThreats.squares.includes(alg)
+  }
+
+  function _calculateThreats (chess) {
+    const currentTurn = chess.turn() // 'w' or 'b'
+    const opponent = currentTurn === 'w' ? 'b' : 'w'
+    const tokens = chess.fen().split(' ')
+    tokens[1] = opponent
+    tokens[3] = '-' // Clear EP to be safe and simple
+    const tempFen = tokens.join(' ')
+
+    try {
+      const tempGame = new Chess(tempFen)
+      const moves = tempGame.moves({ verbose: true })
+      return moves.map(m => m.to)
+    } catch (e) {
+      console.warn('Threat calculation failed:', e)
+      return []
     }
   }
 
@@ -2081,6 +2249,12 @@ document.addEventListener('DOMContentLoaded', () => {
   if (showArrowLastCheckbox) {
     showArrowLastCheckbox.addEventListener('change', () => {
       updateLastMoveArrow()
+    })
+  }
+
+  if (showThreatsCheckbox) {
+    showThreatsCheckbox.addEventListener('change', () => {
+      renderBoard()
     })
   }
 
