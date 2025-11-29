@@ -14,97 +14,97 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* Allow the user to flip the board view so Black is at the bottom.
     *   *Implementation:* Toggle a CSS class `flipped` on the board container and individual square/piece elements to rotate them 180 degrees.
     *   *Tasks:*
-        - [ ] Add "Flip Board" button to UI.
-        - [ ] Implement `flipBoard()` function in `client.js`.
-        - [ ] Add `.flipped` CSS transformations.
+        - [x] Add "Flip Board" button to UI.
+        - [x] Implement `flipBoard()` function in `client.js`.
+        - [x] Add `.flipped` CSS transformations.
     *   *Testing Plan:*
         - Manual: Click button, verify board rotates, verify rank/file labels update.
         - Playwright: Check element `transform` styles.
     *   *Acceptance Criteria:*
-        - [ ] Board orientation toggles correctly.
-        - [ ] Drag and drop works correctly in flipped mode.
+        - [x] Board orientation toggles correctly.
+        - [x] Drag and drop works correctly in flipped mode.
 
 2.  **Piece Set Selection (S)**
     *   *Description:* Add a UI option to switch between different piece themes (e.g., Alpha, Merida, Cburnett).
     *   *Implementation:* Store piece sets in `public/images/pieces/{set_name}/`. Update `getPieceImage(piece)` to use selected set path.
     *   *Tasks:*
-        - [ ] Download open-source piece sets.
-        - [ ] Create dropdown in Settings.
-        - [ ] Update image loading logic.
+        - [x] Download open-source piece sets.
+        - [x] Create dropdown in Settings.
+        - [x] Update image loading logic.
     *   *Testing Plan:* Verify all piece images load for each set.
     *   *Acceptance Criteria:*
-        - [ ] User can select at least 3 distinct piece sets.
+        - [x] User can select at least 3 distinct piece sets.
 
 3.  **Board Color Themes (S)**
     *   *Description:* Add a UI option to change the board square colors (e.g., Green/White, Blue/White, Wood).
     *   *Implementation:* Use CSS variables for `--light-square` and `--dark-square`. Dropdown updates these variables on `root`.
     *   *Tasks:*
-        - [ ] Define theme palettes in `client.js`.
-        - [ ] Add color picker/dropdown.
+        - [x] Define theme palettes in `client.js`.
+        - [x] Add color picker/dropdown.
     *   *Testing Plan:* Visual inspection of board colors.
     *   *Acceptance Criteria:*
-        - [ ] Changing theme immediately updates board colors.
+        - [x] Changing theme immediately updates board colors.
 
 4.  **Board Size Slider (S)**
     *   *Description:* Slider to dynamically resize the board (Small, Medium, Large).
     *   *Implementation:* Bind slider value to `--board-size` CSS variable or width percentage.
     *   *Tasks:*
-        - [ ] Add range input to UI.
-        - [ ] Listen for `input` events and update container style.
+        - [x] Add range input to UI.
+        - [x] Listen for `input` events and update container style.
     *   *Testing Plan:* Verify board remains responsive and pieces scale correctly.
     *   *Acceptance Criteria:*
-        - [ ] Board resizes smoothly from 300px to 800px (or screen max).
+        - [x] Board resizes smoothly from 300px to 800px (or screen max).
 
 5.  **Dark Mode Toggle (S)**
     *   *Description:* A dedicated toggle for the entire UI theme (Light/Dark), separate from board colors.
     *   *Implementation:* Toggle `dark-mode` class on `<body>`. Define dark colors for background, panels, and text.
     *   *Tasks:*
-        - [ ] Create CSS variables for UI colors.
-        - [ ] Implement toggle switch.
-        - [ ] Persist preference in `localStorage`.
+        - [x] Create CSS variables for UI colors.
+        - [x] Implement toggle switch.
+        - [x] Persist preference in `localStorage`.
     *   *Testing Plan:* Verify text contrast and background in both modes.
     *   *Acceptance Criteria:*
-        - [ ] UI switches themes instantly.
-        - [ ] Setting is remembered on reload.
+        - [x] UI switches themes instantly.
+        - [x] Setting is remembered on reload.
 
 6.  **Piece Style: 3D Assets (S)**
     *   *Description:* Add a set of 3D-rendered piece images.
     *   *Implementation:* Use pre-rendered 2D images of 3D pieces.
     *   *Tasks:*
-        - [ ] Source or render 3D piece sprites.
-        - [ ] Add to Piece Set dropdown.
+        - [x] Source or render 3D piece sprites.
+        - [x] Add to Piece Set dropdown.
     *   *Testing Plan:* Check visual alignment of 3D bases on squares.
     *   *Acceptance Criteria:*
-        - [ ] 3D style pieces are selectable.
+        - [x] 3D style pieces are selectable.
 
 7.  **Piece Style: Pixel Art (S)**
     *   *Description:* Add a retro 8-bit piece set.
     *   *Implementation:* Add "Pixel" to piece sets. Use `image-rendering: pixelated` CSS.
     *   *Tasks:*
-        - [ ] Create/Find pixel art sprites.
-        - [ ] Add CSS rule for pixelated scaling.
+        - [x] Create/Find pixel art sprites.
+        - [x] Add CSS rule for pixelated scaling.
     *   *Testing Plan:* Verify sharp edges on scaling.
     *   *Acceptance Criteria:*
-        - [ ] Pixel art looks crisp.
+        - [x] Pixel art looks crisp.
 
 8.  **Board Style: Glass (S)**
     *   *Description:* A translucent/glass-effect board theme.
     *   *Implementation:* Use `backdrop-filter: blur()` and semi-transparent RGBA colors for squares.
     *   *Tasks:*
-        - [ ] Create "Glass" theme definition.
-        - [ ] Apply specific CSS classes for blur effects.
+        - [x] Create "Glass" theme definition.
+        - [x] Apply specific CSS classes for blur effects.
     *   *Testing Plan:* Ensure background image/color is visible through board.
     *   *Acceptance Criteria:*
-        - [ ] Glass effect is visible and performant.
+        - [x] Glass effect is visible and performant.
 
 9.  **Board Style: Newspaper (S)**
     *   *Description:* A black and white high-contrast print style theme.
     *   *Implementation:* Use grayscale filters and specific high-contrast patterns.
     *   *Tasks:*
-        - [ ] Create "Newspaper" theme.
+        - [x] Create "Newspaper" theme.
     *   *Testing Plan:* Verify high contrast for accessibility.
     *   *Acceptance Criteria:*
-        - [ ] Theme resembles a printed diagram.
+        - [x] Theme resembles a printed diagram.
 
 10. **Custom Theme Editor (S)**
     *   *Description:* Allow users to pick custom hex colors for the board instead of using presets.

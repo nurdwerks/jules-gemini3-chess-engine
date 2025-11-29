@@ -74,18 +74,35 @@
                 </div>
                 <div class="panel-content">
                      <div class="option-item">
+                        <label for="ui-theme">UI Theme:</label>
+                        <select id="ui-theme">
+                            <option value="dark">Dark</option>
+                            <option value="light">Light</option>
+                        </select>
+                     </div>
+                     <div class="option-item">
                         <label for="board-theme">Theme:</label>
                         <select id="board-theme">
                             <option value="classic">Classic</option>
                             <option value="green">Green</option>
                             <option value="blue">Blue</option>
                             <option value="wood">Wood</option>
+                            <option value="glass">Glass</option>
+                            <option value="newspaper">Newspaper</option>
                         </select>
+                     </div>
+                     <div class="option-item">
+                        <label for="board-size">Max Width:</label>
+                        <input type="range" id="board-size" min="200" max="1000" value="1000" step="10">
                      </div>
                      <div class="option-item">
                         <label for="piece-set">Piece Set:</label>
                         <select id="piece-set">
-                            <option value="svg">SVG (Standard)</option>
+                            <option value="cburnett">Cburnett (Standard)</option>
+                            <option value="alpha">Alpha</option>
+                            <option value="merida">Merida</option>
+                            <option value="3d">3D</option>
+                            <option value="pixel">Pixel Art</option>
                             <option value="unicode">Unicode</option>
                         </select>
                      </div>

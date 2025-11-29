@@ -1,3 +1,7 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 :root {
     --grafana-dark-bg: #181B21;
     --grafana-panel-bg: #111217;
@@ -80,6 +84,9 @@ body {
   aspect-ratio: 1 / 1;
   border: 2px solid var(--grafana-border);
   user-select: none;
+  width: 100%;
+  max-width: var(--board-max-width, 100%);
+  margin: 0 auto;
 }
 
 .square {
@@ -493,4 +500,54 @@ button:hover {
     .option-item {
         flex-wrap: wrap;
     }
+}
+
+/* Board Flipping */
+#chessboard.flipped {
+    transform: rotate(180deg);
+}
+
+#chessboard.flipped .piece {
+    transform: rotate(180deg);
+}
+
+/* Light Mode Overrides */
+body.light-mode {
+    --grafana-dark-bg: #F4F5F5;
+    --grafana-panel-bg: #FFFFFF;
+    --grafana-border: #D8D9DA;
+    --grafana-text-primary: #24292E;
+    --grafana-text-secondary: #586069;
+    --grafana-input-bg: #FAFAFA;
+}
+
+.piece-set-pixel {
+    image-rendering: pixelated;
+    /* Ensure it scales up with nearest neighbor if the image is small */
+    image-rendering: crisp-edges;
+}
+
+/* Glass Theme */
+#chessboard.theme-glass {
+    --board-light-square: rgba(255, 255, 255, 0.1);
+    --board-dark-square: rgba(255, 255, 255, 0.3);
+}
+#chessboard.theme-glass .square {
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Newspaper Theme */
+#chessboard.theme-newspaper {
+    --board-light-square: #ffffff;
+    --board-dark-square: #dddddd;
+    filter: grayscale(100%) contrast(120%);
+    border: 4px solid #000;
+}
+#chessboard.theme-newspaper .black {
+    /* Halftone-ish effect */
+    background-image: radial-gradient(#000 20%, transparent 20%);
+    background-color: #ffffff;
+    background-size: 4px 4px;
 }
