@@ -1,5 +1,6 @@
+/* eslint-disable max-lines */
 /* eslint-env browser */
-/* global Chess */
+/* global Chess, SoundManager, ArrowManager, VisualizationManager, GraphManager, ClientUtils */
 
 // eslint-disable-next-line complexity
 document.addEventListener('DOMContentLoaded', () => {
@@ -86,11 +87,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const bottomCapturedPieces = document.getElementById('bottom-captured-pieces')
   const topMaterialBar = document.getElementById('top-material-bar')
   const bottomMaterialBar = document.getElementById('bottom-material-bar')
-  const evalGraphSvg = document.getElementById('eval-graph')
-  const materialGraphSvg = document.getElementById('material-graph')
-  const timeGraphSvg = document.getElementById('time-graph')
-  const npsGraphSvg = document.getElementById('nps-graph')
-  const tensionGraphSvg = document.getElementById('tension-graph')
 
   const timeBaseInput = document.getElementById('time-base')
   const timeIncInput = document.getElementById('time-inc')
@@ -210,540 +206,18 @@ document.addEventListener('DOMContentLoaded', () => {
     BookFile: 'Path to the Polyglot opening book file'
   }
 
-  const ArrowManager = (() => {
-    const svg = document.getElementById('arrow-layer')
-    let userArrows = [] // Array of {from, to}
-    let engineArrows = [] // Array of {from, to, type}
-    let lastMoveArrow = null // {from, to}
-    let userHighlights = {} // alg -> className
-
-    const clearAll = () => {
-      if (!svg) return
-      svg.innerHTML = ''
-    }
-
-    let vizLines = []
-
-    const render = () => {
-      clearAll()
-      if (lastMoveArrow) _draw(lastMoveArrow.from, lastMoveArrow.to, 'arrow-last')
-      userArrows.forEach(a => _draw(a.from, a.to, 'arrow-user'))
-      engineArrows.forEach(a => _draw(a.from, a.to, a.type))
-      vizLines.forEach(l => _drawLine(l.from, l.to, l.className))
-    }
-
-    const setVizLines = (lines) => {
-      vizLines = lines || []
-      render()
-    }
-
-    const _drawLine = (from, to, className) => {
-      if (!svg) return
-      const start = getSquareCenter(from)
-      const end = getSquareCenter(to)
-      if (!start || !end) return
-
-      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line')
-      line.setAttribute('x1', `${start.x}%`)
-      line.setAttribute('y1', `${start.y}%`)
-      line.setAttribute('x2', `${end.x}%`)
-      line.setAttribute('y2', `${end.y}%`)
-      line.classList.add(className)
-      svg.appendChild(line)
-    }
-
-    const _draw = (from, to, className) => {
-      if (!svg) return
-
-      const start = getSquareCenter(from)
-      const end = getSquareCenter(to)
-      if (!start || !end) return
-
-      // Create group for arrow
-      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g')
-      g.classList.add('arrow', className)
-
-      // Calculate vector
-      const dx = end.x - start.x
-      const dy = end.y - start.y
-      const len = Math.sqrt(dx * dx + dy * dy)
-      if (len === 0) return
-
-      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line')
-      line.setAttribute('x1', `${start.x}%`)
-      line.setAttribute('y1', `${start.y}%`)
-      line.setAttribute('x2', `${end.x}%`)
-      line.setAttribute('y2', `${end.y}%`)
-      line.setAttribute('stroke-width', '1.5%')
-
-      // Arrowhead
-      const angle = Math.atan2(dy, dx)
-      const headLen = 4 // %
-      const headAngle = Math.PI / 6
-
-      const x2 = end.x - headLen * Math.cos(angle - headAngle)
-      const y2 = end.y - headLen * Math.sin(angle - headAngle)
-      const x3 = end.x - headLen * Math.cos(angle + headAngle)
-      const y3 = end.y - headLen * Math.sin(angle + headAngle)
-
-      const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon')
-      polygon.setAttribute('points', `${end.x},${end.y} ${x2},${y2} ${x3},${y3}`)
-      polygon.classList.add('arrow-head')
-
-      g.appendChild(line)
-      g.appendChild(polygon)
-      svg.appendChild(g)
-    }
-
-    const getSquareCenter = (alg) => {
-      const colFile = alg[0]
-      const rowRank = alg[1]
-
-      const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
-      let col = files.indexOf(colFile)
-      let row = 8 - parseInt(rowRank)
-
-      if (col === -1 || isNaN(row)) return null
-
-      // Handle Flip
-      if (isFlipped) {
-        col = 7 - col
-        row = 7 - row
-      }
-
-      // 0-7 to 12.5% centers
-      const step = 100 / 8
-      const x = col * step + (step / 2)
-      const y = row * step + (step / 2)
-
-      return { x, y }
-    }
-
-    const addUserArrow = (from, to) => {
-      // Check if exists, remove if so (toggle)
-      const idx = userArrows.findIndex(a => a.from === from && a.to === to)
-      if (idx !== -1) {
-        userArrows.splice(idx, 1)
-      } else {
-        userArrows.push({ from, to })
-      }
-      render()
-    }
-
-    const updateEngineArrow = (from, to, type) => {
-      engineArrows = engineArrows.filter(a => a.type !== type)
-      engineArrows.push({ from, to, type })
-      render()
-    }
-
-    const setEngineArrow = (from, to, type = 'arrow-best') => {
-      // Compatibility: clear best/ponder and set this one?
-      // Or just alias to updateEngineArrow?
-      // Existing code expects setEngineArrow to REPLACE engine arrows (implied by singular name).
-      // But now we might want best AND ponder.
-      // Let's assume setEngineArrow is for 'arrow-best'.
-      // If I want to clear old best and set new best:
-      updateEngineArrow(from, to, type)
-    }
-
-    const clearEngineArrows = () => {
-      engineArrows = []
-      render()
-    }
-
-    const clearUserArrows = () => {
-      userArrows = []
-      render()
-    }
-
-    const toggleUserHighlight = (alg) => {
-      const colors = ['highlight-red', 'highlight-green', 'highlight-blue', 'highlight-yellow']
-      const current = userHighlights[alg]
-      let next = null
-      if (!current) {
-        next = colors[0]
-      } else {
-        const idx = colors.indexOf(current)
-        if (idx === colors.length - 1) {
-          next = null // remove
-        } else {
-          next = colors[idx + 1]
-        }
-      }
-
-      if (next) userHighlights[alg] = next
-      else delete userHighlights[alg]
-    }
-
-    const getUserHighlight = (alg) => {
-      return userHighlights[alg]
-    }
-
-    const clearUserHighlights = () => {
-      userHighlights = {}
-    }
-
-    const setLastMoveArrow = (from, to) => {
-      lastMoveArrow = { from, to }
-      render()
-    }
-
-    const clearLastMoveArrow = () => {
-      lastMoveArrow = null
-      render()
-    }
-
-    return {
-      setEngineArrow,
-      clearEngineArrows,
-      addUserArrow,
-      clearUserArrows,
-      toggleUserHighlight,
-      getUserHighlight,
-      clearUserHighlights,
-      setLastMoveArrow,
-      clearLastMoveArrow,
-      setVizLines,
-      render
-    }
-  })()
-
-  const SoundManager = (() => {
-    let context = null
-    let enabled = true
-
-    const init = () => {
-      if (!context) {
-        const AudioContext = window.AudioContext || window.webkitAudioContext
-        context = new AudioContext()
-      }
-      if (context.state === 'suspended') {
-        context.resume().catch(e => console.warn(e))
-      }
-    }
-
-    const playTone = (freq, type, duration, startTime = 0) => {
-      if (!enabled || !context) return
-      try {
-        const osc = context.createOscillator()
-        const gain = context.createGain()
-        osc.type = type
-        osc.frequency.setValueAtTime(freq, context.currentTime + startTime)
-        gain.gain.setValueAtTime(0.1, context.currentTime + startTime)
-        gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + startTime + duration)
-        osc.connect(gain)
-        gain.connect(context.destination)
-        osc.start(context.currentTime + startTime)
-        osc.stop(context.currentTime + startTime + duration)
-      } catch (e) {
-        console.warn('Audio play failed', e)
-      }
-    }
-
-    return {
-      setEnabled: (val) => { enabled = val; if (val) init() },
-      init,
-      playTick: () => {
-        if (!enabled || !context) return
-        init()
-        try {
-          const osc = context.createOscillator()
-          const gain = context.createGain()
-          osc.type = 'square'
-          osc.frequency.setValueAtTime(800, context.currentTime)
-          gain.gain.setValueAtTime(0.05, context.currentTime)
-          gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.05)
-          osc.connect(gain)
-          gain.connect(context.destination)
-          osc.start(context.currentTime)
-          osc.stop(context.currentTime + 0.05)
-        } catch (e) {
-          console.warn('Audio play failed', e)
-        }
-      },
-      playSound: (moveResult, game) => {
-        if (!enabled) return
-        init()
-
-        // Priority: Check > Capture > Move
-        if (game.in_check()) {
-          // Check sound: Two tones
-          playTone(600, 'sine', 0.15)
-          playTone(800, 'sine', 0.15, 0.1)
-        } else if (moveResult.flags.includes('c') || moveResult.flags.includes('e')) {
-          // Capture sound: Sharp snap (high square wave)
-          playTone(600, 'square', 0.1)
-        } else {
-          // Move sound: Soft tap (low triangle)
-          playTone(200, 'triangle', 0.1)
-        }
-      }
-    }
-  })()
-
   if (soundEnabledCheckbox) {
     SoundManager.setEnabled(soundEnabledCheckbox.checked)
     soundEnabledCheckbox.addEventListener('change', (e) => SoundManager.setEnabled(e.target.checked))
   }
 
-  const VisualizationManager = (() => {
-    let highlights = {}
-    let lines = []
-    let opacities = {}
-
-    const getToggles = () => ({
-      kingSafety: document.getElementById('viz-king-safety'),
-      mobility: document.getElementById('viz-mobility'),
-      utilization: document.getElementById('viz-utilization'),
-      pieceTracker: document.getElementById('viz-piece-tracker'),
-      outpost: document.getElementById('viz-outpost'),
-      weakSquare: document.getElementById('viz-weak-square'),
-      battery: document.getElementById('viz-battery'),
-      xray: document.getElementById('viz-xray'),
-      pin: document.getElementById('viz-pin'),
-      fork: document.getElementById('viz-fork'),
-      discovered: document.getElementById('viz-discovered')
-    })
-
-    const _addHighlight = (alg, className) => {
-      if (!highlights[alg]) highlights[alg] = []
-      if (!highlights[alg].includes(className)) highlights[alg].push(className)
-    }
-
-    const _checkRay = (board, r, c, d, callback) => {
-      let r2 = r + d[0]
-      let c2 = c + d[1]
-      while (r2 >= 0 && r2 < 8 && c2 >= 0 && c2 < 8) {
-        if (callback(r2, c2, board[r2][c2])) break
-        r2 += d[0]
-        c2 += d[1]
-      }
-    }
-
-    const _getKingPos = (board, turn) => {
-      for (let r = 0; r < 8; r++) {
-        for (let c = 0; c < 8; c++) {
-          const p = board[r][c]
-          if (p && p.type === 'k' && p.color === turn) return { r, c }
-        }
-      }
-      return null
-    }
-
-    const _forEachSquare = (board, cb) => {
-      for (let r = 0; r < 8; r++) {
-        for (let c = 0; c < 8; c++) {
-          cb(r, c, board[r][c])
-        }
-      }
-    }
-
-    const _isSlider = (p, d) => {
-      const isOrtho = (d[0] === 0 || d[1] === 0)
-      const isDiag = (d[0] !== 0 && d[1] !== 0)
-      return (isOrtho && (p.type === 'r' || p.type === 'q')) || (isDiag && (p.type === 'b' || p.type === 'q'))
-    }
-
-    const _calcUtilization = (game) => {
-      const counts = {}
-      const history = game.history({ verbose: true })
-      history.forEach(m => {
-        counts[m.from] = (counts[m.from] || 0) + 1
-        counts[m.to] = (counts[m.to] || 0) + 1
-      })
-      const max = Math.max(...Object.values(counts), 1)
-      Object.keys(counts).forEach(alg => {
-        const val = counts[alg]
-        _addHighlight(alg, 'viz-utilization')
-        opacities[alg] = { value: Math.min((val / max) * 0.8 + 0.1, 0.9), color: 'red' }
-      })
-    }
-
-    const _calcPieceTracker = (game) => {
-      if (!selectedSquare) return
-      const alg = coordsToAlgebraic(selectedSquare.row, selectedSquare.col)
-      let current = alg
-      const history = game.history({ verbose: true })
-      for (let i = history.length - 1; i >= 0; i--) {
-        const m = history[i]
-        if (m.to === current) {
-          lines.push({ from: m.from, to: m.to, className: 'viz-line-tracker' })
-          current = m.from
-        }
-      }
-    }
-
-    const _calcKingSafety = (game) => {
-      const board = game.board()
-      const turn = game.turn()
-      const kingPos = _getKingPos(board, turn)
-      if (kingPos) {
-        for (let dr = -1; dr <= 1; dr++) {
-          for (let dc = -1; dc <= 1; dc++) {
-            const r = kingPos.r + dr
-            const c = kingPos.c + dc
-            if (r >= 0 && r < 8 && c >= 0 && c < 8) {
-              const alg = coordsToAlgebraic(r, c)
-              _addHighlight(alg, 'highlight-red')
-              opacities[alg] = { value: 0.4, color: 'red' }
-            }
-          }
-        }
-      }
-    }
-
-    const _calcMobility = (game) => {
-      const moves = game.moves({ verbose: true })
-      const counts = {}
-      moves.forEach(m => {
-        counts[m.to] = (counts[m.to] || 0) + 1
-      })
-      const max = 5
-      Object.keys(counts).forEach(alg => {
-        _addHighlight(alg, 'viz-mobility')
-        opacities[alg] = { value: Math.min((counts[alg] / max) * 0.5, 0.6), color: 'blue' }
-      })
-    }
-
-    const _calcOutposts = (game) => {
-      const board = game.board()
-      _forEachSquare(board, (r, c, p) => {
-        if (p && (p.type === 'n' || p.type === 'b')) {
-          const isWhite = p.color === 'w'
-          const rank = 8 - r
-          if ((isWhite && rank >= 4 && rank <= 6) || (!isWhite && rank >= 3 && rank <= 5)) {
-            const alg = coordsToAlgebraic(r, c)
-            _addHighlight(alg, 'viz-outpost')
-          }
-        }
-      })
-    }
-
-    const _calcWeakSquares = (game) => {
-      const board = game.board()
-      const turn = game.turn()
-      const kingPos = _getKingPos(board, turn)
-      if (!kingPos) return
-      for (let dr = -2; dr <= 2; dr++) {
-        for (let dc = -2; dc <= 2; dc++) {
-          const r = kingPos.r + dr
-          const c = kingPos.c + dc
-          if (r >= 0 && r < 8 && c >= 0 && c < 8) {
-            const alg = coordsToAlgebraic(r, c)
-            if (_isSquareThreatened(alg, game)) {
-              _addHighlight(alg, 'viz-weak-square')
-            }
-          }
-        }
-      }
-    }
-
-    const _calcBattery = (game) => {
-      const board = game.board()
-      const turn = game.turn()
-      _forEachSquare(board, (r, c, p) => {
-        if (p && p.color === turn && (p.type === 'q' || p.type === 'r' || p.type === 'b')) {
-          const dirs = []
-          if (p.type !== 'b') dirs.push([-1, 0], [1, 0], [0, -1], [0, 1])
-          if (p.type !== 'r') dirs.push([-1, -1], [-1, 1], [1, -1], [1, 1])
-          dirs.forEach(d => _checkRay(board, r, c, d, (r2, c2, p2) => {
-            if (p2) {
-              if (p2.color === turn && _isSlider(p2, d)) {
-                lines.push({ from: coordsToAlgebraic(r, c), to: coordsToAlgebraic(r2, c2), className: 'viz-line-battery' })
-              }
-              return true
-            }
-            return false
-          }))
-        }
-      })
-    }
-
-    const _calcPins = (game) => {
-      const board = game.board()
-      const turn = game.turn()
-      const kingPos = _getKingPos(board, turn)
-      if (!kingPos) return
-      const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1], [1, -1], [1, 1]]
-      dirs.forEach(d => {
-        let friendly = null
-        _checkRay(board, kingPos.r, kingPos.c, d, (r2, c2, p) => {
-          if (p) {
-            if (p.color === turn) {
-              if (friendly) return true
-              friendly = { r: r2, c: c2 }
-              return false
-            } else {
-              if (friendly && _isSlider(p, d)) {
-                lines.push({ from: coordsToAlgebraic(p.r || r2, p.c || c2), to: coordsToAlgebraic(kingPos.r, kingPos.c), className: 'viz-line-pin' })
-              }
-              return true
-            }
-          }
-          return false
-        })
-      })
-    }
-
-    const _calcForks = (game) => {
-      const board = game.board()
-      const turn = game.turn()
-      _forEachSquare(board, (r, c, p) => {
-        if (p && p.color === turn) {
-          const alg = coordsToAlgebraic(r, c)
-          const moves = game.moves({ square: alg, verbose: true })
-          const targets = new Set()
-          moves.forEach(m => {
-            if (m.flags.includes('c') || m.flags.includes('e')) targets.add(m.to)
-          })
-          if (targets.size >= 2) {
-            _addHighlight(alg, 'viz-fork-source')
-            targets.forEach(t => _addHighlight(t, 'viz-fork-target'))
-          }
-        }
-      })
-    }
-
-    const _calcDiscovered = (game) => {
-      // Placeholder
-    }
-
-    const visualizers = [
-      { id: 'utilization', fn: _calcUtilization },
-      { id: 'pieceTracker', fn: _calcPieceTracker },
-      { id: 'kingSafety', fn: _calcKingSafety },
-      { id: 'mobility', fn: _calcMobility },
-      { id: 'outpost', fn: _calcOutposts },
-      { id: 'weakSquare', fn: _calcWeakSquares },
-      { id: 'battery', fn: _calcBattery },
-      { id: 'xray', fn: (g) => {} },
-      { id: 'pin', fn: _calcPins },
-      { id: 'fork', fn: _calcForks },
-      { id: 'discovered', fn: _calcDiscovered }
-    ]
-
-    const calculate = (game) => {
-      highlights = {}
-      lines = []
-      opacities = {}
-      if (!game) return
-      const toggles = getToggles()
-      visualizers.forEach(v => {
-        if (toggles[v.id] && toggles[v.id].checked) v.fn(game)
-      })
-      ArrowManager.setVizLines(lines)
-    }
-
-    return {
-      calculate,
-      getHighlights: (alg) => highlights[alg] || [],
-      getOpacity: (alg) => opacities[alg]
-    }
-  })()
-
   let socket
   let selectedSquare = null // { row, col }
   let isFlipped = false
+  const setFlippedState = (val) => {
+    isFlipped = val
+    if (ArrowManager) ArrowManager.setFlipped(val)
+  }
   let gameStarted = false
   let currentViewIndex = -1 // -1 means live view
   let currentPieceSet = 'cburnett' // 'cburnett', 'alpha', 'merida', or 'unicode'
@@ -967,7 +441,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const timeTaken = now - moveStartTime
       moveStartTime = now // Reset for next move
       timeHistory.push({ ply: game.history().length, time: timeTaken })
-      renderTimeGraph()
+      GraphManager.renderTimeGraph(timeHistory)
       _updateTensionHistory()
     }
     currentViewIndex = -1
@@ -994,7 +468,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!evalHistory.find(e => e.ply === targetPly)) {
         evalHistory.push({ ply: targetPly, score })
         evalHistory.sort((a, b) => a.ply - b.ply)
-        renderEvalGraph()
+        GraphManager.renderEvalGraph(evalHistory)
       }
     }
     _updateMaterialHistory()
@@ -1007,17 +481,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const wMat = calculateMaterial(counts.w, values)
     const bMat = calculateMaterial(counts.b, values)
     materialHistory.push({ ply: game.history().length, w: wMat, b: bMat })
-    renderMaterialGraph()
+    GraphManager.renderMaterialGraph(materialHistory)
   }
 
   function _handleAutoFlip () {
     if (autoFlipCheckbox && autoFlipCheckbox.checked) {
       const turn = game.turn()
       if (turn === 'w') {
-        isFlipped = false
+        setFlippedState(false)
         boardElement.classList.remove('flipped')
       } else {
-        isFlipped = true
+        setFlippedState(true)
         boardElement.classList.add('flipped')
       }
       renderClocks()
@@ -1111,7 +585,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (info.nps) {
       npsValueElement.textContent = formatNps(info.nps)
       npsHistory.push({ time: Date.now(), value: parseInt(info.nps) })
-      renderNpsGraph()
+      GraphManager.renderNpsGraph(npsHistory)
     }
   }
 
@@ -1491,10 +965,10 @@ document.addEventListener('DOMContentLoaded', () => {
     timeHistory = []
     npsHistory = []
     tensionHistory = []
-    renderEvalGraph()
-    renderMaterialGraph()
-    renderTimeGraph()
-    renderTensionGraph()
+    GraphManager.renderEvalGraph(evalHistory)
+    GraphManager.renderMaterialGraph(materialHistory)
+    GraphManager.renderTimeGraph(timeHistory)
+    GraphManager.renderTensionGraph(tensionHistory)
     startClock()
     renderBoard()
     renderHistory()
@@ -1718,7 +1192,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const board = state.board
     const chess = state.chess
 
-    VisualizationManager.calculate(chess)
+    VisualizationManager.calculate(chess, selectedSquare)
 
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
@@ -1766,7 +1240,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function _createSquare (r, c, board, chess) {
     const row = r
     const col = c
-    const alg = coordsToAlgebraic(row, col)
+    const alg = ClientUtils.coordsToAlgebraic(row, col)
 
     const square = document.createElement('div')
     square.classList.add('square')
@@ -2076,7 +1550,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (currentViewIndex !== -1) return
 
-    const alg = coordsToAlgebraic(row, col)
+    const alg = ClientUtils.coordsToAlgebraic(row, col)
     if (_handleMoveAttempt(alg)) return
 
     const pieceObj = game.board()[row][col]
@@ -2136,7 +1610,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function _handleMemoryClick (row, col) {
-    const alg = coordsToAlgebraic(row, col)
+    const alg = ClientUtils.coordsToAlgebraic(row, col)
     if (selectedPalettePiece) {
       game.put({ type: selectedPalettePiece.type, color: selectedPalettePiece.color }, alg)
       renderBoard()
@@ -2147,12 +1621,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderBoard()
       }
     }
-  }
-
-  function coordsToAlgebraic (row, col) {
-    const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
-    const rank = 8 - row
-    return files[col] + rank
   }
 
   // eslint-disable-next-line complexity
@@ -2330,10 +1798,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (autoFlipCheckbox && autoFlipCheckbox.checked) {
       const turn = game.turn()
       if (turn === 'w') {
-        isFlipped = false
+        setFlippedState(false)
         boardElement.classList.remove('flipped')
       } else {
-        isFlipped = true
+        setFlippedState(true)
         boardElement.classList.add('flipped')
       }
       renderClocks()
@@ -2436,7 +1904,7 @@ document.addEventListener('DOMContentLoaded', () => {
     pvLinesElement.textContent = ''
 
     npsHistory = [] // Reset live NPS history
-    renderNpsGraph()
+    GraphManager.renderNpsGraph(npsHistory)
 
     let cmd = 'position '
     if (startingFen === 'startpos') {
@@ -2622,7 +2090,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   flipBoardBtn.addEventListener('click', () => {
-    isFlipped = !isFlipped
+    setFlippedState(!isFlipped)
     if (isFlipped) {
       boardElement.classList.add('flipped')
     } else {
@@ -3455,10 +2923,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const turn = game.turn()
     if (turn === 'w' && isFlipped) {
       // flip back to white
-      isFlipped = false
+      setFlippedState(false)
       boardElement.classList.remove('flipped')
     } else if (turn === 'b' && !isFlipped) {
-      isFlipped = true
+      setFlippedState(true)
       boardElement.classList.add('flipped')
     }
     renderClocks()
@@ -3496,10 +2964,10 @@ document.addEventListener('DOMContentLoaded', () => {
         isSelfPlay = false
 
         if (config.userColor === 'w') {
-          isFlipped = false
+          setFlippedState(false)
           boardElement.classList.remove('flipped')
         } else {
-          isFlipped = true
+          setFlippedState(true)
           boardElement.classList.add('flipped')
         }
 
@@ -3767,211 +3235,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return sum
   }
 
-  function renderEvalGraph () {
-    if (!evalGraphSvg) return
-    if (evalHistory.length === 0) {
-      evalGraphSvg.innerHTML = ''
-      return
-    }
-
-    evalGraphSvg.innerHTML = ''
-
-    const width = evalGraphSvg.clientWidth || 300
-    const height = evalGraphSvg.clientHeight || 100
-    const padding = 5
-
-    // Scales
-    const maxPly = Math.max(20, evalHistory.length)
-    const minScore = -500 // -5 pawns
-    const maxScore = 500 // +5 pawns
-
-    // Helper to map logic
-    const getX = (ply) => (ply / maxPly) * (width - 2 * padding) + padding
-    const getY = (score) => {
-      // Clamp
-      const s = Math.max(minScore, Math.min(maxScore, score))
-      // Map to 0..height (inverted, +score is top)
-      const pct = (s - minScore) / (maxScore - minScore)
-      return height - (pct * (height - 2 * padding) + padding)
-    }
-
-    // Zero line
-    const zeroY = getY(0)
-    const line0 = document.createElementNS('http://www.w3.org/2000/svg', 'line')
-    line0.setAttribute('x1', 0)
-    line0.setAttribute('y1', zeroY)
-    line0.setAttribute('x2', width)
-    line0.setAttribute('y2', zeroY)
-    line0.setAttribute('stroke', '#444')
-    line0.setAttribute('stroke-width', '1')
-    line0.setAttribute('stroke-dasharray', '4')
-    evalGraphSvg.appendChild(line0)
-
-    // Polyline
-    const points = evalHistory.map(p => `${getX(p.ply)},${getY(p.score)}`).join(' ')
-    const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline')
-    polyline.setAttribute('points', points)
-    polyline.setAttribute('fill', 'none')
-    polyline.setAttribute('stroke', '#33B5E5')
-    polyline.setAttribute('stroke-width', '2')
-    evalGraphSvg.appendChild(polyline)
-  }
-
-  function renderMaterialGraph () {
-    if (!materialGraphSvg) return
-    if (materialHistory.length === 0) {
-      materialGraphSvg.innerHTML = ''
-      return
-    }
-
-    materialGraphSvg.innerHTML = ''
-    const width = materialGraphSvg.clientWidth || 300
-    const height = materialGraphSvg.clientHeight || 200
-    const padding = 10
-
-    const maxPly = Math.max(20, materialHistory.length)
-    const maxMat = 39
-
-    const getX = (ply) => (ply / maxPly) * (width - 2 * padding) + padding
-    const getY = (mat) => height - ((mat / maxMat) * (height - 2 * padding) + padding)
-
-    // White Material Line
-    const wPoints = materialHistory.map(p => `${getX(p.ply)},${getY(p.w)}`).join(' ')
-    const wPoly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline')
-    wPoly.setAttribute('points', wPoints)
-    wPoly.setAttribute('fill', 'none')
-    wPoly.setAttribute('stroke', '#E3E3E3')
-    wPoly.setAttribute('stroke-width', '2')
-    materialGraphSvg.appendChild(wPoly)
-
-    // Black Material Line
-    const bPoints = materialHistory.map(p => `${getX(p.ply)},${getY(p.b)}`).join(' ')
-    const bPoly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline')
-    bPoly.setAttribute('points', bPoints)
-    bPoly.setAttribute('fill', 'none')
-    bPoly.setAttribute('stroke', '#6B6B6B')
-    bPoly.setAttribute('stroke-width', '2')
-    materialGraphSvg.appendChild(bPoly)
-  }
-
-  function renderTimeGraph () {
-    if (!timeGraphSvg) return
-    if (timeHistory.length === 0) {
-      timeGraphSvg.innerHTML = ''
-      return
-    }
-
-    timeGraphSvg.innerHTML = ''
-    const width = timeGraphSvg.clientWidth || 300
-    const height = timeGraphSvg.clientHeight || 200
-    const padding = 20
-
-    const maxPly = Math.max(20, timeHistory[timeHistory.length - 1].ply)
-    const maxTime = Math.max(1000, ...timeHistory.map(t => t.time))
-
-    const getX = (ply) => (ply / maxPly) * (width - 2 * padding) + padding
-    const getY = (time) => height - ((time / maxTime) * (height - 2 * padding) + padding)
-
-    // Bars
-    const barW = Math.max(2, ((width - 2 * padding) / maxPly) * 0.8)
-
-    timeHistory.forEach(t => {
-      const x = getX(t.ply) - barW / 2
-      const y = getY(t.time)
-      const h = (height - padding) - y
-
-      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
-      rect.setAttribute('x', x)
-      rect.setAttribute('y', y)
-      rect.setAttribute('width', barW)
-      rect.setAttribute('height', h)
-      rect.setAttribute('fill', '#33B5E5') // Blue
-      timeGraphSvg.appendChild(rect)
-    })
-  }
-
-  function renderNpsGraph () {
-    if (!npsGraphSvg) return
-    if (npsHistory.length === 0) {
-      npsGraphSvg.innerHTML = ''
-      return
-    }
-
-    npsGraphSvg.innerHTML = ''
-    const width = npsGraphSvg.clientWidth || 300
-    const height = npsGraphSvg.clientHeight || 200
-    const padding = 10
-
-    const maxSamples = npsHistory.length
-    const maxNps = Math.max(100000, ...npsHistory.map(n => n.value))
-
-    const getX = (i) => (i / (maxSamples - 1 || 1)) * (width - 2 * padding) + padding
-    const getY = (val) => height - ((val / maxNps) * (height - 2 * padding) + padding)
-
-    const points = npsHistory.map((n, i) => `${getX(i)},${getY(n.value)}`).join(' ')
-    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline')
-    poly.setAttribute('points', points)
-    poly.setAttribute('fill', 'none')
-    poly.setAttribute('stroke', '#9AC42A') // Green
-    poly.setAttribute('stroke-width', '2')
-    npsGraphSvg.appendChild(poly)
-  }
-
-  function _updateTensionHistory () {
-    const tension = _calculateTension(game)
-    tensionHistory.push({ ply: game.history().length, value: tension })
-    renderTensionGraph()
-  }
-
-  function _calculateTension (chess) {
-    const moves = chess.moves({ verbose: true })
-    let count = moves.filter(m => m.flags.includes('c') || m.flags.includes('e')).length
-
-    // Check opponent moves by flipping side in FEN
-    // Note: detailed validation might fail if position is illegal for other side, but good approximation
-    const fen = chess.fen()
-    const tokens = fen.split(' ')
-    tokens[1] = tokens[1] === 'w' ? 'b' : 'w'
-    const tempFen = tokens.join(' ')
-
-    try {
-      const temp = new Chess(tempFen)
-      const oppMoves = temp.moves({ verbose: true })
-      count += oppMoves.filter(m => m.flags.includes('c') || m.flags.includes('e')).length
-    } catch (e) {
-      // Ignore errors
-    }
-
-    return count
-  }
-
-  function renderTensionGraph () {
-    if (!tensionGraphSvg) return
-    if (tensionHistory.length === 0) {
-      tensionGraphSvg.innerHTML = ''
-      return
-    }
-
-    tensionGraphSvg.innerHTML = ''
-    const width = tensionGraphSvg.clientWidth || 300
-    const height = tensionGraphSvg.clientHeight || 200
-    const padding = 10
-
-    const maxPly = Math.max(20, tensionHistory[tensionHistory.length - 1].ply)
-    const maxTension = Math.max(10, ...tensionHistory.map(t => t.value))
-
-    const getX = (ply) => (ply / maxPly) * (width - 2 * padding) + padding
-    const getY = (val) => height - ((val / maxTension) * (height - 2 * padding) + padding)
-
-    const points = tensionHistory.map(t => `${getX(t.ply)},${getY(t.value)}`).join(' ')
-    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline')
-    poly.setAttribute('points', points)
-    poly.setAttribute('fill', 'none')
-    poly.setAttribute('stroke', '#F2495C') // Red
-    poly.setAttribute('stroke-width', '2')
-    tensionGraphSvg.appendChild(poly)
-  }
-
   if (analyzeGameBtn) {
     analyzeGameBtn.addEventListener('click', startFullGameAnalysis)
   }
@@ -4190,6 +3453,31 @@ document.addEventListener('DOMContentLoaded', () => {
           `
       leaderboardTable.appendChild(tr)
     })
+  }
+
+  function _updateTensionHistory () {
+    const tension = _calculateTension(game)
+    tensionHistory.push({ ply: game.history().length, value: tension })
+    GraphManager.renderTensionGraph(tensionHistory)
+  }
+
+  function _calculateTension (chess) {
+    const moves = chess.moves({ verbose: true })
+    let count = moves.filter(m => m.flags.includes('c') || m.flags.includes('e')).length
+
+    const fen = chess.fen()
+    const tokens = fen.split(' ')
+    tokens[1] = tokens[1] === 'w' ? 'b' : 'w'
+    const tempFen = tokens.join(' ')
+
+    try {
+      const temp = new Chess(tempFen)
+      const oppMoves = temp.moves({ verbose: true })
+      count += oppMoves.filter(m => m.flags.includes('c') || m.flags.includes('e')).length
+    } catch (e) {
+    }
+
+    return count
   }
 
   connect()

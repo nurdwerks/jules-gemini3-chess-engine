@@ -29,6 +29,22 @@ class StrengthLimiter {
     // Ensure at least 1 node
     return Math.max(1, nodes)
   }
+
+  static injectError (search) {
+    if (search.options.UCI_LimitStrength && search.options.UCI_Elo && search.bestMove) {
+      const elo = search.options.UCI_Elo
+      if (elo < 2500) {
+        const blunderChance = Math.max(0, (2500 - elo) / 5000)
+        if (Math.random() < blunderChance) {
+          const moves = search.board.generateMoves()
+          if (moves.length > 1) {
+            const otherMoves = moves.filter(m => !(m.from === search.bestMove.from && m.to === search.bestMove.to))
+            if (otherMoves.length > 0) search.bestMove = otherMoves[Math.floor(Math.random() * otherMoves.length)]
+          }
+        }
+      }
+    }
+  }
 }
 
 module.exports = StrengthLimiter
