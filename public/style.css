@@ -185,6 +185,20 @@ button:hover {
     gap: 12px;
 }
 
+.option-group {
+    border: 1px solid var(--grafana-border);
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 5px;
+}
+
+.option-group legend {
+    color: var(--grafana-text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 0 5px;
+}
+
 .option-item {
     display: flex;
     justify-content: space-between;
