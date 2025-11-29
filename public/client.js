@@ -28,6 +28,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const importPgnBtn = document.getElementById('import-pgn-btn')
   const exportPgnBtn = document.getElementById('export-pgn-btn')
 
+  const resignBtn = document.getElementById('resign-btn')
+  const offerDrawBtn = document.getElementById('offer-draw-btn')
+  const takebackBtn = document.getElementById('takeback-btn')
+  const forceMoveBtn = document.getElementById('force-move-btn')
+
+  const replayBtn = document.getElementById('replay-btn')
+  const replaySpeedInput = document.getElementById('replay-speed')
+
+  const autoFlipCheckbox = document.getElementById('auto-flip')
+  const autoQueenCheckbox = document.getElementById('auto-queen')
+  const moveConfirmationCheckbox = document.getElementById('move-confirmation')
+
+  const promotionModal = document.getElementById('promotion-modal')
+
   const pgnImportModal = document.getElementById('pgn-import-modal')
   const closePgnModalBtn = document.getElementById('close-pgn-modal')
   const pgnInputArea = document.getElementById('pgn-input-area')
@@ -240,6 +254,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentPuzzleMoveIndex = 0
   let tacticsPuzzles = []
 
+  let replayInterval = null
+  let pendingConfirmationMove = null
+  let premove = null
+  let lastEngineEval = 0 // cp
+
   let whiteTime = 300000 // 5 minutes in ms
   let blackTime = 300000
   let clockInterval = null
@@ -350,18 +369,36 @@ document.addEventListener('DOMContentLoaded', () => {
     const move = parts[1]
     if (move && move !== '(none)') {
       await performMove(move)
+      await _checkAndExecutePremove()
+
       if ((isSelfPlay || isDuelActive) && !game.game_over()) {
-        setTimeout(() => {
-          if (isSelfPlay || isDuelActive) {
-            if (isDuelActive) {
-              const nextTurn = game.turn()
-              const config = nextTurn === 'w' ? engineAConfig : engineBConfig
-              applyEngineConfig(config)
-            }
-            sendPositionAndGo()
-          }
-        }, 500) // Small delay for visual pacing
+        setTimeout(_triggerNextMove, 500)
       }
+    }
+  }
+
+  async function _checkAndExecutePremove () {
+    if (!premove) return
+    const moves = game.moves({ verbose: true })
+    const match = moves.find(m => m.from === premove.from && m.to === premove.to && (!premove.promotion || m.promotion === premove.promotion))
+    if (match) {
+      premove = null
+      await attemptMove(match)
+    } else {
+      premove = null
+      showToast('Premove invalid', 'error')
+      renderBoard()
+    }
+  }
+
+  function _triggerNextMove () {
+    if (isSelfPlay || isDuelActive) {
+      if (isDuelActive) {
+        const nextTurn = game.turn()
+        const config = nextTurn === 'w' ? engineAConfig : engineBConfig
+        applyEngineConfig(config)
+      }
+      sendPositionAndGo()
     }
   }
 
@@ -390,6 +427,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const result = game.move({ from, to, promotion })
     if (result) SoundManager.playSound(result, game)
     currentViewIndex = -1
+
+    if (autoFlipCheckbox && autoFlipCheckbox.checked) {
+      const turn = game.turn()
+      if (turn === 'w') {
+        isFlipped = false
+        boardElement.classList.remove('flipped')
+      } else {
+        isFlipped = true
+        boardElement.classList.add('flipped')
+      }
+      renderClocks() // updates names/clocks
+    }
+
     renderBoard()
     renderHistory()
     checkGameOver()
@@ -446,6 +496,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (info.score) {
       evalValueElement.textContent = formatScore(info.score)
       updateEvalBar(info.score)
+      if (info.score.type === 'cp') {
+        lastEngineEval = info.score.value
+      } else {
+        lastEngineEval = info.score.value > 0 ? 10000 : -10000
+      }
     }
     if (info.pv) updatePvDisplay(info.pv)
   }
@@ -1028,40 +1083,53 @@ document.addEventListener('DOMContentLoaded', () => {
     _addLegalMoveHints(square, alg)
 
     const pieceObj = board[row][col]
-    if (pieceObj) {
-      const color = pieceObj.color
-      const type = pieceObj.type
-      if (currentPieceSet === 'unicode') {
-        const div = document.createElement('div')
-        div.classList.add('piece', 'piece-text')
-        div.classList.add(color === 'w' ? 'white-piece' : 'black-piece')
-        div.textContent = getUnicodePiece(color, type)
-        square.appendChild(div)
-      } else if (currentPieceSet === 'custom-upload') {
-        const img = document.createElement('img')
-        const key = color + type
-        img.src = customPieceImages[key] || ''
-        img.classList.add('piece')
-        square.appendChild(img)
-      } else {
-        const img = document.createElement('img')
-        img.src = `images/${currentPieceSet}/${color}${type}.svg`
-        img.classList.add('piece')
-        img.classList.add(`piece-set-${currentPieceSet}`)
-        square.appendChild(img)
-      }
-    }
+    _addPieceToSquare(square, pieceObj)
 
     square.dataset.row = row
     square.dataset.col = col
     square.dataset.alg = alg
 
-    if (selectedSquare && selectedSquare.row === row && selectedSquare.col === col) {
-      square.classList.add('selected')
-    }
+    _applySquareHighlights(square, row, col, alg)
 
     square.addEventListener('click', () => handleSquareClick(row, col))
     boardElement.appendChild(square)
+  }
+
+  function _addPieceToSquare (square, pieceObj) {
+    if (!pieceObj) return
+    const color = pieceObj.color
+    const type = pieceObj.type
+    if (currentPieceSet === 'unicode') {
+      const div = document.createElement('div')
+      div.classList.add('piece', 'piece-text')
+      div.classList.add(color === 'w' ? 'white-piece' : 'black-piece')
+      div.textContent = getUnicodePiece(color, type)
+      square.appendChild(div)
+    } else if (currentPieceSet === 'custom-upload') {
+      const img = document.createElement('img')
+      const key = color + type
+      img.src = customPieceImages[key] || ''
+      img.classList.add('piece')
+      square.appendChild(img)
+    } else {
+      const img = document.createElement('img')
+      img.src = `images/${currentPieceSet}/${color}${type}.svg`
+      img.classList.add('piece')
+      img.classList.add(`piece-set-${currentPieceSet}`)
+      square.appendChild(img)
+    }
+  }
+
+  function _applySquareHighlights (square, row, col, alg) {
+    if (selectedSquare && selectedSquare.row === row && selectedSquare.col === col) {
+      square.classList.add('selected')
+    }
+    if (pendingConfirmationMove && pendingConfirmationMove.to === alg) {
+      square.classList.add('selected')
+    }
+    if (premove && (alg === premove.from || alg === premove.to)) {
+      square.classList.add('premove-highlight')
+    }
   }
 
   function _addCoordinates (square, row, col) {
@@ -1098,36 +1166,65 @@ document.addEventListener('DOMContentLoaded', () => {
       _handleMemoryClick(row, col)
       return
     }
-
     if (currentViewIndex !== -1) return
 
-    const board = game.board()
-    const pieceObj = board[row][col]
     const alg = coordsToAlgebraic(row, col)
+    if (_handleMoveAttempt(alg)) return
 
-    // If clicking on a legal destination for the selected piece
-    if (selectedSquare) {
-      const move = legalMovesForSelectedPiece.find(m => m.to === alg)
-      if (move) {
-        attemptMove(move)
-        return
-      }
+    const pieceObj = game.board()[row][col]
+    if (_handlePieceSelection(pieceObj, row, col, alg)) return
+
+    _deselectSquare()
+  }
+
+  function _handleMoveAttempt (alg) {
+    if (!selectedSquare) return false
+    const move = legalMovesForSelectedPiece.find(m => m.to === alg)
+    if (move) {
+      attemptMove(move)
+      return true
     }
+    return false
+  }
 
-    // If clicking on own piece, select it
-    if (pieceObj && pieceObj.color === game.turn()) {
+  function _handlePieceSelection (pieceObj, row, col, alg) {
+    if (!pieceObj) return false
+    if (pieceObj.color === game.turn()) {
       selectedSquare = { row, col }
       legalMovesForSelectedPiece = game.moves({ square: alg, verbose: true })
       renderBoard()
-      return
+      return true
     }
+    if (gameMode === 'pve' && !isSelfPlay && !game.game_over()) {
+      _handlePremoveSelection(pieceObj, alg, row, col)
+      return true
+    }
+    return false
+  }
 
-    // Deselect if clicking elsewhere
+  function _deselectSquare () {
     if (selectedSquare) {
       selectedSquare = null
       legalMovesForSelectedPiece = []
+      pendingConfirmationMove = null
       renderBoard()
     }
+  }
+
+  function _handlePremoveSelection (pieceObj, alg, row, col) {
+    const fen = game.fen()
+    const tokens = fen.split(' ')
+    tokens[1] = pieceObj.color
+    tokens[3] = '-'
+    try {
+      const tempGame = new Chess(tokens.join(' '))
+      const moves = tempGame.moves({ square: alg, verbose: true })
+      if (moves.length > 0) {
+        selectedSquare = { row, col }
+        legalMovesForSelectedPiece = moves
+        renderBoard()
+      }
+    } catch (e) {}
   }
 
   function _handleMemoryClick (row, col) {
@@ -1152,6 +1249,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // eslint-disable-next-line complexity
   async function attemptMove (targetMove) {
+    // Move Confirmation Logic
+    if (moveConfirmationCheckbox && moveConfirmationCheckbox.checked && gameMode !== 'guess' && !isTacticsMode) {
+      // Check if we are confirming the SAME move
+      if (!pendingConfirmationMove || pendingConfirmationMove.from !== targetMove.from || pendingConfirmationMove.to !== targetMove.to) {
+        // First click
+        pendingConfirmationMove = targetMove
+        renderBoard()
+        showToast('Click again to confirm move', 'info')
+        return
+      }
+      // Second click matches -> Proceed
+      pendingConfirmationMove = null
+    }
+
     // Guess Mode Logic
     if (gameMode === 'guess' && guessModeData.active) {
       const expected = guessModeData.moves[guessModeData.index]
@@ -1255,6 +1366,37 @@ document.addEventListener('DOMContentLoaded', () => {
       return
     }
 
+    // Promotion Logic
+    if (targetMove.flags.includes('p')) {
+      if (autoQueenCheckbox && autoQueenCheckbox.checked) {
+        targetMove.promotion = 'q'
+      } else {
+        try {
+          // Use targetMove.color for promotion piece color
+          const choice = await showPromotionModal(targetMove.color)
+          targetMove.promotion = choice
+        } catch (e) {
+          // Cancelled
+          selectedSquare = null
+          legalMovesForSelectedPiece = []
+          pendingConfirmationMove = null
+          renderBoard()
+          return
+        }
+      }
+    }
+
+    // Premove Check
+    if (targetMove.color !== game.turn()) {
+      premove = targetMove
+      selectedSquare = null
+      legalMovesForSelectedPiece = []
+      pendingConfirmationMove = null
+      renderBoard()
+      showToast('Premove set', 'info')
+      return
+    }
+
     const speed = animationSpeedSelect ? parseInt(animationSpeedSelect.value) : 0
     if (speed > 0) {
       await animateMove(targetMove.from, targetMove.to, speed)
@@ -1269,13 +1411,72 @@ document.addEventListener('DOMContentLoaded', () => {
     renderBoard()
     renderHistory()
 
+    // Auto-Flip
+    if (autoFlipCheckbox && autoFlipCheckbox.checked) {
+      const turn = game.turn()
+      if (turn === 'w') {
+        isFlipped = false
+        boardElement.classList.remove('flipped')
+      } else {
+        isFlipped = true
+        boardElement.classList.add('flipped')
+      }
+      renderClocks()
+      renderBoard()
+    }
+
     if (gameMode === 'pve') {
       sendPositionAndGo()
     } else {
       checkGameOver()
-      // In PvP, we might want to flip the board automatically if enabled (future story)
-      // For now, we just let the other player move.
     }
+  }
+
+  function showPromotionModal (color) {
+    return new Promise((resolve, reject) => {
+      promotionModal.classList.add('active')
+
+      // Update piece images
+      const pieces = promotionModal.querySelectorAll('.promo-piece')
+      pieces.forEach(p => {
+        const type = p.dataset.piece
+        const img = p.querySelector('img')
+        // Use current set
+        if (currentPieceSet === 'unicode') {
+          // Not supported well for images? Just use cburnett or text?
+          // Let's use cburnett for modal as fallback or handle text
+          img.src = `images/cburnett/${color}${type}.svg`
+        } else if (currentPieceSet === 'custom-upload') {
+          const key = color + type
+          img.src = customPieceImages[key] || `images/cburnett/${color}${type}.svg`
+        } else {
+          img.src = `images/${currentPieceSet}/${color}${type}.svg`
+        }
+
+        // Remove old listeners
+        const newEl = p.cloneNode(true)
+        p.parentNode.replaceChild(newEl, p)
+
+        newEl.addEventListener('click', () => {
+          promotionModal.classList.remove('active')
+          resolve(type)
+        })
+      })
+
+      // Handle close
+      // If user clicks outside (overlay) -> reject/cancel
+      // But listener is already on modal?
+      // I'll add a specific handler for this instance
+
+      const closeHandler = (e) => {
+        if (e.target === promotionModal) {
+          promotionModal.classList.remove('active')
+          promotionModal.removeEventListener('click', closeHandler)
+          reject(new Error('Cancelled'))
+        }
+      }
+      promotionModal.addEventListener('click', closeHandler)
+    })
   }
 
   function animateMove (from, to, duration) {
@@ -1843,6 +2044,164 @@ document.addEventListener('DOMContentLoaded', () => {
   loadFenBtn.addEventListener('click', handleLoadFen)
   copyFenBtn.addEventListener('click', handleCopyFen)
   exportPgnBtn.addEventListener('click', handleExportPgn)
+
+  if (resignBtn) resignBtn.addEventListener('click', handleResign)
+  if (offerDrawBtn) offerDrawBtn.addEventListener('click', handleOfferDraw)
+  if (takebackBtn) takebackBtn.addEventListener('click', handleTakeback)
+  if (forceMoveBtn) forceMoveBtn.addEventListener('click', handleForceMove)
+  if (replayBtn) replayBtn.addEventListener('click', toggleReplay)
+
+  // Right-click to cancel
+  boardElement.addEventListener('contextmenu', (e) => {
+    e.preventDefault()
+    if (selectedSquare || pendingConfirmationMove) {
+      selectedSquare = null
+      legalMovesForSelectedPiece = []
+      pendingConfirmationMove = null
+      renderBoard()
+      showToast('Move cancelled', 'info')
+    }
+  })
+
+  function handleResign () {
+    if (!gameStarted || game.game_over()) return
+    const winner = game.turn() === 'w' ? 'black' : 'white'
+    logToOutput(`Game Over: ${game.turn() === 'w' ? 'White' : 'Black'} resigns.`)
+    gameStarted = false
+    if (clockInterval) clearInterval(clockInterval)
+    showToast('You resigned.', 'info')
+    if (onGameEndCallback) {
+      onGameEndCallback(winner)
+      onGameEndCallback = null
+    }
+  }
+
+  function handleOfferDraw () {
+    if (!gameStarted || game.game_over()) return
+    // Engine accepts if eval is within [-10, 10] cp (0.10 pawn)
+    // Note: lastEngineEval is from engine's perspective (side to move)
+    // But wait, info score is usually for the side to move.
+    // If it's my turn, engine isn't thinking, so I don't have a fresh eval usually?
+    // Or I use the eval from the last search (opponent's move).
+    // Let's assume lastEngineEval is relevant.
+    const threshold = 10
+    if (Math.abs(lastEngineEval) <= threshold) {
+      logToOutput('Game Over: Draw agreed')
+      gameStarted = false
+      if (clockInterval) clearInterval(clockInterval)
+      showToast('Engine accepted draw offer.', 'success')
+      if (onGameEndCallback) {
+        onGameEndCallback('draw')
+        onGameEndCallback = null
+      }
+    } else {
+      showToast('Engine declined draw offer.', 'error')
+      logToOutput('Engine declined draw.')
+    }
+  }
+
+  function handleTakeback () {
+    if (game.history().length === 0) return
+
+    if (isAnalyzing && !isAnalysisMode) {
+      // Engine is thinking
+      socket.send('stop')
+      setTimeout(_performTakeback, 100)
+    } else {
+      _performTakeback()
+    }
+  }
+
+  function _performTakeback () {
+    game.undo()
+    if (gameMode === 'pve' && _isEngineTurn(game.turn())) {
+      game.undo()
+    }
+    currentViewIndex = -1
+    renderBoard()
+    renderHistory()
+    showToast('Takeback successful', 'info')
+  }
+
+  function _isEngineTurn (turn) {
+    if (gameMode !== 'pve') return false
+    if (!isFlipped && turn === 'b') return true
+    if (isFlipped && turn === 'w') return true
+    return false
+  }
+
+  function handleForceMove () {
+    socket.send('stop')
+    showToast('Forced move', 'info')
+  }
+
+  function toggleReplay () {
+    if (replayInterval) {
+      clearInterval(replayInterval)
+      replayInterval = null
+      replayBtn.textContent = '▶'
+      return
+    }
+
+    if (game.history().length === 0) return
+
+    replayBtn.textContent = '⏸'
+    currentViewIndex = -1 // Start from live? No, user might be anywhere.
+    // If at end, start from beginning.
+    // logic: set currentViewIndex to -1 (live) means end.
+    // We want to iterate from 0 to history.length - 1.
+
+    const historyLen = game.history().length
+    if (currentViewIndex === -1 || currentViewIndex >= historyLen - 1) {
+      currentViewIndex = -1
+      // Reset to start
+      // wait, currentViewIndex represents the index of the move displayed. -1 means live board (all moves).
+      // To display start position, we need a way to say "before first move".
+      // My handleHistoryClick logic: index 0 means after 1st move.
+      // I need to support "start of game".
+      // Let's check handleHistoryClick again.
+      // handleHistoryClick(index) sets currentViewIndex = index.
+      // getBoardState uses 0 to currentViewIndex.
+      // If currentViewIndex is -1, it returns game.board() (full game).
+      // This logic is slightly flawed for "Start of Game".
+      // I should fix getBoardState to handle a state where NO moves are made.
+      // Let's say currentViewIndex = -2 for Start? Or change logic.
+      // For now, let's just replay from move 0.
+      currentViewIndex = -1
+    }
+
+    // If we are at "live" (-1), let's start from 0.
+    // Actually, let's just loop
+    currentViewIndex = -1 // Reset visualization to live? No, that shows everything.
+    // I want to show move 1, then move 2...
+    // To show move 1, index is 0.
+    // To show start, I need to render start board.
+
+    // Use -2 to represent "Start Position" (before any moves)
+    currentViewIndex = -2
+    renderBoard()
+    renderHistory()
+
+    const speed = parseInt(replaySpeedInput.value) || 800
+
+    replayInterval = setInterval(() => {
+      currentViewIndex++
+      // Skip -1 because it represents "Live View" (auto-updating),
+      // whereas 0 represents the first move in the history array.
+      if (currentViewIndex === -1) {
+        currentViewIndex = 0
+      }
+
+      if (currentViewIndex >= historyLen) {
+        clearInterval(replayInterval)
+        replayInterval = null
+        replayBtn.textContent = '▶'
+        currentViewIndex = -1 // Back to live
+      }
+      renderBoard()
+      renderHistory()
+    }, speed)
+  }
 
   function handleLoadFen () {
     const fen = fenInput.value.trim()

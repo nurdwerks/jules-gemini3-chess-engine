@@ -45,6 +45,12 @@
                      <div class="button-group">
                         <button id="new-game-btn">New Game</button>
                         <button id="new-960-btn">New Chess960</button>
+                        <button id="resign-btn" style="background-color: #F2495C;">Resign</button>
+                        <button id="offer-draw-btn">Offer Draw</button>
+                        <button id="takeback-btn">Takeback</button>
+                        <button id="force-move-btn">Force Move</button>
+                     </div>
+                     <div class="button-group mt-10">
                         <button id="flip-board-btn">Flip Board</button>
                         <button id="self-play-btn">Self Play</button>
                         <button id="engine-duel-btn">Engine Duel</button>
@@ -147,9 +153,14 @@
             <div class="panel history-panel">
                 <div class="panel-header">
                     <h2 class="panel-title">Game History</h2>
+                    <button id="replay-btn" class="icon-btn" title="Replay Game">▶</button>
                 </div>
                 <div class="panel-content">
                     <div id="move-history" class="move-history-list"></div>
+                    <div class="history-controls mt-10" style="display: flex; gap: 10px; align-items: center;">
+                         <label for="replay-speed" style="color: var(--grafana-text-secondary); font-size: 14px;">Replay Speed:</label>
+                         <input type="range" id="replay-speed" min="100" max="2000" step="100" value="800" style="flex: 1;">
+                    </div>
                 </div>
             </div>
             <div class="panel board-settings-panel">
@@ -157,6 +168,18 @@
                     <h2 class="panel-title">Board Settings</h2>
                 </div>
                 <div class="panel-content">
+                     <div class="option-item">
+                        <label for="auto-flip">Auto-Flip Board:</label>
+                        <input type="checkbox" id="auto-flip">
+                     </div>
+                     <div class="option-item">
+                        <label for="auto-queen">Auto-Queen:</label>
+                        <input type="checkbox" id="auto-queen">
+                     </div>
+                     <div class="option-item">
+                        <label for="move-confirmation">Move Confirmation:</label>
+                        <input type="checkbox" id="move-confirmation">
+                     </div>
                      <div class="option-item">
                         <label for="zen-mode">Zen Mode:</label>
                         <input type="checkbox" id="zen-mode">
@@ -413,6 +436,21 @@
           </div>
           <div class="modal-footer">
               <button id="start-duel-btn">Start Duel</button>
+          </div>
+      </div>
+  </div>
+  <div id="promotion-modal" class="modal-overlay">
+      <div class="modal promotion-modal-content">
+          <div class="modal-header">
+            <h3 class="modal-title">Promote to:</h3>
+          </div>
+          <div class="modal-content">
+              <div class="promotion-options">
+                  <div class="promo-piece" data-piece="q"><img src="" alt="Queen"></div>
+                  <div class="promo-piece" data-piece="r"><img src="" alt="Rook"></div>
+                  <div class="promo-piece" data-piece="b"><img src="" alt="Bishop"></div>
+                  <div class="promo-piece" data-piece="n"><img src="" alt="Knight"></div>
+              </div>
           </div>
       </div>
   </div>
