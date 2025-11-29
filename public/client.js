@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const blindfoldTrainingCheckbox = document.getElementById('blindfold-training')
   const streamerModeBtn = document.getElementById('streamer-mode-btn')
   const showCoordsCheckbox = document.getElementById('show-coords')
+  const showArrowLastCheckbox = document.getElementById('show-arrow-last')
   const coordsOutsideCheckbox = document.getElementById('coords-outside')
   const gameModeSelect = document.getElementById('game-mode')
   const analysisModeCheckbox = document.getElementById('analysis-mode')
@@ -32,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const offerDrawBtn = document.getElementById('offer-draw-btn')
   const takebackBtn = document.getElementById('takeback-btn')
   const forceMoveBtn = document.getElementById('force-move-btn')
+  const clearAnalysisBtn = document.getElementById('clear-analysis-btn')
 
   const replayBtn = document.getElementById('replay-btn')
   const replaySpeedInput = document.getElementById('replay-speed')
@@ -165,6 +167,180 @@ document.addEventListener('DOMContentLoaded', () => {
     UCI_NNUE_File: 'Path or URL to the NNUE network file',
     BookFile: 'Path to the Polyglot opening book file'
   }
+
+  const ArrowManager = (() => {
+    const svg = document.getElementById('arrow-layer')
+    let userArrows = [] // Array of {from, to}
+    let engineArrows = [] // Array of {from, to, type}
+    let lastMoveArrow = null // {from, to}
+    let userHighlights = {} // alg -> className
+
+    const clearAll = () => {
+      if (!svg) return
+      svg.innerHTML = ''
+    }
+
+    const render = () => {
+      clearAll()
+      if (lastMoveArrow) _draw(lastMoveArrow.from, lastMoveArrow.to, 'arrow-last')
+      userArrows.forEach(a => _draw(a.from, a.to, 'arrow-user'))
+      engineArrows.forEach(a => _draw(a.from, a.to, a.type))
+    }
+
+    const _draw = (from, to, className) => {
+      if (!svg) return
+
+      const start = getSquareCenter(from)
+      const end = getSquareCenter(to)
+      if (!start || !end) return
+
+      // Create group for arrow
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+      g.classList.add('arrow', className)
+
+      // Calculate vector
+      const dx = end.x - start.x
+      const dy = end.y - start.y
+      const len = Math.sqrt(dx * dx + dy * dy)
+      if (len === 0) return
+
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line')
+      line.setAttribute('x1', `${start.x}%`)
+      line.setAttribute('y1', `${start.y}%`)
+      line.setAttribute('x2', `${end.x}%`)
+      line.setAttribute('y2', `${end.y}%`)
+      line.setAttribute('stroke-width', '1.5%')
+
+      // Arrowhead
+      const angle = Math.atan2(dy, dx)
+      const headLen = 4 // %
+      const headAngle = Math.PI / 6
+
+      const x2 = end.x - headLen * Math.cos(angle - headAngle)
+      const y2 = end.y - headLen * Math.sin(angle - headAngle)
+      const x3 = end.x - headLen * Math.cos(angle + headAngle)
+      const y3 = end.y - headLen * Math.sin(angle + headAngle)
+
+      const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon')
+      polygon.setAttribute('points', `${end.x},${end.y} ${x2},${y2} ${x3},${y3}`)
+      polygon.classList.add('arrow-head')
+
+      g.appendChild(line)
+      g.appendChild(polygon)
+      svg.appendChild(g)
+    }
+
+    const getSquareCenter = (alg) => {
+      const colFile = alg[0]
+      const rowRank = alg[1]
+
+      const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+      let col = files.indexOf(colFile)
+      let row = 8 - parseInt(rowRank)
+
+      if (col === -1 || isNaN(row)) return null
+
+      // Handle Flip
+      if (isFlipped) {
+        col = 7 - col
+        row = 7 - row
+      }
+
+      // 0-7 to 12.5% centers
+      const step = 100 / 8
+      const x = col * step + (step / 2)
+      const y = row * step + (step / 2)
+
+      return { x, y }
+    }
+
+    const addUserArrow = (from, to) => {
+      // Check if exists, remove if so (toggle)
+      const idx = userArrows.findIndex(a => a.from === from && a.to === to)
+      if (idx !== -1) {
+        userArrows.splice(idx, 1)
+      } else {
+        userArrows.push({ from, to })
+      }
+      render()
+    }
+
+    const updateEngineArrow = (from, to, type) => {
+      engineArrows = engineArrows.filter(a => a.type !== type)
+      engineArrows.push({ from, to, type })
+      render()
+    }
+
+    const setEngineArrow = (from, to, type = 'arrow-best') => {
+      // Compatibility: clear best/ponder and set this one?
+      // Or just alias to updateEngineArrow?
+      // Existing code expects setEngineArrow to REPLACE engine arrows (implied by singular name).
+      // But now we might want best AND ponder.
+      // Let's assume setEngineArrow is for 'arrow-best'.
+      // If I want to clear old best and set new best:
+      updateEngineArrow(from, to, type)
+    }
+
+    const clearEngineArrows = () => {
+      engineArrows = []
+      render()
+    }
+
+    const clearUserArrows = () => {
+      userArrows = []
+      render()
+    }
+
+    const toggleUserHighlight = (alg) => {
+      const colors = ['highlight-red', 'highlight-green', 'highlight-blue', 'highlight-yellow']
+      const current = userHighlights[alg]
+      let next = null
+      if (!current) {
+        next = colors[0]
+      } else {
+        const idx = colors.indexOf(current)
+        if (idx === colors.length - 1) {
+          next = null // remove
+        } else {
+          next = colors[idx + 1]
+        }
+      }
+
+      if (next) userHighlights[alg] = next
+      else delete userHighlights[alg]
+    }
+
+    const getUserHighlight = (alg) => {
+      return userHighlights[alg]
+    }
+
+    const clearUserHighlights = () => {
+      userHighlights = {}
+    }
+
+    const setLastMoveArrow = (from, to) => {
+      lastMoveArrow = { from, to }
+      render()
+    }
+
+    const clearLastMoveArrow = () => {
+      lastMoveArrow = null
+      render()
+    }
+
+    return {
+      setEngineArrow,
+      clearEngineArrows,
+      addUserArrow,
+      clearUserArrows,
+      toggleUserHighlight,
+      getUserHighlight,
+      clearUserHighlights,
+      setLastMoveArrow,
+      clearLastMoveArrow,
+      render
+    }
+  })()
 
   const SoundManager = (() => {
     let context = null
@@ -451,6 +627,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (result) SoundManager.playSound(result, game)
     currentViewIndex = -1
 
+    ArrowManager.clearEngineArrows()
+
     if (autoFlipCheckbox && autoFlipCheckbox.checked) {
       const turn = game.turn()
       if (turn === 'w') {
@@ -465,6 +643,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     renderBoard()
     renderHistory()
+    ArrowManager.render()
     checkGameOver()
   }
 
@@ -525,7 +704,15 @@ document.addEventListener('DOMContentLoaded', () => {
         lastEngineEval = info.score.value > 0 ? 10000 : -10000
       }
     }
-    if (info.pv) updatePvDisplay(info.pv)
+    if (info.pv) {
+      updatePvDisplay(info.pv)
+      if (info.pv.length > 0) {
+        const best = info.pv[0]
+        const from = best.substring(0, 2)
+        const to = best.substring(2, 4)
+        ArrowManager.updateEngineArrow(from, to, 'arrow-best')
+      }
+    }
   }
 
   function updateEvalBar (score) {
@@ -882,6 +1069,8 @@ document.addEventListener('DOMContentLoaded', () => {
     renderBoard()
     renderHistory()
     renderClocks()
+    ArrowManager.clearEngineArrows()
+    ArrowManager.clearUserArrows()
     socket.send('ucinewgame')
   }
 
@@ -1071,7 +1260,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function getBoardState () {
     if (currentViewIndex === -1) {
-      return game.board()
+      return { board: game.board(), chess: game }
     }
     const tempGame = new Chess()
     if (startingFen !== 'startpos') {
@@ -1082,17 +1271,44 @@ document.addEventListener('DOMContentLoaded', () => {
     for (let i = 0; i <= currentViewIndex; i++) {
       tempGame.move(history[i])
     }
-    return tempGame.board()
+    return { board: tempGame.board(), chess: tempGame }
   }
 
   function renderBoard () {
     boardElement.innerHTML = ''
-    const board = getBoardState()
+    const state = getBoardState()
+    const board = state.board
+    const chess = state.chess
 
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
-        _createSquare(r, c, board)
+        _createSquare(r, c, board, chess)
       }
+    }
+    updateLastMoveArrow()
+  }
+
+  function updateLastMoveArrow () {
+    if (!showArrowLastCheckbox || !showArrowLastCheckbox.checked) {
+      ArrowManager.clearLastMoveArrow()
+      return
+    }
+
+    const history = game.history({ verbose: true })
+    let move = null
+
+    if (currentViewIndex === -1) {
+      if (history.length > 0) move = history[history.length - 1]
+    } else {
+      if (currentViewIndex >= 0 && currentViewIndex < history.length) {
+        move = history[currentViewIndex]
+      }
+    }
+
+    if (move) {
+      ArrowManager.setLastMoveArrow(move.from, move.to)
+    } else {
+      ArrowManager.clearLastMoveArrow()
     }
   }
 
@@ -1106,7 +1322,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function _createSquare (r, c, board) {
+  function _createSquare (r, c, board, chess) {
     const row = r
     const col = c
     const alg = coordsToAlgebraic(row, col)
@@ -1126,7 +1342,7 @@ document.addEventListener('DOMContentLoaded', () => {
     square.dataset.col = col
     square.dataset.alg = alg
 
-    _applySquareHighlights(square, row, col, alg)
+    _applySquareHighlights(square, row, col, alg, chess)
 
     square.addEventListener('click', () => handleSquareClick(row, col))
     boardElement.appendChild(square)
@@ -1157,7 +1373,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function _applySquareHighlights (square, row, col, alg) {
+  function _applySquareHighlights (square, row, col, alg, chess) {
     if (selectedSquare && selectedSquare.row === row && selectedSquare.col === col) {
       square.classList.add('selected')
     }
@@ -1166,6 +1382,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (premove && (alg === premove.from || alg === premove.to)) {
       square.classList.add('premove-highlight')
+    }
+    const userH = ArrowManager.getUserHighlight(alg)
+    if (userH) square.classList.add(userH)
+
+    // Last Move Highlight
+    const history = game.history({ verbose: true })
+    let lastMove = null
+    if (currentViewIndex === -1) {
+      if (history.length > 0) lastMove = history[history.length - 1]
+    } else {
+      if (currentViewIndex >= 0 && currentViewIndex < history.length) lastMove = history[currentViewIndex]
+    }
+
+    if (lastMove && (alg === lastMove.from || alg === lastMove.to)) {
+      square.classList.add('last-move')
+    }
+
+    // Check Highlight
+    if (chess && chess.in_check()) {
+      const turn = chess.turn()
+      const pieceObj = chess.board()[row][col]
+      if (pieceObj && pieceObj.type === 'k' && pieceObj.color === turn) {
+        square.classList.add('check-highlight')
+      }
     }
   }
 
@@ -1753,6 +1993,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     renderClocks()
     renderBoard() // Re-render for coordinates
+    ArrowManager.render()
   })
 
   fullscreenBtn.addEventListener('click', () => {
@@ -1836,6 +2077,12 @@ document.addEventListener('DOMContentLoaded', () => {
   showCoordsCheckbox.addEventListener('change', () => {
     renderBoard()
   })
+
+  if (showArrowLastCheckbox) {
+    showArrowLastCheckbox.addEventListener('change', () => {
+      updateLastMoveArrow()
+    })
+  }
 
   coordsOutsideCheckbox.addEventListener('change', () => {
     if (coordsOutsideCheckbox.checked) {
@@ -2090,17 +2337,60 @@ document.addEventListener('DOMContentLoaded', () => {
   if (offerDrawBtn) offerDrawBtn.addEventListener('click', handleOfferDraw)
   if (takebackBtn) takebackBtn.addEventListener('click', handleTakeback)
   if (forceMoveBtn) forceMoveBtn.addEventListener('click', handleForceMove)
+  if (clearAnalysisBtn) {
+    clearAnalysisBtn.addEventListener('click', () => {
+      ArrowManager.clearUserArrows()
+      ArrowManager.clearUserHighlights()
+      ArrowManager.clearEngineArrows()
+      renderBoard()
+      showToast('Analysis cleared', 'info')
+    })
+  }
   if (replayBtn) replayBtn.addEventListener('click', toggleReplay)
 
-  // Right-click to cancel
-  boardElement.addEventListener('contextmenu', (e) => {
-    e.preventDefault()
-    if (selectedSquare || pendingConfirmationMove) {
-      selectedSquare = null
-      legalMovesForSelectedPiece = []
-      pendingConfirmationMove = null
-      renderBoard()
-      showToast('Move cancelled', 'info')
+  // Right-click handling (Cancel, Arrows, Highlights)
+  let rightClickStart = null
+
+  boardElement.addEventListener('contextmenu', (e) => e.preventDefault())
+
+  boardElement.addEventListener('mousedown', (e) => {
+    if (e.button === 2) {
+      const square = e.target.closest('.square')
+      if (square) {
+        rightClickStart = square.dataset.alg
+      }
+    }
+  })
+
+  boardElement.addEventListener('mouseup', (e) => {
+    if (e.button === 2) {
+      // Cancel move logic
+      if (selectedSquare || pendingConfirmationMove || premove) {
+        selectedSquare = null
+        legalMovesForSelectedPiece = []
+        pendingConfirmationMove = null
+        premove = null
+        renderBoard()
+        showToast('Move cancelled', 'info')
+        rightClickStart = null
+        return
+      }
+
+      // Arrows / Highlights
+      if (rightClickStart) {
+        const square = e.target.closest('.square')
+        if (square) {
+          const start = rightClickStart
+          const end = square.dataset.alg
+          if (start === end) {
+            ArrowManager.toggleUserHighlight(start)
+            renderBoard()
+          } else {
+            ArrowManager.addUserArrow(start, end)
+          }
+        }
+      }
+      rightClickStart = null
     }
   })
 
@@ -2267,6 +2557,8 @@ document.addEventListener('DOMContentLoaded', () => {
       renderBoard()
       renderHistory()
       renderClocks()
+      ArrowManager.clearEngineArrows()
+      ArrowManager.clearUserArrows()
 
       // Send new position to engine
       // We also send 'ucinewgame' to clear hash etc, although strictly it's a new game.
