@@ -12,19 +12,6 @@ Benchmarking functions can be written and verified, but performance-critical ben
 
 ## Active Roadmap
 
-### Epic 62: Sound Effects Integration
-**Size:** Small (1 day)
-**Description:** Add audio feedback for better game immersion.
-**User Stories:**
-1.  **Audio Events (S)**
-    *   *Description:* Play distinct sounds for moves, captures, and checks.
-    *   *Acceptance Criteria:*
-        *   [ ] Sounds play at appropriate times.
-2.  **Mute Control (S)**
-    *   *Description:* Provide a volume/mute toggle.
-    *   *Acceptance Criteria:*
-        *   [ ] Users can disable sound effects.
-
 ### Epic 63: Responsive Layout Improvements
 **Size:** Medium (3 days)
 **Description:** Optimize the interface for mobile and tablet devices.
