@@ -917,3 +917,16 @@ The following Epics were part of the initial development phase and are either co
     *   *Description:* Provide a volume/mute toggle.
     *   *Acceptance Criteria:*
         *   [x] Users can disable sound effects.
+
+### Epic 63: Responsive Layout Improvements
+**Size:** Medium (3 days)
+**Description:** Optimize the interface for mobile and tablet devices.
+**User Stories:**
+1.  **Flexible Grid (S)**
+    *   *Description:* Adjust CSS Grid/Flexbox layouts to stack panels vertically on smaller screens.
+    *   *Acceptance Criteria:*
+        *   [x] UI is usable on a mobile width (e.g., 375px).
+2.  **Touch Optimizations (S)**
+    *   *Description:* Ensure piece dragging (or tap-to-move) works smoothly on touch screens.
+    *   *Acceptance Criteria:*
+        *   [x] Mobile users can play a game without issues.

@@ -466,3 +466,17 @@ button:hover {
         opacity: 0;
     }
 }
+
+@media (max-width: 768px) {
+    #dashboard {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+    }
+
+    .option-item {
+        flex-wrap: wrap;
+    }
+}
