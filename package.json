@@ -89,6 +89,7 @@
   },
   "dependencies": {
     "chess.js": "^1.4.0",
+    "jszip": "^3.10.1",
     "pgn-parser": "^2.2.1",
     "ws": "^8.18.3"
   }
