@@ -1,4 +1,4 @@
-const { test, expect } = require('./coverage')
+const { test } = require('./coverage')
 
 test.describe('Sound Manager', () => {
   test.beforeEach(async ({ page }) => {

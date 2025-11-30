@@ -61,5 +61,17 @@ window.ClientUtils = {
     const wdlIdx = parts.indexOf('wdl')
     if (wdlIdx !== -1) info.wdl = [parts[wdlIdx + 1], parts[wdlIdx + 2], parts[wdlIdx + 3]]
     return info.depth || info.score || info.pv ? info : null
+  },
+
+  getHandicapFen: (handicap) => {
+    const map = {
+      'knight-b1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R1BQKBNR w KQkq - 0 1',
+      'knight-g1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKB1R w KQkq - 0 1',
+      'rook-a1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/1NBQKBNR w KQkq - 0 1',
+      'rook-h1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBN1 w KQkq - 0 1',
+      queen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNB1KBNR w KQkq - 0 1',
+      'pawn-f2': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPP1PP/RNBQKBNR w KQkq - 0 1'
+    }
+    return map[handicap]
   }
 }

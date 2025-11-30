@@ -1,5 +1,5 @@
 /* eslint-env browser */
-/* global Chess, SocketHandler, BoardRenderer, GameManager, AnalysisManager, TrainingManager, UIManager, ArrowManager, SoundManager, ClientUtils, MoveHandler, LeaderboardManager, PgnManager, FenManager, BoardEditor, DeveloperManager, MoveListManager, OpeningExplorer, TreeManager, AccessibilityManager */
+/* global Chess, SocketHandler, BoardRenderer, GameManager, AnalysisManager, TrainingManager, UIManager, ArrowManager, SoundManager, ClientUtils, MoveHandler, LeaderboardManager, PgnManager, FenManager, BoardEditor, DeveloperManager, MoveListManager, OpeningExplorer, TreeManager, AccessibilityManager, SettingsManager */
 
 const initApp = () => {
   try {
@@ -10,6 +10,7 @@ const initApp = () => {
     let openingExplorer = null
     let treeManager = null
     let accessibilityManager = null
+    let settingsManager = null
 
     // Shared State
     const state = {
@@ -87,7 +88,7 @@ const initApp = () => {
         const handicap = document.getElementById('handicap-select').value
         let fen = 'startpos'
         if (handicap && handicap !== 'none') {
-          const map = getHandicapFen(handicap)
+          const map = ClientUtils.getHandicapFen(handicap)
           if (map) fen = map
         }
         gameManager.startNewGame(fen)
@@ -374,6 +375,9 @@ const initApp = () => {
     // Accessibility Manager
     accessibilityManager = new AccessibilityManager(gameManager, uiManager, render)
 
+    // Settings Manager
+    settingsManager = new SettingsManager(uiManager, SoundManager, accessibilityManager)
+
     const moveHandler = new MoveHandler(game, gameManager, uiManager, boardRenderer, trainingManager, state, render)
 
     // --- Helpers ---
@@ -518,7 +522,6 @@ const initApp = () => {
         onMemoryReconstructionStart: () => {
           u.showToast('Reconstruct the position!', 'info')
           document.getElementById('piece-palette').style.display = 'flex'
-          renderPalette()
         },
         onTacticsLoad: (puzzle) => {
           renderFn()
@@ -532,100 +535,14 @@ const initApp = () => {
       })
     }
 
-    function renderPalette () {
-      const palette = document.getElementById('piece-palette')
-      palette.innerHTML = ''
-      const pieces = ['wP', 'wN', 'wB', 'wR', 'wQ', 'wK', 'bP', 'bN', 'bB', 'bR', 'bQ', 'bK']
-      pieces.forEach(p => {
-        const color = p[0]
-        const type = p[1].toLowerCase()
-        const div = document.createElement('div')
-        div.classList.add('palette-piece')
-        const img = document.createElement('img')
-        img.src = `images/${boardRenderer.currentPieceSet}/${color}${type}.svg`
-        div.appendChild(img)
-        div.addEventListener('click', () => {
-          document.querySelectorAll('.palette-piece').forEach(el => el.classList.remove('selected'))
-          div.classList.add('selected')
-          trainingManager.selectPalettePiece(color, type)
-        })
-        palette.appendChild(div)
-      })
-    }
-
-    function getHandicapFen (handicap) {
-      const map = {
-        'knight-b1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R1BQKBNR w KQkq - 0 1',
-        'knight-g1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKB1R w KQkq - 0 1',
-        'rook-a1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/1NBQKBNR w KQkq - 0 1',
-        'rook-h1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBN1 w KQkq - 0 1',
-        queen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNB1KBNR w KQkq - 0 1',
-        'pawn-f2': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPP1PP/RNBQKBNR w KQkq - 0 1'
-      }
-      return map[handicap]
-    }
-
-    // Accessibility & Sound Controls
-    const soundEnabledCb = document.getElementById('sound-enabled')
-    if (soundEnabledCb) {
-      SoundManager.setEnabled(soundEnabledCb.checked)
-      soundEnabledCb.addEventListener('change', (e) => SoundManager.setEnabled(e.target.checked))
-    }
-
-    const volumeControl = document.getElementById('volume-control')
-    if (volumeControl) {
-      volumeControl.addEventListener('input', (e) => SoundManager.setVolume(e.target.value))
-    }
-
-    const voiceAnnounceCb = document.getElementById('voice-announce')
-    if (voiceAnnounceCb) {
-      voiceAnnounceCb.addEventListener('change', (e) => accessibilityManager.setVoiceAnnounce(e.target.checked))
-    }
-
-    const voiceControlCb = document.getElementById('voice-control')
-    if (voiceControlCb) {
-      voiceControlCb.addEventListener('change', (e) => accessibilityManager.setVoiceControl(e.target.checked))
-    }
-
-    const highContrastCb = document.getElementById('high-contrast')
-    if (highContrastCb) {
-        highContrastCb.addEventListener('change', (e) => {
-            if (e.target.checked) document.body.classList.add('high-contrast')
-            else document.body.classList.remove('high-contrast')
-        })
-    }
-
-    const soundPackUpload = document.getElementById('sound-pack-upload')
-    if (soundPackUpload) {
-      soundPackUpload.addEventListener('change', (e) => {
-        const file = e.target.files[0]
-        if (file) {
-          SoundManager.loadSoundPack(file)
-            .then(count => uiManager.showToast(`Loaded ${count} custom sounds`, 'success'))
-            .catch(err => uiManager.showToast('Failed to load sound pack', 'error'))
-        }
-      })
-    }
-
     // Check for FEN in URL
-    const urlParams = new URLSearchParams(window.location.search)
-    const fenParam = urlParams.get('fen')
-    if (fenParam) {
-      setTimeout(() => {
-        const temp = new Chess()
-        if (temp.load(fenParam)) {
-          gameManager.startNewGame(fenParam)
-          uiManager.showToast('Position loaded from URL', 'success')
-        } else {
-          uiManager.showToast('Invalid FEN in URL', 'error')
-        }
-      }, 100)
-    }
+    checkFenInUrl(gameManager, uiManager)
 
     socketHandler.connect()
 
     // Expose for testing
     window.gameManager = gameManager
+    window.settingsManager = settingsManager
 
     window.ChessApp = {
       startMatch: (whiteConfig, blackConfig, onGameEnd) => {
@@ -640,6 +557,22 @@ const initApp = () => {
     }
   } catch (err) {
     console.error('INIT APP ERROR', err)
+  }
+}
+
+function checkFenInUrl (gameManager, uiManager) {
+  const urlParams = new URLSearchParams(window.location.search)
+  const fenParam = urlParams.get('fen')
+  if (fenParam) {
+    setTimeout(() => {
+      const temp = new Chess()
+      if (temp.load(fenParam)) {
+        gameManager.startNewGame(fenParam)
+        uiManager.showToast('Position loaded from URL', 'success')
+      } else {
+        uiManager.showToast('Invalid FEN in URL', 'error')
+      }
+    }, 100)
   }
 }
 

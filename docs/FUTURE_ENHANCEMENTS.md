@@ -119,28 +119,28 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* Download all current UI settings as a JSON file.
     *   *Implementation:* Dump `localStorage`.
     *   *Tasks:*
-        - [ ] Button.
+        - [x] Button.
     *   *Testing Plan:* Click.
     *   *Acceptance Criteria:*
-        - [ ] File downloaded.
+        - [x] File downloaded.
 
 177. **Import Settings (S)**
     *   *Description:* Restore UI settings from a JSON file.
     *   *Implementation:* Read JSON, fill `localStorage`, reload.
     *   *Tasks:*
-        - [ ] Upload.
+        - [x] Upload.
     *   *Testing Plan:* Import.
     *   *Acceptance Criteria:*
-        - [ ] Settings restored.
+        - [x] Settings restored.
 
 178. **Factory Reset (S)**
     *   *Description:* Restore all settings to default values.
     *   *Implementation:* `localStorage.clear()`.
     *   *Tasks:*
-        - [ ] Button.
+        - [x] Button.
     *   *Testing Plan:* Reset.
     *   *Acceptance Criteria:*
-        - [ ] Defaults restored.
+        - [x] Defaults restored.
 
 179. **Local Storage Auto-Save (S)**
     *   *Description:* Persist the current game to local storage to prevent data loss.

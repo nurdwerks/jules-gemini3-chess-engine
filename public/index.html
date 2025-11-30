@@ -460,6 +460,16 @@
                          <label for="upload-piece-set-files">Upload Piece Set:</label>
                          <input type="file" id="upload-piece-set-files" multiple accept="image/*">
                      </div>
+                     <hr class="separator">
+                     <div class="option-item">
+                         <label style="font-weight: bold; color: var(--grafana-accent-blue);">Settings Management:</label>
+                     </div>
+                     <div class="button-group">
+                         <button id="export-settings-btn">Export Settings</button>
+                         <button id="import-settings-btn">Import Settings</button>
+                         <button id="factory-reset-btn" style="background-color: #F2495C;">Factory Reset</button>
+                     </div>
+                     <input type="file" id="import-settings-file" accept=".json" style="display: none;">
                 </div>
             </div>
             <div class="panel uci-options-panel">
@@ -891,6 +901,7 @@
   <script src="js/MoveListManager.js"></script>
   <script src="js/OpeningExplorer.js"></script>
   <script src="js/TreeManager.js"></script>
+  <script src="js/SettingsManager.js"></script>
   <script src="tournament.js"></script>
   <script src="client.js"></script>
   <div id="toast-container"></div>
