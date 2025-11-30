@@ -31,6 +31,7 @@ window.GameManager = class GameManager {
     this.timeHistory = []
     this.npsHistory = []
     this.tensionHistory = []
+    this.moveMetadata = [] // { comment, nag, annotation } per move
 
     // Engine Configs
     this.engineAConfig = { name: 'Engine A', elo: 1500, limitStrength: true }
@@ -85,6 +86,7 @@ window.GameManager = class GameManager {
     this.timeHistory = []
     this.npsHistory = []
     this.tensionHistory = []
+    this.moveMetadata = []
     if (GraphManager) {
       GraphManager.renderEvalGraph([])
       GraphManager.renderMaterialGraph([])
@@ -172,8 +174,17 @@ window.GameManager = class GameManager {
 
   performMove (moveObj, isHuman = false) {
     // moveObj: { from, to, promotion }
+    // Sync metadata with current history length (truncate if we undid)
+    const currentPly = this.game.history().length
+    if (this.moveMetadata.length > currentPly) {
+      this.moveMetadata = this.moveMetadata.slice(0, currentPly)
+    }
+
     const result = this.game.move(moveObj)
     if (result) {
+      // Add metadata for new move
+      this.moveMetadata.push({ comment: '', nag: '', annotation: '' })
+
       if (SoundManager) SoundManager.playSound(result, this.game)
 
       // Time Increment

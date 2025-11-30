@@ -91,7 +91,22 @@ class Polyglot {
   }
 
   findMove (board) {
-    if (!this.bookFile) return null
+    const moves = this._getEntries(board)
+    if (moves.length === 0) return null
+    return this.selectWeightedMove(moves)
+  }
+
+  getBookMoves (board) {
+    const moves = this._getEntries(board)
+    return moves.map(m => ({
+      ...this.intToMove(m.moveInt),
+      weight: m.weight,
+      learn: m.learn
+    })).sort((a, b) => b.weight - a.weight)
+  }
+
+  _getEntries (board) {
+    if (!this.bookFile) return []
 
     const key = this.computeKey(board)
 
@@ -123,7 +138,7 @@ class Polyglot {
 
     if (firstMatch === -1) {
       fs.closeSync(fd)
-      return null
+      return []
     }
 
     const moves = []
@@ -138,14 +153,14 @@ class Polyglot {
 
       const moveInt = buffer.readUInt16BE(8)
       const weight = buffer.readUInt16BE(10)
+      const learn = buffer.readUInt32BE(12)
 
-      moves.push({ moveInt, weight })
+      moves.push({ moveInt, weight, learn })
       current++
     }
 
     fs.closeSync(fd)
-
-    return this.selectWeightedMove(moves)
+    return moves
   }
 
   selectWeightedMove (moves) {

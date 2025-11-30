@@ -98,6 +98,17 @@ const serveStatic = (req, res) => {
 const server = http.createServer((req, res) => {
   if (req.method === 'POST' && req.url === '/upload') {
     handleUpload(req, res)
+  } else if (req.method === 'GET' && req.url === '/debug_tree.json') {
+    const filePath = path.join(__dirname, '../debug_tree.json')
+    fs.readFile(filePath, (err, content) => {
+      if (err) {
+        res.writeHead(404, { 'Content-Type': 'text/plain' })
+        res.end('Debug tree not found (Run debug_tree command first)')
+        return
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(content)
+    })
   } else {
     serveStatic(req, res)
   }

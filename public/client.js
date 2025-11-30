@@ -1,11 +1,14 @@
 /* eslint-env browser */
-/* global Chess, SocketHandler, BoardRenderer, GameManager, AnalysisManager, TrainingManager, UIManager, ArrowManager, SoundManager, ClientUtils, MoveHandler, LeaderboardManager, PgnManager, FenManager, BoardEditor, DeveloperManager */
+/* global Chess, SocketHandler, BoardRenderer, GameManager, AnalysisManager, TrainingManager, UIManager, ArrowManager, SoundManager, ClientUtils, MoveHandler, LeaderboardManager, PgnManager, FenManager, BoardEditor, DeveloperManager, MoveListManager, OpeningExplorer, TreeManager */
 
 const initApp = () => {
   try {
     const game = new Chess()
     let pgnManager = null
     let fenManager = null
+    let moveListManager = null
+    let openingExplorer = null
+    let treeManager = null
 
     // Shared State
     const state = {
@@ -17,8 +20,6 @@ const initApp = () => {
       isFlipped: false,
       historyNotation: 'san'
     }
-
-    // --- 1. Initialize Managers ---
 
     const socketHandler = new SocketHandler({
       onOpen: () => {
@@ -47,18 +48,7 @@ const initApp = () => {
         if (developerManager) developerManager.logPacket('IN', 'readyok')
         if (!gameManager.gameStarted) gameManager.startNewGame()
       },
-      onInfo: (msg) => {
-        if (developerManager) developerManager.handleMessage(msg)
-        if (developerManager) developerManager.logPacket('IN', msg)
-        if (msg.includes('score cp') || msg.includes('mate')) {
-          uiManager.logToOutput(msg)
-        }
-        const info = ClientUtils.parseInfo(msg)
-        if (info) {
-          uiManager.updateSearchStats(info)
-          analysisManager.handleInfo(info)
-        }
-      },
+      onInfo: (msg) => handleInfoMessage(msg),
       onBestMove: (parts) => {
         if (developerManager) developerManager.logPacket('IN', parts.join(' '))
         uiManager.setThinking(false)
@@ -68,7 +58,26 @@ const initApp = () => {
       onVoteMessage: (data) => handleVoteMessage(data)
     })
 
-    const developerManager = new DeveloperManager(null, socketHandler, game) // uiManager passed later
+    const handleInfoMessage = (msg) => {
+      if (developerManager) developerManager.handleMessage(msg)
+      if (developerManager) developerManager.logPacket('IN', msg)
+      if (msg.includes('book_moves')) {
+        const json = msg.substring(msg.indexOf('book_moves') + 11)
+        if (openingExplorer) openingExplorer.handleBookInfo(json)
+      } else if (msg.includes('Debug tree written')) {
+        uiManager.showToast('Tree Generated', 'success')
+        if (treeManager) treeManager.onTreeReady()
+      } else if (msg.includes('score cp') || msg.includes('mate')) {
+        uiManager.logToOutput(msg)
+      }
+      const info = ClientUtils.parseInfo(msg)
+      if (info) {
+        uiManager.updateSearchStats(info)
+        analysisManager.handleInfo(info)
+      }
+    }
+
+    const developerManager = new DeveloperManager(null, socketHandler, game)
 
     const uiManager = new UIManager({
       onSendOption: (n, v) => sendOption(n, v),
@@ -77,15 +86,8 @@ const initApp = () => {
         const handicap = document.getElementById('handicap-select').value
         let fen = 'startpos'
         if (handicap && handicap !== 'none') {
-          const map = {
-            'knight-b1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R1BQKBNR w KQkq - 0 1',
-            'knight-g1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKB1R w KQkq - 0 1',
-            'rook-a1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/1NBQKBNR w KQkq - 0 1',
-            'rook-h1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBN1 w KQkq - 0 1',
-            queen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNB1KBNR w KQkq - 0 1',
-            'pawn-f2': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPP1PP/RNBQKBNR w KQkq - 0 1'
-          }
-          if (map[handicap]) fen = map[handicap]
+          const map = getHandicapFen(handicap)
+          if (map) fen = map
         }
         gameManager.startNewGame(fen)
       },
@@ -281,7 +283,14 @@ const initApp = () => {
         boardRenderer.setPieceSet(set)
         render()
       },
-      getTurn: () => game.turn()
+      getTurn: () => game.turn(),
+      onPromoteVariation: (uciMove) => {
+        // uciMove e.g. "e2e4"
+        const from = uciMove.substring(0, 2)
+        const to = uciMove.substring(2, 4)
+        const promotion = uciMove.length > 4 ? uciMove[4] : undefined
+        gameManager.performMove({ from, to, promotion })
+      }
     })
 
     developerManager.uiManager = uiManager
@@ -313,9 +322,11 @@ const initApp = () => {
       onGameStart: () => {
         render()
         uiManager.showToast('New Game Started', 'info')
+        if (openingExplorer) openingExplorer.refresh()
       },
       onMove: (result) => {
         render()
+        if (openingExplorer) openingExplorer.refresh()
         if (result) {
           if (ArrowManager) ArrowManager.clearEngineArrows()
           if (document.getElementById('auto-flip').checked) {
@@ -335,7 +346,7 @@ const initApp = () => {
       onClockUpdate: () => renderClocks()
     })
 
-    const analysisManager = new AnalysisManager(game, socketHandler, {
+    const analysisManager = new AnalysisManager(game, gameManager, socketHandler, {
       onStart: (total) => {
         uiManager.elements.analysisReportModal.classList.add('active')
         uiManager.elements.analysisSummary.textContent = 'Analyzing...'
@@ -352,24 +363,11 @@ const initApp = () => {
       onError: (msg) => uiManager.showToast(msg, 'error')
     })
 
-    const trainingManager = new TrainingManager(game, boardRenderer, {
-      onMemoryStart: (fen) => uiManager.showToast('Memorize this position!', 'info'),
-      onMemoryTick: (time) => { document.getElementById('memory-timer').textContent = `Time: ${time}` },
-      onMemoryReconstructionStart: () => {
-        uiManager.showToast('Reconstruct the position!', 'info')
-        document.getElementById('piece-palette').style.display = 'flex'
-        renderPalette()
-      },
-      onTacticsLoad: (puzzle) => {
-        render()
-        uiManager.showToast('Tactics: ' + puzzle.description, 'info')
-        document.getElementById('tactics-desc').textContent = puzzle.description
-      },
-      onTacticsSolved: () => uiManager.showToast('Puzzle Solved!', 'success'),
-      onMoveMade: () => {
-        if (SoundManager) SoundManager.playSound(game.history({ verbose: true }).pop(), game)
-      }
-    })
+    const trainingManager = createTrainingManager(game, boardRenderer, uiManager, render)
+
+    moveListManager = new MoveListManager(game, gameManager, uiManager)
+    openingExplorer = new OpeningExplorer(gameManager, socketHandler, uiManager)
+    treeManager = new TreeManager(socketHandler, uiManager)
 
     const moveHandler = new MoveHandler(game, gameManager, uiManager, boardRenderer, trainingManager, state, render)
 
@@ -386,10 +384,12 @@ const initApp = () => {
         premove: state.premove,
         pendingConfirmationMove: state.pendingConfirmationMove
       })
-      uiManager.renderHistory(game, state.currentViewIndex, (idx) => {
+
+      moveListManager.render(state.currentViewIndex, (idx) => {
         gameManager.currentViewIndex = idx
         render()
       }, state.historyNotation)
+
       renderClocks()
       uiManager.updateCapturedPieces(game, gameManager.startingFen, boardRenderer.currentPieceSet, state.isFlipped)
     }
@@ -464,20 +464,7 @@ const initApp = () => {
     }
 
     function renderClocks () {
-      const format = (ms) => {
-        const s = Math.ceil(ms / 1000)
-        return `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`
-      }
-      const wTime = format(gameManager.whiteTime)
-      const bTime = format(gameManager.blackTime)
-
-      if (state.isFlipped) {
-        uiManager.elements.topPlayerClock.textContent = wTime
-        uiManager.elements.bottomPlayerClock.textContent = bTime
-      } else {
-        uiManager.elements.topPlayerClock.textContent = bTime
-        uiManager.elements.bottomPlayerClock.textContent = wTime
-      }
+      uiManager.boardInfoRenderer.updateClocks(gameManager.whiteTime, gameManager.blackTime, state.isFlipped)
     }
 
     let replayInterval = null
@@ -519,6 +506,27 @@ const initApp = () => {
       uiManager.showToast(`Active: ${config.name}`)
     }
 
+    function createTrainingManager (g, r, u, renderFn) {
+      return new TrainingManager(g, r, {
+        onMemoryStart: (fen) => u.showToast('Memorize this position!', 'info'),
+        onMemoryTick: (time) => { document.getElementById('memory-timer').textContent = `Time: ${time}` },
+        onMemoryReconstructionStart: () => {
+          u.showToast('Reconstruct the position!', 'info')
+          document.getElementById('piece-palette').style.display = 'flex'
+          renderPalette()
+        },
+        onTacticsLoad: (puzzle) => {
+          renderFn()
+          u.showToast('Tactics: ' + puzzle.description, 'info')
+          document.getElementById('tactics-desc').textContent = puzzle.description
+        },
+        onTacticsSolved: () => u.showToast('Puzzle Solved!', 'success'),
+        onMoveMade: () => {
+          if (SoundManager) SoundManager.playSound(g.history({ verbose: true }).pop(), g)
+        }
+      })
+    }
+
     function renderPalette () {
       const palette = document.getElementById('piece-palette')
       palette.innerHTML = ''
@@ -540,6 +548,18 @@ const initApp = () => {
       })
     }
 
+    function getHandicapFen (handicap) {
+      const map = {
+        'knight-b1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R1BQKBNR w KQkq - 0 1',
+        'knight-g1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKB1R w KQkq - 0 1',
+        'rook-a1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/1NBQKBNR w KQkq - 0 1',
+        'rook-h1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBN1 w KQkq - 0 1',
+        queen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNB1KBNR w KQkq - 0 1',
+        'pawn-f2': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPP1PP/RNBQKBNR w KQkq - 0 1'
+      }
+      return map[handicap]
+    }
+
     if (document.getElementById('sound-enabled')) {
       SoundManager.setEnabled(document.getElementById('sound-enabled').checked)
       document.getElementById('sound-enabled').addEventListener('change', (e) => {
@@ -551,15 +571,11 @@ const initApp = () => {
     const urlParams = new URLSearchParams(window.location.search)
     const fenParam = urlParams.get('fen')
     if (fenParam) {
-      // Delay slightly to ensure UI is ready
       setTimeout(() => {
-        // Validate with chess.js before loading
         const temp = new Chess()
         if (temp.load(fenParam)) {
           gameManager.startNewGame(fenParam)
           uiManager.showToast('Position loaded from URL', 'success')
-          // Update URL to remove param to avoid reloading it on refresh?
-          // Better to keep it so it's shareable/refreshable.
         } else {
           uiManager.showToast('Invalid FEN in URL', 'error')
         }
@@ -567,6 +583,9 @@ const initApp = () => {
     }
 
     socketHandler.connect()
+
+    // Expose for testing
+    window.gameManager = gameManager
 
     window.ChessApp = {
       startMatch: (whiteConfig, blackConfig, onGameEnd) => {

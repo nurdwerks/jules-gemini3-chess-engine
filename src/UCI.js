@@ -113,10 +113,20 @@ class UCI {
       verify: () => this.cmdVerify(),
       garbage_collect: () => this.cmdGarbageCollect(),
       zobrist: () => this.cmdZobrist(),
-      memory: () => this.cmdMemory()
+      memory: () => this.cmdMemory(),
+      book: () => this.cmdBook()
     }
 
     if (handlers[cmd]) handlers[cmd]()
+  }
+
+  cmdBook () {
+    const moves = this.book.getBookMoves(this.board)
+    const movesWithAlgebraic = moves.map(m => ({
+      ...m,
+      move: this.indexToAlgebraic(m.from) + this.indexToAlgebraic(m.to) + (m.promotion || '')
+    }))
+    this.output(`info string book_moves ${JSON.stringify(movesWithAlgebraic)}`)
   }
 
   cmdPerft (args) {
