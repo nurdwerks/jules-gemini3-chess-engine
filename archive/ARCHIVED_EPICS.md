@@ -1792,3 +1792,89 @@ The following Epics were part of the initial development phase and are either co
     *   *Description:* Allow user to upload an `.nnue` file to use.
     *   *Acceptance Criteria:*
         *   [x] Net loaded.
+
+### Epic 74: Data Management (PGN/FEN)
+**Size:** Medium (3 days)
+**Description:** Import, export, and manage chess game data.
+
+**User Stories:**
+
+118. **PGN Export (S)**
+    *   *Description:* Button to export the current game history as a PGN string.
+    *   *Acceptance Criteria:*
+        - [x] Valid PGN string in modal/clipboard.
+
+119. **PGN Import (S)**
+    *   *Description:* Allow pasting a PGN string to load and replay a full game history.
+    *   *Acceptance Criteria:*
+        - [x] Game loaded correctly.
+
+120. **Copy PGN to Clipboard (S)**
+    *   *Description:* One-click button to copy the full PGN.
+    *   *Acceptance Criteria:*
+        - [x] Clipboard contains PGN.
+
+121. **Download PGN as File (S)**
+    *   *Description:* Save the game as `game.pgn`.
+    *   *Acceptance Criteria:*
+        - [x] File downloads.
+
+122. **Date/Time in PGN (S)**
+    *   *Description:* Automatically add the `Date` and `Time` tags to exported PGNs.
+    *   *Acceptance Criteria:*
+        - [x] Tags present.
+
+123. **Event Name in PGN (S)**
+    *   *Description:* Allow setting the `Event` tag for exported PGNs.
+    *   *Acceptance Criteria:*
+        - [x] Tag updates.
+
+124. **Username Input (S)**
+    *   *Description:* Field to set the human player's name in the PGN header.
+    *   *Acceptance Criteria:*
+        - [x] White/Black tag correct.
+
+125. **FEN Clipboard Copy (S)**
+    *   *Description:* Add a 'Copy FEN' button next to the board.
+    *   *Acceptance Criteria:*
+        - [x] FEN in clipboard.
+
+126. **FEN Input Field (S)**
+    *   *Description:* A text input to manually paste and edit FEN strings.
+    *   *Acceptance Criteria:*
+        - [x] Board updates.
+
+127. **Copy FEN to Clipboard (URL) (S)**
+    *   *Description:* Copy a direct link to the position.
+    *   *Acceptance Criteria:*
+        - [x] Loads position.
+
+128. **FEN History List (S)**
+    *   *Description:* Maintain a list of previous FENs to allow jumping back.
+    *   *Acceptance Criteria:*
+        - [x] History populated.
+
+129. **Move History Notation Toggle (S)**
+    *   *Description:* Switch between SAN and LAN in the history list.
+    *   *Acceptance Criteria:*
+        - [x] e4 vs e2e4.
+
+130. **Log Export (S)**
+    *   *Description:* Add a button to download the current session's UCI log as a text file.
+    *   *Acceptance Criteria:*
+        - [x] Log file contains UCI commands.
+
+131. **Print Score Sheet (S)**
+    *   *Description:* Generate a printable PDF or HTML view of the score sheet.
+    *   *Acceptance Criteria:*
+        - [x] Clean layout.
+
+132. **Export Analysis (S)**
+    *   *Description:* Save the current engine analysis (PV, score) to a JSON file.
+    *   *Acceptance Criteria:*
+        - [x] JSON valid.
+
+133. **Import Analysis (S)**
+    *   *Description:* Load a saved JSON analysis file to review later.
+    *   *Acceptance Criteria:*
+        - [x] Analysis restored.

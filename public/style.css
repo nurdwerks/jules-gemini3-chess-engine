@@ -1274,3 +1274,59 @@ body.light-mode {
 #eval-bar-container.thinking {
     box-shadow: 0 0 10px var(--grafana-accent-blue);
 }
+
+@media print {
+  body {
+    background-color: white;
+    color: black;
+  }
+  .sidebar, .sidebar-toggle, .icon-btn, button, input, select, .panel-header button {
+      display: none !important;
+  }
+  .container {
+      display: block;
+      height: auto;
+      overflow: visible;
+  }
+  #dashboard {
+      grid-template-columns: 1fr;
+      gap: 20px;
+      overflow: visible;
+      padding: 0;
+  }
+  .panel {
+      border: none;
+      background: white !important;
+      color: black !important;
+      box-shadow: none;
+      margin-bottom: 20px;
+      height: auto !important;
+  }
+  .panel:not(.chessboard-panel):not(.history-panel) {
+      display: none !important;
+  }
+  .panel-header {
+      border-bottom: 1px solid #000;
+  }
+  .panel-title {
+      color: black !important;
+  }
+  .chessboard-panel {
+      page-break-inside: avoid;
+  }
+  .history-panel {
+      page-break-before: auto;
+  }
+  .move-history-list {
+      height: auto !important;
+      overflow: visible !important;
+      border: 1px solid #000;
+  }
+  .move-number, .move-san {
+      color: black !important;
+      border-bottom: 1px solid #ccc;
+  }
+  /* Force light theme colors for board */
+  .light-square { fill: #f0d9b5 !important; }
+  .dark-square { fill: #b58863 !important; }
+}
