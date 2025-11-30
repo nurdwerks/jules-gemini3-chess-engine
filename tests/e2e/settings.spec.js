@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./coverage');
 
 test.describe('Settings and Customization', () => {
   test.beforeEach(async ({ page }) => {

@@ -166,14 +166,21 @@ const initApp = () => {
       gameManager.blackTime = 240000 // 4m
       uiManager.showToast('Armageddon Mode Started', 'info')
     },
-    onMemoryTraining: () => trainingManager.startMemoryTraining(),
+    onMemoryTraining: () => {
+      document.getElementById('memory-training-controls').style.display = 'block'
+      trainingManager.startMemoryTraining()
+    },
     onMemorySubmit: () => trainingManager.checkMemoryResult(),
     onMemoryGiveUp: () => {
+      document.getElementById('memory-training-controls').style.display = 'none'
       trainingManager.stopMemoryTraining()
       game.load(trainingManager.memoryTargetFen)
       render()
     },
-    onTacticsTrainer: () => trainingManager.startTacticsTrainer(),
+    onTacticsTrainer: () => {
+      document.getElementById('tactics-controls').style.display = 'block'
+      trainingManager.startTacticsTrainer()
+    },
     onTacticsNext: () => trainingManager.nextTacticsPuzzle(),
     onEndgameTrainer: () => { document.getElementById('endgame-controls').style.display = 'block' },
     onStartEndgame: (type) => {
