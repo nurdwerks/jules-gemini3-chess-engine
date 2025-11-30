@@ -319,10 +319,26 @@ button:hover {
     border-radius: 4px;
 }
 
-.option-item input[type="checkbox"] {
+.option-item input[type="checkbox"],
+.option-item input[type="range"] {
     margin-left: 10px;
-    height: 16px;
-    width: 16px;
+    cursor: pointer;
+}
+
+.option-item input[type="range"] {
+    width: 100px;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
 }
 
 /* Search Visualization Panel */
@@ -770,6 +786,35 @@ body.light-mode {
     image-rendering: pixelated;
     /* Ensure it scales up with nearest neighbor if the image is small */
     image-rendering: crisp-edges;
+}
+
+/* High Contrast Mode */
+body.high-contrast {
+    --grafana-dark-bg: #000000;
+    --grafana-panel-bg: #000000;
+    --grafana-border: #FFFFFF;
+    --grafana-text-primary: #FFFFFF;
+    --grafana-text-secondary: #FFFF00;
+    --grafana-accent-blue: #00FFFF;
+    --grafana-accent-green: #00FF00;
+    --grafana-input-bg: #000000;
+    --board-light-square: #FFFFFF;
+    --board-dark-square: #000000;
+}
+
+body.high-contrast .panel {
+    border: 2px solid #FFFFFF;
+}
+
+body.high-contrast button {
+    background-color: #000000;
+    border: 2px solid #FFFFFF;
+    color: #FFFFFF;
+    font-weight: bold;
+}
+
+body.high-contrast button:hover {
+    background-color: #333333;
 }
 
 /* Glass Theme */

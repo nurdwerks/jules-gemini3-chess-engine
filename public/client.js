@@ -1,5 +1,5 @@
 /* eslint-env browser */
-/* global Chess, SocketHandler, BoardRenderer, GameManager, AnalysisManager, TrainingManager, UIManager, ArrowManager, SoundManager, ClientUtils, MoveHandler, LeaderboardManager, PgnManager, FenManager, BoardEditor, DeveloperManager, MoveListManager, OpeningExplorer, TreeManager */
+/* global Chess, SocketHandler, BoardRenderer, GameManager, AnalysisManager, TrainingManager, UIManager, ArrowManager, SoundManager, ClientUtils, MoveHandler, LeaderboardManager, PgnManager, FenManager, BoardEditor, DeveloperManager, MoveListManager, OpeningExplorer, TreeManager, AccessibilityManager */
 
 const initApp = () => {
   try {
@@ -9,6 +9,7 @@ const initApp = () => {
     let moveListManager = null
     let openingExplorer = null
     let treeManager = null
+    let accessibilityManager = null
 
     // Shared State
     const state = {
@@ -334,6 +335,7 @@ const initApp = () => {
             boardRenderer.setFlipped(state.isFlipped)
             render()
           }
+          if (accessibilityManager) accessibilityManager.announceMove(result)
         }
       },
       onGameOver: (result) => {
@@ -368,6 +370,9 @@ const initApp = () => {
     moveListManager = new MoveListManager(game, gameManager, uiManager)
     openingExplorer = new OpeningExplorer(gameManager, socketHandler, uiManager)
     treeManager = new TreeManager(socketHandler, uiManager)
+
+    // Accessibility Manager
+    accessibilityManager = new AccessibilityManager(gameManager, uiManager, render)
 
     const moveHandler = new MoveHandler(game, gameManager, uiManager, boardRenderer, trainingManager, state, render)
 
@@ -560,10 +565,45 @@ const initApp = () => {
       return map[handicap]
     }
 
-    if (document.getElementById('sound-enabled')) {
-      SoundManager.setEnabled(document.getElementById('sound-enabled').checked)
-      document.getElementById('sound-enabled').addEventListener('change', (e) => {
-        SoundManager.setEnabled(e.target.checked)
+    // Accessibility & Sound Controls
+    const soundEnabledCb = document.getElementById('sound-enabled')
+    if (soundEnabledCb) {
+      SoundManager.setEnabled(soundEnabledCb.checked)
+      soundEnabledCb.addEventListener('change', (e) => SoundManager.setEnabled(e.target.checked))
+    }
+
+    const volumeControl = document.getElementById('volume-control')
+    if (volumeControl) {
+      volumeControl.addEventListener('input', (e) => SoundManager.setVolume(e.target.value))
+    }
+
+    const voiceAnnounceCb = document.getElementById('voice-announce')
+    if (voiceAnnounceCb) {
+      voiceAnnounceCb.addEventListener('change', (e) => accessibilityManager.setVoiceAnnounce(e.target.checked))
+    }
+
+    const voiceControlCb = document.getElementById('voice-control')
+    if (voiceControlCb) {
+      voiceControlCb.addEventListener('change', (e) => accessibilityManager.setVoiceControl(e.target.checked))
+    }
+
+    const highContrastCb = document.getElementById('high-contrast')
+    if (highContrastCb) {
+        highContrastCb.addEventListener('change', (e) => {
+            if (e.target.checked) document.body.classList.add('high-contrast')
+            else document.body.classList.remove('high-contrast')
+        })
+    }
+
+    const soundPackUpload = document.getElementById('sound-pack-upload')
+    if (soundPackUpload) {
+      soundPackUpload.addEventListener('change', (e) => {
+        const file = e.target.files[0]
+        if (file) {
+          SoundManager.loadSoundPack(file)
+            .then(count => uiManager.showToast(`Loaded ${count} custom sounds`, 'success'))
+            .catch(err => uiManager.showToast('Failed to load sound pack', 'error'))
+        }
       })
     }
 

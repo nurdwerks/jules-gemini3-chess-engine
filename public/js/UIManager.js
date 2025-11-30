@@ -57,6 +57,14 @@ window.UIManager = class UIManager {
       pieceSetSelect: document.getElementById('piece-set'),
       uiThemeSelect: document.getElementById('ui-theme'),
 
+      // Accessibility & Sound Inputs
+      soundEnabled: document.getElementById('sound-enabled'),
+      volumeControl: document.getElementById('volume-control'),
+      voiceAnnounce: document.getElementById('voice-announce'),
+      voiceControl: document.getElementById('voice-control'),
+      highContrast: document.getElementById('high-contrast'),
+      soundPackUpload: document.getElementById('sound-pack-upload'),
+
       // Panels
       memoryControls: document.getElementById('memory-training-controls'),
       tacticsControls: document.getElementById('tactics-controls'),
