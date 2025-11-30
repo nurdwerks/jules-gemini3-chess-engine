@@ -87,7 +87,7 @@ const initApp = () => {
         const handicap = document.getElementById('handicap-select').value
         let fen = 'startpos'
         if (handicap && handicap !== 'none') {
-          const map = getHandicapFen(handicap)
+          const map = ClientUtils.getHandicapFen(handicap)
           if (map) fen = map
         }
         gameManager.startNewGame(fen)
@@ -365,7 +365,7 @@ const initApp = () => {
       onError: (msg) => uiManager.showToast(msg, 'error')
     })
 
-    const trainingManager = createTrainingManager(game, boardRenderer, uiManager, render)
+    const trainingManager = TrainingManager.create(game, boardRenderer, uiManager, render)
 
     moveListManager = new MoveListManager(game, gameManager, uiManager)
     openingExplorer = new OpeningExplorer(gameManager, socketHandler, uiManager)
@@ -511,60 +511,6 @@ const initApp = () => {
       uiManager.showToast(`Active: ${config.name}`)
     }
 
-    function createTrainingManager (g, r, u, renderFn) {
-      return new TrainingManager(g, r, {
-        onMemoryStart: (fen) => u.showToast('Memorize this position!', 'info'),
-        onMemoryTick: (time) => { document.getElementById('memory-timer').textContent = `Time: ${time}` },
-        onMemoryReconstructionStart: () => {
-          u.showToast('Reconstruct the position!', 'info')
-          document.getElementById('piece-palette').style.display = 'flex'
-          renderPalette()
-        },
-        onTacticsLoad: (puzzle) => {
-          renderFn()
-          u.showToast('Tactics: ' + puzzle.description, 'info')
-          document.getElementById('tactics-desc').textContent = puzzle.description
-        },
-        onTacticsSolved: () => u.showToast('Puzzle Solved!', 'success'),
-        onMoveMade: () => {
-          if (SoundManager) SoundManager.playSound(g.history({ verbose: true }).pop(), g)
-        }
-      })
-    }
-
-    function renderPalette () {
-      const palette = document.getElementById('piece-palette')
-      palette.innerHTML = ''
-      const pieces = ['wP', 'wN', 'wB', 'wR', 'wQ', 'wK', 'bP', 'bN', 'bB', 'bR', 'bQ', 'bK']
-      pieces.forEach(p => {
-        const color = p[0]
-        const type = p[1].toLowerCase()
-        const div = document.createElement('div')
-        div.classList.add('palette-piece')
-        const img = document.createElement('img')
-        img.src = `images/${boardRenderer.currentPieceSet}/${color}${type}.svg`
-        div.appendChild(img)
-        div.addEventListener('click', () => {
-          document.querySelectorAll('.palette-piece').forEach(el => el.classList.remove('selected'))
-          div.classList.add('selected')
-          trainingManager.selectPalettePiece(color, type)
-        })
-        palette.appendChild(div)
-      })
-    }
-
-    function getHandicapFen (handicap) {
-      const map = {
-        'knight-b1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R1BQKBNR w KQkq - 0 1',
-        'knight-g1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKB1R w KQkq - 0 1',
-        'rook-a1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/1NBQKBNR w KQkq - 0 1',
-        'rook-h1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBN1 w KQkq - 0 1',
-        queen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNB1KBNR w KQkq - 0 1',
-        'pawn-f2': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPP1PP/RNBQKBNR w KQkq - 0 1'
-      }
-      return map[handicap]
-    }
-
     // Accessibility & Sound Controls
     const soundEnabledCb = document.getElementById('sound-enabled')
     if (soundEnabledCb) {
@@ -589,10 +535,10 @@ const initApp = () => {
 
     const highContrastCb = document.getElementById('high-contrast')
     if (highContrastCb) {
-        highContrastCb.addEventListener('change', (e) => {
-            if (e.target.checked) document.body.classList.add('high-contrast')
-            else document.body.classList.remove('high-contrast')
-        })
+      highContrastCb.addEventListener('change', (e) => {
+        if (e.target.checked) document.body.classList.add('high-contrast')
+        else document.body.classList.remove('high-contrast')
+      })
     }
 
     const soundPackUpload = document.getElementById('sound-pack-upload')
@@ -602,7 +548,10 @@ const initApp = () => {
         if (file) {
           SoundManager.loadSoundPack(file)
             .then(count => uiManager.showToast(`Loaded ${count} custom sounds`, 'success'))
-            .catch(err => uiManager.showToast('Failed to load sound pack', 'error'))
+            .catch(err => {
+              console.error(err)
+              uiManager.showToast('Failed to load sound pack', 'error')
+            })
         }
       })
     }

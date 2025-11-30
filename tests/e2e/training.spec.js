@@ -60,9 +60,6 @@ test.describe('Training Tools', () => {
     // But we can check if a move can be made or if "Incorrect move" toast appears on wrong move
 
     // Attempt a move (likely wrong)
-    const e2 = page.locator('.square[data-alg="e2"]')
-    const e4 = page.locator('.square[data-alg="e4"]')
-
     // Only if e2 has a piece. Puzzles are random.
     // Safe bet: check that we are in tactics mode.
     const status = page.locator('#tactics-desc')

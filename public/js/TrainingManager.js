@@ -2,6 +2,33 @@
 /* global Chess */
 
 window.TrainingManager = class TrainingManager {
+  static create (game, boardRenderer, uiManager, renderFn) {
+    const tm = new TrainingManager(game, boardRenderer, {
+      onMemoryStart: (fen) => uiManager.showToast('Memorize this position!', 'info'),
+      onMemoryTick: (time) => {
+        const el = document.getElementById('memory-timer')
+        if (el) el.textContent = `Time: ${time}`
+      },
+      onMemoryReconstructionStart: () => {
+        uiManager.showToast('Reconstruct the position!', 'info')
+        const el = document.getElementById('piece-palette')
+        if (el) el.style.display = 'flex'
+        tm.renderPalette('piece-palette')
+      },
+      onTacticsLoad: (puzzle) => {
+        renderFn()
+        uiManager.showToast('Tactics: ' + puzzle.description, 'info')
+        const el = document.getElementById('tactics-desc')
+        if (el) el.textContent = puzzle.description
+      },
+      onTacticsSolved: () => uiManager.showToast('Puzzle Solved!', 'success'),
+      onMoveMade: () => {
+        if (window.SoundManager) window.SoundManager.playSound(game.history({ verbose: true }).pop(), game)
+      }
+    })
+    return tm
+  }
+
   constructor (game, boardRenderer, callbacks) {
     this.game = game
     this.boardRenderer = boardRenderer
@@ -80,6 +107,29 @@ window.TrainingManager = class TrainingManager {
 
   selectPalettePiece (color, type) {
     this.selectedPalettePiece = { color, type }
+  }
+
+  renderPalette (containerId) {
+    const palette = document.getElementById(containerId)
+    if (!palette) return
+    palette.innerHTML = ''
+    const pieces = ['wP', 'wN', 'wB', 'wR', 'wQ', 'wK', 'bP', 'bN', 'bB', 'bR', 'bQ', 'bK']
+    const set = this.boardRenderer.currentPieceSet || 'cburnett'
+    pieces.forEach(p => {
+      const color = p[0]
+      const type = p[1].toLowerCase()
+      const div = document.createElement('div')
+      div.classList.add('palette-piece')
+      const img = document.createElement('img')
+      img.src = `images/${set}/${color}${type}.svg`
+      div.appendChild(img)
+      div.addEventListener('click', () => {
+        document.querySelectorAll('.palette-piece').forEach(el => el.classList.remove('selected'))
+        div.classList.add('selected')
+        this.selectPalettePiece(color, type)
+      })
+      palette.appendChild(div)
+    })
   }
 
   stopMemoryTraining () {

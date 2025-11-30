@@ -31,22 +31,22 @@ window.AccessibilityManager = class AccessibilityManager {
     const history = this.gameManager.game.history()
     const maxIndex = history.length - 1
 
-    let current = this.gameManager.currentViewIndex
+    const current = this.gameManager.currentViewIndex
     // Map -1 (Live) to maxIndex for calculation
-    let effectiveIndex = current === -1 ? maxIndex : current
+    const effectiveIndex = current === -1 ? maxIndex : current
 
     let nextIndex = effectiveIndex + dir
 
     // Handling the gap between 0 and -2 (skipping -1 which is Live)
     // If we are at 0 and go back (-1), we land on -1 (Live). We want -2.
     if (effectiveIndex === 0 && dir === -1) {
-        nextIndex = -2
+      nextIndex = -2
     }
 
     // If we are at -2 and go forward (+1), we land on -1 (Live). We want 0.
     if (effectiveIndex === -2 && dir === 1) {
-         if (history.length === 0) nextIndex = -1
-         else nextIndex = 0
+      if (history.length === 0) nextIndex = -1
+      else nextIndex = 0
     }
 
     // Bounds
@@ -55,9 +55,9 @@ window.AccessibilityManager = class AccessibilityManager {
 
     // Update
     if (this.gameManager.currentViewIndex !== nextIndex) {
-        this.gameManager.currentViewIndex = nextIndex
-        this.renderFn()
-        this._announceMoveStatus(nextIndex)
+      this.gameManager.currentViewIndex = nextIndex
+      this.renderFn()
+      this._announceMoveStatus(nextIndex)
     }
   }
 
@@ -73,7 +73,7 @@ window.AccessibilityManager = class AccessibilityManager {
     } else if (history[idx]) {
       const m = history[idx]
       const color = m.color === 'w' ? 'White' : 'Black'
-      statusDiv.textContent = `Move ${Math.floor(idx/2) + 1}, ${color} played ${m.san}`
+      statusDiv.textContent = `Move ${Math.floor(idx / 2) + 1}, ${color} played ${m.san}`
     }
   }
 
@@ -154,30 +154,30 @@ window.AccessibilityManager = class AccessibilityManager {
 
     // 2. Try phonetic / separated match
     if (!match) {
-        // "knight f 3" -> "Nf3" logic is complex, simplify:
-        // iterate all moves, convert to "spoken" form and compare
-        // e.g. Nf3 -> "knight f3"
-        const pieceMap = { n: 'knight', k: 'king', q: 'queen', r: 'rook', b: 'bishop', p: 'pawn' }
+      // "knight f 3" -> "Nf3" logic is complex, simplify:
+      // iterate all moves, convert to "spoken" form and compare
+      // e.g. Nf3 -> "knight f3"
+      const pieceMap = { n: 'knight', k: 'king', q: 'queen', r: 'rook', b: 'bishop', p: 'pawn' }
 
-        match = moves.find(m => {
-            let spoken = ''
-            if (m.piece !== 'p') spoken += pieceMap[m.piece] + ' '
-            spoken += m.to
-            // Handle captures? "takes"
-            // This is basic.
-            return spoken.toLowerCase() === clean
-        })
+      match = moves.find(m => {
+        let spoken = ''
+        if (m.piece !== 'p') spoken += pieceMap[m.piece] + ' '
+        spoken += m.to
+        // Handle captures? "takes"
+        // This is basic.
+        return spoken.toLowerCase() === clean
+      })
     }
 
     if (match) {
-        this.uiManager.showToast(`Voice: ${match.san}`, 'success')
-        this.gameManager.performMove({ from: match.from, to: match.to, promotion: match.promotion }, true)
-        // Trigger Engine
-        if (this.gameManager.gameMode === 'pve') {
-            this.gameManager.sendPositionAndGo()
-        }
+      this.uiManager.showToast(`Voice: ${match.san}`, 'success')
+      this.gameManager.performMove({ from: match.from, to: match.to, promotion: match.promotion }, true)
+      // Trigger Engine
+      if (this.gameManager.gameMode === 'pve') {
+        this.gameManager.sendPositionAndGo()
+      }
     } else {
-        console.log(`Voice Command not understood: "${cmd}"`)
+      console.log(`Voice Command not understood: "${cmd}"`)
     }
   }
 }

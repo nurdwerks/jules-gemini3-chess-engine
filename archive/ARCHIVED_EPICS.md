@@ -2062,3 +2062,100 @@ The following Epics were part of the initial development phase and are either co
     *   *Description:* Show the ECO code and opening name.
     *   *Acceptance Criteria:*
         *   [x] Code shown (Placeholder).
+
+### Epic 78: Accessibility & Audio
+**Size:** Medium (3 days)
+**Description:** Making the game accessible to all users.
+
+**User Stories:**
+
+166. **Keyboard Navigation (S)**
+    *   *Description:* Support arrow keys for navigating through the game history.
+    *   *Implementation:* `keydown` listener. Left/Right arrows -> Undo/Redo.
+    *   *Tasks:*
+        - [x] Listener.
+    *   *Testing Plan:* Press arrows.
+    *   *Acceptance Criteria:*
+        - [x] Board updates.
+
+167. **Voice Announcement (S)**
+    *   *Description:* Use Web Speech API to announce moves audibly.
+    *   *Implementation:* `speechSynthesis.speak()`.
+    *   *Tasks:*
+        - [x] Toggle.
+        - [x] Speech logic.
+    *   *Testing Plan:* Make move.
+    *   *Acceptance Criteria:*
+        - [x] "Knight to f3" spoken.
+
+168. **Voice Control (S)**
+    *   *Description:* Full voice control for navigating UI.
+    *   *Implementation:* Web Speech Recognition. Command mapping.
+    *   *Tasks:*
+        - [x] Microphone input.
+    *   *Testing Plan:* Say "Play e4".
+    *   *Acceptance Criteria:*
+        - [x] Move plays.
+
+169. **Screen Reader Support (S)**
+    *   *Description:* Ensure all moves and status updates are ARIA-live regions.
+    *   *Implementation:* `aria-live="polite"` on status div.
+    *   *Tasks:*
+        - [x] HTML attributes.
+    *   *Testing Plan:* Use NVDA/VoiceOver.
+    *   *Acceptance Criteria:*
+        - [x] Updates announced.
+
+170. **High Contrast Mode (S)**
+    *   *Description:* Accessibility mode with maximum contrast colors.
+    *   *Implementation:* B/W theme.
+    *   *Tasks:*
+        - [x] Toggle.
+    *   *Testing Plan:* Check contrast.
+    *   *Acceptance Criteria:*
+        - [x] High contrast visible.
+
+171. **Move Sound Effects (S)**
+    *   *Description:* Add distinct sounds for move, capture, check, and game over.
+    *   *Implementation:* Audio files. Play on event.
+    *   *Tasks:*
+        - [x] Source audio.
+    *   *Testing Plan:* Play.
+    *   *Acceptance Criteria:*
+        - [x] Sounds play.
+
+172. **Checkmate Sound (S)**
+    *   *Description:* A unique sound effect for checkmate.
+    *   *Implementation:* Distinct file.
+    *   *Tasks:*
+        - [x] Logic.
+    *   *Testing Plan:* Mate.
+    *   *Acceptance Criteria:*
+        - [x] Sound plays.
+
+173. **Stalemate Sound (S)**
+    *   *Description:* A unique sound effect for stalemate.
+    *   *Implementation:* Distinct file.
+    *   *Tasks:*
+        - [x] Logic.
+    *   *Testing Plan:* Stalemate.
+    *   *Acceptance Criteria:*
+        - [x] Sound plays.
+
+174. **Sound Volume Control (S)**
+    *   *Description:* Slider to adjust sound effect volume.
+    *   *Implementation:* `audio.volume`.
+    *   *Tasks:*
+        - [x] Slider.
+    *   *Testing Plan:* Adjust.
+    *   *Acceptance Criteria:*
+        - [x] Volume changes.
+
+175. **Sound Pack Upload (S)**
+    *   *Description:* Allow user to upload a zip of custom sound effects.
+    *   *Implementation:* Blob URL replacement for audio sources.
+    *   *Tasks:*
+        - [x] Upload UI.
+    *   *Testing Plan:* Upload custom sounds.
+    *   *Acceptance Criteria:*
+        - [x] Custom sounds play.

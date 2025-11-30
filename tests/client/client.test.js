@@ -18,7 +18,8 @@ describe('client.js', () => {
       move: jest.fn(),
       pgn: jest.fn(),
       load_pgn: jest.fn(),
-      get: jest.fn()
+      get: jest.fn(),
+      moves: jest.fn().mockReturnValue([])
     }))
 
     global.SocketHandler = jest.fn(function (cbs) { instances.socketHandler = this; this.callbacks = cbs; this.connect = jest.fn(); this.send = jest.fn() })
@@ -33,7 +34,12 @@ describe('client.js', () => {
         analysisTable: {},
         topPlayerClock: {},
         bottomPlayerClock: {},
-        animationSpeedSelect: { value: '0' }
+        animationSpeedSelect: { value: '0' },
+        pgnInputArea: {},
+        pgnImportModal: { classList: { add: jest.fn() } }
+      }
+      this.boardInfoRenderer = {
+        updateClocks: jest.fn()
       }
       this.logSystemMessage = jest.fn()
       this.logToOutput = jest.fn()
@@ -43,6 +49,8 @@ describe('client.js', () => {
       this.renderHistory = jest.fn()
       this.updateCapturedPieces = jest.fn()
       this.setThinking = jest.fn()
+      this.renderAnalysisRow = jest.fn()
+      this.updateAnalysisProgress = jest.fn()
     })
     global.GameManager = jest.fn(function (g, s, cbs) {
       instances.gameManager = this
@@ -72,6 +80,8 @@ describe('client.js', () => {
       this.handleBestMove = jest.fn()
       this.startFullGameAnalysis = jest.fn()
       this.stopAnalysis = jest.fn()
+      this.exportAnalysis = jest.fn()
+      this.importAnalysis = jest.fn()
     })
     global.TrainingManager = jest.fn(function (g, b, cbs) {
       instances.trainingManager = this
@@ -95,6 +105,8 @@ describe('client.js', () => {
       this.exportPgn = jest.fn()
       this.updateHeader = jest.fn()
       this.getHeaders = jest.fn()
+      this.copyPgnToClipboard = jest.fn()
+      this.downloadPgn = jest.fn()
     })
     global.FenManager = jest.fn(function () {
       instances.fenManager = this
@@ -130,19 +142,31 @@ describe('client.js', () => {
       instances.treeManager = this
       this.onTreeReady = jest.fn()
     })
+    global.AccessibilityManager = jest.fn(function (gm, um, render) {
+      instances.accessibilityManager = this
+      this.announceMove = jest.fn()
+      this.setVoiceAnnounce = jest.fn()
+      this.setVoiceControl = jest.fn()
+    })
 
     global.ClientUtils = {
       parseInfo: jest.fn(),
       generate960Fen: jest.fn()
     }
     global.ArrowManager = { clearEngineArrows: jest.fn(), clearUserArrows: jest.fn() }
-    global.SoundManager = { setEnabled: jest.fn(), playSound: jest.fn() }
+    global.SoundManager = { setEnabled: jest.fn(), playSound: jest.fn(), setVolume: jest.fn(), loadSoundPack: jest.fn() }
 
+    // Mock document elements
     document.body.innerHTML = `
         <div id="status"></div>
         <div id="self-play-btn"></div>
         <div id="chessboard"></div>
         <input id="sound-enabled" type="checkbox" />
+        <input id="volume-control" type="range" />
+        <input id="voice-announce" type="checkbox" />
+        <input id="voice-control" type="checkbox" />
+        <input id="high-contrast" type="checkbox" />
+        <input id="sound-pack-upload" type="file" />
         <div id="piece-palette"></div>
         <div id="memory-timer"></div>
         <div id="tactics-desc"></div>
@@ -164,6 +188,7 @@ describe('client.js', () => {
     expect(global.SocketHandler).toHaveBeenCalled()
     expect(global.UIManager).toHaveBeenCalled()
     expect(global.GameManager).toHaveBeenCalled()
+    expect(global.AccessibilityManager).toHaveBeenCalled()
     expect(instances.socketHandler.connect).toHaveBeenCalled()
   })
 
