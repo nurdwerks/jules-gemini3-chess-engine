@@ -1,6 +1,6 @@
 /* eslint-env browser */
 /* eslint-disable max-lines */
-/* global Chess, SocketHandler, BoardRenderer, GameManager, AnalysisManager, TrainingManager, UIManager, ArrowManager, SoundManager, ClientUtils, MoveHandler, LeaderboardManager, PgnManager, FenManager, BoardEditor, DeveloperManager, MoveListManager, OpeningExplorer, TreeManager, AccessibilityManager, SettingsManager, ExternalActions, AutoSaveManager, InfoManager, VisualEffects, BatterySaver, LanguageManager, ChatManager, TutorialManager */
+/* global Chess, SocketHandler, LocalEngineManager, CloudEngineManager, EngineProxy, BoardRenderer, GameManager, AnalysisManager, TrainingManager, UIManager, ArrowManager, SoundManager, ClientUtils, MoveHandler, LeaderboardManager, PgnManager, FenManager, BoardEditor, DeveloperManager, MoveListManager, OpeningExplorer, TreeManager, AccessibilityManager, SettingsManager, ExternalActions, AutoSaveManager, InfoManager, VisualEffects, BatterySaver, LanguageManager, ChatManager, TutorialManager */
 
 const initApp = () => {
   try {
@@ -31,44 +31,90 @@ const initApp = () => {
       historyNotation: 'san'
     }
 
-    const socketHandler = new SocketHandler({
+    // Engine Callbacks Factory
+    const createEngineCallbacks = (getEngineInstance) => ({
       onOpen: () => {
-        uiManager.elements.status.textContent = 'Status: Connected'
-        uiManager.logSystemMessage('Connected to server', 'success')
-        socketHandler.send('uci')
+        if (engineProxy.getEngine() === getEngineInstance()) {
+          let type = 'Remote'
+          if (getEngineInstance() === localEngineManager) type = 'Local'
+          else if (getEngineInstance() === cloudEngineManager) type = 'Cloud'
+
+          uiManager.elements.status.textContent = `Status: Connected (${type})`
+          uiManager.logSystemMessage(`Connected to ${type} Engine`, 'success')
+          if (type === 'Remote') getEngineInstance().send('uci')
+        }
       },
       onClose: () => {
-        uiManager.elements.status.textContent = 'Status: Disconnected'
-        uiManager.logSystemMessage('Disconnected from server', 'error')
+        if (engineProxy.getEngine() === getEngineInstance()) {
+          uiManager.elements.status.textContent = 'Status: Disconnected'
+          uiManager.logSystemMessage('Disconnected', 'error')
+        }
       },
       onSent: (cmd) => {
-        if (developerManager) developerManager.logPacket('OUT', cmd)
-        if (cmd.startsWith('go ')) {
-          uiManager.setThinking(true)
-        } else if (cmd === 'stop') {
-          uiManager.setThinking(false)
+        if (engineProxy.getEngine() === getEngineInstance()) {
+          if (developerManager) developerManager.logPacket('OUT', cmd)
+          if (cmd.startsWith('go ')) {
+            uiManager.setThinking(true)
+          } else if (cmd === 'stop') {
+            uiManager.setThinking(false)
+          }
         }
       },
       onOption: (line) => {
-        if (developerManager) developerManager.logPacket('IN', line)
-        uiManager.parseOption(line, (n, v) => sendOption(n, v))
+        if (engineProxy.getEngine() === getEngineInstance()) {
+          if (developerManager) developerManager.logPacket('IN', line)
+          uiManager.parseOption(line, (n, v) => sendOption(n, v))
+        }
       },
       onReadyOk: () => {
-        if (developerManager) developerManager.handleMessage('readyok')
-        if (developerManager) developerManager.logPacket('IN', 'readyok')
-        if (!gameManager.gameStarted) gameManager.startNewGame()
+        if (engineProxy.getEngine() === getEngineInstance()) {
+          if (developerManager) developerManager.handleMessage('readyok')
+          if (developerManager) developerManager.logPacket('IN', 'readyok')
+          if (!gameManager.gameStarted) gameManager.startNewGame()
+        }
       },
-      onInfo: (msg) => handleInfoMessage(msg),
+      onInfo: (msg) => {
+        if (engineProxy.getEngine() === getEngineInstance()) handleInfoMessage(msg)
+      },
       onBestMove: (parts) => {
-        if (developerManager) developerManager.logPacket('IN', parts.join(' '))
-        uiManager.setThinking(false)
-        analysisManager.handleBestMove()
-        handleBestMove(parts)
+        if (engineProxy.getEngine() === getEngineInstance()) {
+          if (developerManager) developerManager.logPacket('IN', parts.join(' '))
+          uiManager.setThinking(false)
+          analysisManager.handleBestMove()
+          handleBestMove(parts)
+        }
       },
+      onError: (msg) => {
+        if (engineProxy.getEngine() === getEngineInstance()) {
+          uiManager.showToast(`Engine Error: ${msg}`, 'error')
+        }
+      }
+    })
+
+    const socketHandler = new SocketHandler({
+      ...createEngineCallbacks(() => socketHandler),
       onVoteMessage: (data) => handleVoteMessage(data),
       onChatMessage: (data) => chatManager && chatManager.addMessage(data, false),
       onReaction: (data) => chatManager && chatManager.showReaction(data.emoji, false)
     })
+
+    const localEngineManager = new LocalEngineManager({
+      ...createEngineCallbacks(() => localEngineManager)
+    })
+
+    const cloudEngineManager = new CloudEngineManager({
+      ...createEngineCallbacks(() => cloudEngineManager),
+      onOpen: () => {
+        if (engineProxy.getEngine() === cloudEngineManager) {
+          createEngineCallbacks(() => cloudEngineManager).onOpen()
+        }
+        uiManager.elements.useCloudEngine.disabled = false
+        uiManager.showToast('Cloud Engine Connected', 'success')
+        // Auto-switch? No, let user toggle.
+      }
+    })
+
+    const engineProxy = new EngineProxy(socketHandler)
 
     const handleInfoMessage = (msg) => {
       if (developerManager) developerManager.handleMessage(msg)
@@ -89,9 +135,62 @@ const initApp = () => {
       }
     }
 
-    const developerManager = new DeveloperManager(null, socketHandler, game)
+    const developerManager = new DeveloperManager(null, engineProxy, game)
 
     const uiManager = new UIManager({
+      onLocalEngineLoad: (file) => {
+        localEngineManager.load(file)
+        if (localEngineManager.isLoaded) {
+          uiManager.elements.useLocalEngine.disabled = false
+          uiManager.showToast('Local Engine Loaded', 'success')
+        }
+      },
+      onLocalEngineToggle: (checked) => {
+        if (checked) {
+          if (uiManager.elements.useCloudEngine.checked) uiManager.elements.useCloudEngine.checked = false
+
+          if (!localEngineManager.isLoaded) {
+            uiManager.showToast('No local engine loaded!', 'error')
+            uiManager.elements.useLocalEngine.checked = false
+            return
+          }
+          engineProxy.setEngine(localEngineManager)
+          uiManager.showToast('Switched to Local Engine', 'success')
+          uiManager.elements.status.textContent = 'Status: Local Engine Active'
+          localEngineManager.send('uci')
+        } else {
+          engineProxy.setEngine(socketHandler)
+          uiManager.showToast('Switched to Remote Engine', 'success')
+          uiManager.elements.status.textContent = 'Status: Connected (Remote)'
+          socketHandler.send('uci')
+        }
+      },
+      onCloudConnect: (url) => {
+        if (url) {
+          uiManager.showToast(`Connecting to ${url}...`, 'info')
+          cloudEngineManager.connect(url)
+        }
+      },
+      onCloudToggle: (checked) => {
+        if (checked) {
+          if (uiManager.elements.useLocalEngine.checked) uiManager.elements.useLocalEngine.checked = false
+
+          if (!cloudEngineManager.isConnected) {
+            uiManager.showToast('Cloud engine not connected!', 'error')
+            uiManager.elements.useCloudEngine.checked = false
+            return
+          }
+          engineProxy.setEngine(cloudEngineManager)
+          uiManager.showToast('Switched to Cloud Engine', 'success')
+          uiManager.elements.status.textContent = 'Status: Cloud Engine Active'
+          cloudEngineManager.send('uci')
+        } else {
+          engineProxy.setEngine(socketHandler)
+          uiManager.showToast('Switched to Remote Engine', 'success')
+          uiManager.elements.status.textContent = 'Status: Connected (Remote)'
+          socketHandler.send('uci')
+        }
+      },
       onSendOption: (n, v) => sendOption(n, v),
       onResetEngine: () => window.location.reload(),
       onNewGame: () => {
@@ -141,7 +240,7 @@ const initApp = () => {
         }
       },
       onTakeback: () => {
-        socketHandler.send('stop')
+        engineProxy.send('stop')
         setTimeout(() => {
           gameManager.undo()
           if (gameManager.gameMode === 'pve' && gameManager.game.turn() !== 'w') {
@@ -150,7 +249,7 @@ const initApp = () => {
           render()
         }, 100)
       },
-      onForceMove: () => socketHandler.send('stop'),
+      onForceMove: () => engineProxy.send('stop'),
       onClearAnalysis: () => {
         if (ArrowManager) {
           ArrowManager.clearUserArrows()
@@ -288,7 +387,7 @@ const initApp = () => {
       },
       onAnalysisModeChange: (checked) => {
         if (checked) gameManager.sendPositionAndGo(true, false)
-        else socketHandler.send('stop')
+        else engineProxy.send('stop')
       },
       onGameModeChange: (mode) => {
         gameManager.gameMode = mode
@@ -342,7 +441,7 @@ const initApp = () => {
 
     externalActions = new ExternalActions(pgnManager, boardRenderer, uiManager, game)
 
-    const gameManager = new GameManager(game, socketHandler, {
+    const gameManager = new GameManager(game, engineProxy, {
       onGameStart: () => {
         render()
         uiManager.showToast('New Game Started', 'info')
@@ -386,7 +485,7 @@ const initApp = () => {
       onClockUpdate: () => renderClocks()
     })
 
-    const analysisManager = new AnalysisManager(game, gameManager, socketHandler, {
+    const analysisManager = new AnalysisManager(game, gameManager, engineProxy, {
       onStart: (total) => {
         uiManager.elements.analysisReportModal.classList.add('active')
         uiManager.elements.analysisSummary.textContent = 'Analyzing...'
@@ -406,8 +505,8 @@ const initApp = () => {
     const trainingManager = createTrainingManager(game, boardRenderer, uiManager, render)
 
     moveListManager = new MoveListManager(game, gameManager, uiManager)
-    openingExplorer = new OpeningExplorer(gameManager, socketHandler, uiManager)
-    treeManager = new TreeManager(socketHandler, uiManager)
+    openingExplorer = new OpeningExplorer(gameManager, engineProxy, uiManager)
+    treeManager = new TreeManager(engineProxy, uiManager)
 
     // Accessibility Manager
     accessibilityManager = new AccessibilityManager(gameManager, uiManager, render)
@@ -626,7 +725,7 @@ const initApp = () => {
     function sendOption (name, value) {
       let command = `setoption name ${name}`
       if (value !== undefined) command += ` value ${value}`
-      socketHandler.send(command)
+      engineProxy.send(command)
       uiManager.logToOutput(`> ${command}`)
       if (name === 'Threads' && developerManager && developerManager.elements.threadsDisplay) {
         developerManager.elements.threadsDisplay.textContent = value

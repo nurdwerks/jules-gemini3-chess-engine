@@ -555,6 +555,27 @@
                     <button id="reset-engine-btn" class="icon-btn" title="Reset Engine" data-i18n-title="reset-engine-btn">↻</button>
                 </div>
                 <div class="panel-content">
+                    <div class="option-item engine-upload-section">
+                        <label class="engine-upload-label">Local Engine (.js/.wasm):</label>
+                        <div style="display: flex; gap: 5px; margin-top: 5px;">
+                            <input type="file" id="local-engine-file" accept=".js,.wasm">
+                        </div>
+                        <div style="display: flex; align-items: center; margin-top: 5px;">
+                            <label for="use-local-engine">Use Local Engine</label>
+                            <input type="checkbox" id="use-local-engine" disabled>
+                        </div>
+                    </div>
+                    <div class="option-item engine-upload-section">
+                        <label class="engine-upload-label">Cloud Engine (WebSocket):</label>
+                        <div style="display: flex; gap: 5px; margin-top: 5px;">
+                            <input type="text" id="cloud-engine-url" placeholder="ws://localhost:8080" style="flex: 1;">
+                            <button id="connect-cloud-btn" style="width: auto; padding: 5px 10px;">Connect</button>
+                        </div>
+                        <div style="display: flex; align-items: center; margin-top: 5px;">
+                            <label for="use-cloud-engine">Use Cloud Engine</label>
+                            <input type="checkbox" id="use-cloud-engine" disabled>
+                        </div>
+                    </div>
                     <div class="option-item">
                         <label>Presets:</label>
                         <select id="uci-preset-select">
@@ -1015,6 +1036,9 @@
   <script src="js/VisualEffects.js"></script>
   <script src="js/BatterySaver.js"></script>
   <script src="js/LanguageManager.js"></script>
+  <script src="js/LocalEngineManager.js"></script>
+  <script src="js/CloudEngineManager.js"></script>
+  <script src="js/EngineProxy.js"></script>
   <script src="tournament.js"></script>
   <script src="client.js"></script>
   <canvas id="confetti-canvas" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999; display: none;"></canvas>

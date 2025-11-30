@@ -2423,3 +2423,28 @@ The following Epics were part of the initial development phase and are either co
     *   *Testing Plan:* End game.
     *   *Acceptance Criteria:*
         - [x] Modal appears.
+
+### Epic 80: Advanced Engine Integrations
+**Size:** Medium (3 days)
+**Description:** Integration with external engines (local and cloud) for extended analysis capability.
+
+**User Stories:**
+
+1. **Local Engine Upload (S)**
+    *   *Description:* Allow user to upload a `.wasm` or `.js` engine file to run locally.
+    *   *Implementation:* Web Workers with user blob.
+    *   *Tasks:*
+        - [x] File upload.
+        - [x] Worker instantiation.
+    *   *Testing Plan:* Upload Stockfish.js.
+    *   *Acceptance Criteria:*
+        - [x] External engine runs.
+
+2. **Cloud Engine Support (S)**
+    *   *Description:* Connect to a remote UCI engine.
+    *   *Implementation:* WebSocket proxy to external server.
+    *   *Tasks:*
+        - [x] Connection UI (IP/Port).
+    *   *Testing Plan:* Connect.
+    *   *Acceptance Criteria:*
+        - [x] Remote analysis.

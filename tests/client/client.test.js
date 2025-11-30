@@ -22,12 +22,25 @@ describe('client.js', () => {
     }))
 
     global.SocketHandler = jest.fn(function (cbs) { instances.socketHandler = this; this.callbacks = cbs; this.connect = jest.fn(); this.send = jest.fn() })
+    global.LocalEngineManager = jest.fn(function (cbs) { instances.localEngineManager = this; this.callbacks = cbs; this.load = jest.fn(); this.send = jest.fn(); this.isLoaded = false })
+    global.CloudEngineManager = jest.fn(function (cbs) { instances.cloudEngineManager = this; this.callbacks = cbs; this.connect = jest.fn(); this.send = jest.fn(); this.isConnected = false })
+    global.EngineProxy = jest.fn(function (defaultEngine) {
+      instances.engineProxy = this
+      this.activeEngine = defaultEngine
+      this.setEngine = jest.fn((e) => { this.activeEngine = e })
+      this.getEngine = jest.fn(() => this.activeEngine)
+      this.send = jest.fn((cmd) => { if (this.activeEngine) this.activeEngine.send(cmd) })
+    })
+
     global.UIManager = jest.fn(function (cbs) {
       instances.uiManager = this
       this.callbacks = cbs
       this.elements = {
         status: {},
         fenInput: {},
+        useLocalEngine: { checked: false, disabled: true },
+        useCloudEngine: { checked: false, disabled: true },
+        cloudEngineUrl: { value: '' },
         analysisReportModal: { classList: { add: jest.fn() } },
         analysisSummary: {},
         analysisTable: {},
@@ -185,6 +198,11 @@ describe('client.js', () => {
         <input id="auto-flip" type="checkbox" />
         <select id="handicap-select"><option value="none">None</option></select>
         <button id="board-editor-btn"></button>
+        <div id="local-engine-file"></div>
+        <input id="use-local-engine" type="checkbox" />
+        <input id="cloud-engine-url" />
+        <button id="connect-cloud-btn"></button>
+        <input id="use-cloud-engine" type="checkbox" />
     `
 
     const initApp = require('../../public/client.js')

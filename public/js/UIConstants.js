@@ -30,5 +30,16 @@ window.UIConstants = {
     UCI_UseNNUE: 'Enable NNUE evaluation',
     UCI_NNUE_File: 'Path or URL to the NNUE network file',
     BookFile: 'Path to the Polyglot opening book file'
+  },
+  PRESETS: {
+    blitz: { Hash: 64, Threads: 1, MultiPV: 1, Contempt: 0, UCI_LimitStrength: false },
+    analysis: { Hash: 256, Threads: 4, MultiPV: 3, Contempt: 0, UCI_LimitStrength: false },
+    stock: { Hash: 16, Threads: 1, MultiPV: 1, Contempt: 0, UCI_LimitStrength: false }
+  },
+  inferGroup: (name) => {
+    if (['Pawn', 'Knight', 'Bishop', 'Rook', 'Queen', 'King', 'Doubled', 'Isolated', 'Backward', 'Shield', 'Outpost', 'Mobility'].some(k => name.includes(k))) {
+      return 'Tuning'
+    }
+    return 'Other'
   }
 }
