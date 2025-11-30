@@ -66,20 +66,20 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* Support for multiple languages in the UI.
     *   *Implementation:* Dictionary lookup for strings.
     *   *Tasks:*
-        - [ ] Dictionary file.
-        - [ ] Dropdown.
+        - [x] Dictionary file.
+        - [x] Dropdown.
     *   *Testing Plan:* Switch language.
     *   *Acceptance Criteria:*
-        - [ ] Text updates.
+        - [x] Text updates.
 
 182. **Version Checker (S)**
     *   *Description:* Check against GitHub API if a newer version is available.
     *   *Implementation:* Fetch release tag. Compare with `package.json`.
     *   *Tasks:*
-        - [ ] Check logic.
+        - [x] Check logic.
     *   *Testing Plan:* Mock API.
     *   *Acceptance Criteria:*
-        - [ ] Notification if outdated.
+        - [x] Notification if outdated.
 
 183. **Changelog Viewer (S)**
     *   *Description:* Display the `CHANGELOG.md` within the UI.
@@ -175,10 +175,10 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* Generate HTML iframe code to embed the board.
     *   *Implementation:* Text area with iframe string.
     *   *Tasks:*
-        - [ ] Modal.
+        - [x] Modal.
     *   *Testing Plan:* Copy.
     *   *Acceptance Criteria:*
-        - [ ] Code valid.
+        - [x] Code valid.
 
 194. **QR Code (S)**
     *   *Description:* Generate a QR code for the current game URL.
@@ -202,10 +202,10 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* Visual badge showing if the app is working offline.
     *   *Implementation:* `navigator.onLine`.
     *   *Tasks:*
-        - [ ] Indicator UI.
+        - [x] Indicator UI.
     *   *Testing Plan:* Disconnect net.
     *   *Acceptance Criteria:*
-        - [ ] Badge appears.
+        - [x] Badge appears.
 
 197. **Engine Avatar (S)**
     *   *Description:* Display a robot icon or avatar for the engine.
@@ -265,10 +265,10 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* Option to reduce animation framerate on battery.
     *   *Implementation:* Check `navigator.getBattery()`.
     *   *Tasks:*
-        - [ ] Logic.
+        - [x] Logic.
     *   *Testing Plan:* Simulate low battery.
     *   *Acceptance Criteria:*
-        - [ ] FPS reduced.
+        - [x] FPS reduced.
 
 204. **Interactive Tutorial (S)**
     *   *Description:* A step-by-step guide explaining how to use the UI features.
