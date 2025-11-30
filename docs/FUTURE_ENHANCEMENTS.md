@@ -48,19 +48,19 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* Persist the current game to local storage to prevent data loss.
     *   *Implementation:* Save FEN/History on every move.
     *   *Tasks:*
-        - [ ] Save logic.
+        - [x] Save logic.
     *   *Testing Plan:* Reload page.
     *   *Acceptance Criteria:*
-        - [ ] Game resumes.
+        - [x] Game resumes.
 
 180. **Crash Recovery (S)**
     *   *Description:* Automatically restore the game state if the browser tab is accidentally reloaded.
     *   *Implementation:* Same as auto-save.
     *   *Tasks:*
-        - [ ] Restoration logic.
+        - [x] Restoration logic.
     *   *Testing Plan:* Crash.
     *   *Acceptance Criteria:*
-        - [ ] Recovered.
+        - [x] Recovered.
 
 181. **Language Selection (S)**
     *   *Description:* Support for multiple languages in the UI.
@@ -85,46 +85,46 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* Display the `CHANGELOG.md` within the UI.
     *   *Implementation:* Fetch markdown, render HTML.
     *   *Tasks:*
-        - [ ] Modal.
+        - [x] Modal.
     *   *Testing Plan:* Open.
     *   *Acceptance Criteria:*
-        - [ ] Text visible.
+        - [x] Text visible.
 
 184. **License Viewer (S)**
     *   *Description:* Display the `LICENSE` text within the UI.
     *   *Implementation:* Static text.
     *   *Tasks:*
-        - [ ] Modal.
+        - [x] Modal.
     *   *Testing Plan:* Open.
     *   *Acceptance Criteria:*
-        - [ ] Text visible.
+        - [x] Text visible.
 
 185. **Credits Screen (S)**
     *   *Description:* List contributors and libraries used.
     *   *Implementation:* Static list.
     *   *Tasks:*
-        - [ ] Modal.
+        - [x] Modal.
     *   *Testing Plan:* Open.
     *   *Acceptance Criteria:*
-        - [ ] Credits shown.
+        - [x] Credits shown.
 
 186. **Sponsor Link (S)**
     *   *Description:* Link to GitHub Sponsors or donation page.
     *   *Implementation:* External link `<a>`.
     *   *Tasks:*
-        - [ ] Link.
+        - [x] Link.
     *   *Testing Plan:* Click.
     *   *Acceptance Criteria:*
-        - [ ] Opens page.
+        - [x] Opens page.
 
 187. **Feedback Form (S)**
     *   *Description:* Embedded form or link to open a GitHub issue.
     *   *Implementation:* Link to new issue template.
     *   *Tasks:*
-        - [ ] Link.
+        - [x] Link.
     *   *Testing Plan:* Click.
     *   *Acceptance Criteria:*
-        - [ ] Opens GitHub.
+        - [x] Opens GitHub.
 
 188. **Lichess API Integration (S)**
     *   *Description:* Button to "Analyze on Lichess".
@@ -247,19 +247,19 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* Particle effect on checkmate or win.
     *   *Implementation:* Canvas confetti library.
     *   *Tasks:*
-        - [ ] Trigger on win.
+        - [x] Trigger on win.
     *   *Testing Plan:* Win game.
     *   *Acceptance Criteria:*
-        - [ ] Confetti falls.
+        - [x] Confetti falls.
 
 202. **Shake Effect (S)**
     *   *Description:* Screen shake on blunders or checkmate.
     *   *Implementation:* CSS animation `transform: translate`.
     *   *Tasks:*
-        - [ ] Class `.shake`.
+        - [x] Class `.shake`.
     *   *Testing Plan:* Blunder.
     *   *Acceptance Criteria:*
-        - [ ] Screen shakes.
+        - [x] Screen shakes.
 
 203. **Battery Saver Mode (S)**
     *   *Description:* Option to reduce animation framerate on battery.
@@ -283,10 +283,10 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* A modal showing all available keyboard shortcuts.
     *   *Implementation:* Static list.
     *   *Tasks:*
-        - [ ] Modal.
+        - [x] Modal.
     *   *Testing Plan:* Open.
     *   *Acceptance Criteria:*
-        - [ ] List correct.
+        - [x] List correct.
 
 206. **Mind Control (S)**
     *   *Description:* (Joke) "Use EEG headset to make moves."
