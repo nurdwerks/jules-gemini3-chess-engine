@@ -467,6 +467,59 @@
                     <div id="engine-output"></div>
                 </div>
             </div>
+            <div class="panel developer-panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">Developer Tools</h2>
+                </div>
+                <div class="panel-content">
+                    <div class="button-group">
+                        <button id="perft-btn" title="Run Perft(5)">Perft Bench</button>
+                        <button id="sanity-check-btn" title="Verify Board State">Sanity Check</button>
+                        <button id="zobrist-btn" title="Get Zobrist Key">Get Zobrist</button>
+                        <button id="force-gc-btn" title="Force Garbage Collection">Force GC</button>
+                        <button id="null-move-btn" title="Make Null Move">Null Move</button>
+                    </div>
+                    <div class="separator"></div>
+                    <div class="stat-grid-compact">
+                        <div class="stat-item">
+                            <label>Mem:</label>
+                            <span id="dev-memory-usage">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <label>Ping:</label>
+                            <span id="dev-latency">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <label>Threads:</label>
+                            <span id="dev-threads">-</span>
+                        </div>
+                    </div>
+                     <div class="option-item">
+                         <label>Hash Usage:</label>
+                         <div class="progress-bar-container">
+                             <div id="dev-hash-bar" class="progress-bar-fill" style="width: 0%;"></div>
+                         </div>
+                     </div>
+                     <div class="option-item">
+                         <label>Search Depth:</label>
+                         <div class="progress-bar-container">
+                             <div id="dev-depth-bar" class="progress-bar-fill" style="width: 0%;"></div>
+                         </div>
+                     </div>
+                    <div class="separator"></div>
+                    <div class="option-item">
+                        <label for="dev-debug-overlay">Debug Overlay:</label>
+                        <input type="checkbox" id="dev-debug-overlay">
+                    </div>
+                    <div class="option-item">
+                        <label for="dev-packet-inspector">Packet Inspector:</label>
+                        <input type="checkbox" id="dev-packet-inspector">
+                    </div>
+                    <div id="packet-inspector-container" style="display: none; margin-top: 10px;">
+                        <div id="packet-log" class="console-log"></div>
+                    </div>
+                </div>
+            </div>
             <div class="panel system-log-panel">
                 <div class="panel-header">
                    <h2 class="panel-title">System Log</h2>
@@ -764,6 +817,7 @@
   <script src="js/LeaderboardManager.js"></script>
   <script src="js/PgnManager.js"></script>
   <script src="js/FenManager.js"></script>
+  <script src="js/DeveloperManager.js"></script>
   <script src="tournament.js"></script>
   <script src="client.js"></script>
   <div id="toast-container"></div>

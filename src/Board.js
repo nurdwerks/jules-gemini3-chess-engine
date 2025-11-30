@@ -1,12 +1,12 @@
 const Piece = require('./Piece')
 const Zobrist = require('./Zobrist')
 const Bitboard = require('./Bitboard')
-const trace = require('./trace')
 const FenParser = require('./FenParser')
 const MoveGenerator = require('./MoveGenerator')
-const PerftTT = require('./PerftTT')
 const San = require('./San')
 const BoardZobrist = require('./BoardZobrist')
+const BoardVerify = require('./BoardVerify')
+const BoardPerft = require('./BoardPerft')
 
 class Board {
   constructor () {
@@ -491,36 +491,7 @@ class Board {
   }
 
   perft (depth, tt = null) {
-    trace(`perft(depth: ${depth})`)
-    if (depth === 0) return 1
-
-    if (!tt) {
-      tt = new PerftTT(64)
-    }
-
-    const cached = tt.probe(this.zobristKey, depth)
-    if (cached !== null) {
-      return Number(cached)
-    }
-
-    const moves = this.generateMoves()
-
-    if (depth === 1) {
-      const count = moves.length
-      tt.save(this.zobristKey, depth, count)
-      return count
-    }
-
-    trace(`perft(depth: ${depth}, moves: ${moves.length})`)
-    let nodes = 0
-    for (const move of moves) {
-      const state = this.applyMove(move)
-      nodes += this.perft(depth - 1, tt)
-      this.undoApplyMove(move, state)
-    }
-
-    tt.save(this.zobristKey, depth, nodes)
-    return nodes
+    return BoardPerft.perft(this, depth, tt)
   }
 
   applyAlgebraicMove (moveStr) {
@@ -585,6 +556,10 @@ class Board {
     newBoard.isChess960 = this.isChess960
     newBoard.bitboards = { ...this.bitboards }
     return newBoard
+  }
+
+  verify () {
+    return BoardVerify.verify(this)
   }
 }
 

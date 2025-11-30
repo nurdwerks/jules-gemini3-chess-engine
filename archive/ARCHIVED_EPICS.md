@@ -1930,3 +1930,82 @@ The following Epics were part of the initial development phase and are either co
     *   *Testing Plan:* Change numbers.
     *   *Acceptance Criteria:*
         - [x] FEN updates.
+
+### Epic 76: Developer Tools & Debugging
+**Size:** Medium (3 days)
+**Description:** Internal tools for developers to debug the engine and client.
+
+**User Stories:**
+
+139. **Perft Benchmark Button (S)**
+    *   *Description:* Dev-tool button to run a quick `perft(5)` and show nodes/time.
+    *   *Acceptance Criteria:*
+        *   [x] Result shown.
+
+140. **Debug Overlay (S)**
+    *   *Description:* Toggle an overlay showing internal engine stats (quiescence nodes, cache hits).
+    *   *Acceptance Criteria:*
+        *   [x] Stats visible.
+
+141. **Zobrist Key Display (S)**
+    *   *Description:* Show the current Zobrist hash key for debugging.
+    *   *Acceptance Criteria:*
+        *   [x] Key updates.
+
+142. **FEN Validation Info (S)**
+    *   *Description:* Show why a manually entered FEN is invalid.
+    *   *Acceptance Criteria:*
+        *   [x] Error explained.
+
+143. **Sanity Check (S)**
+    *   *Description:* Button to run `board.validate()` and report internal state consistency.
+    *   *Acceptance Criteria:*
+        *   [x] "State OK" or error.
+
+144. **Force Garbage Collection (S)**
+    *   *Description:* Button to trigger GC if exposed.
+    *   *Acceptance Criteria:*
+        *   [x] Does not crash.
+
+145. **Packet Inspector (S)**
+    *   *Description:* Log raw UCI messages sent/received in a dedicated debug panel.
+    *   *Acceptance Criteria:*
+        *   [x] Messages scroll.
+
+146. **Latency Meter (S)**
+    *   *Description:* Measure and display the round-trip time for UCI commands.
+    *   *Acceptance Criteria:*
+        *   [x] Latency displayed.
+
+147. **Performance Test Suite (S)**
+    *   *Description:* Frontend button to run a small suite of test positions (STS).
+    *   *Status:* Skipped (Lower priority, partial overlap with Bench).
+
+148. **Engine Info Tooltip (S)**
+    *   *Description:* Hovering over the engine status shows detailed version info.
+    *   *Status:* Skipped (Minor UI tweak).
+
+149. **Memory Usage Indicator (S)**
+    *   *Description:* Show the current RAM usage of the engine process.
+    *   *Acceptance Criteria:*
+        *   [x] Value updates.
+
+150. **Thread Usage Indicator (S)**
+    *   *Description:* Show how many threads are currently active.
+    *   *Acceptance Criteria:*
+        *   [x] Count correct.
+
+151. **Hash Usage Monitor (S)**
+    *   *Description:* Display the percentage of the Transposition Table currently in use.
+    *   *Acceptance Criteria:*
+        *   [x] Bar fills.
+
+152. **Search Depth Gauge (S)**
+    *   *Description:* Visual progress bar showing current search depth versus a target depth.
+    *   *Acceptance Criteria:*
+        *   [x] Bar grows.
+
+153. **Null Move Input (S)**
+    *   *Description:* Allow the user to manually enter a "null move" for analysis.
+    *   *Acceptance Criteria:*
+        *   [x] Turn passes.

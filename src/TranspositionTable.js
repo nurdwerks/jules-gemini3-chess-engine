@@ -146,6 +146,18 @@ class TranspositionTable {
   getSharedBuffer () {
     return this.buffer
   }
+
+  getHashFull () {
+    // Estimate usage by checking the first 1000 entries
+    const sampleSize = 1000
+    let used = 0
+    for (let i = 0; i < sampleSize; i++) {
+      if (this.keys[i] !== 0n) {
+        used++
+      }
+    }
+    return used // Returns per-mill (0-1000) if sample size is 1000
+  }
 }
 
 module.exports = { TranspositionTable, TT_FLAG }

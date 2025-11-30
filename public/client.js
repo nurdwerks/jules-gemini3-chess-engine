@@ -1,5 +1,5 @@
 /* eslint-env browser */
-/* global Chess, SocketHandler, BoardRenderer, GameManager, AnalysisManager, TrainingManager, UIManager, ArrowManager, SoundManager, ClientUtils, MoveHandler, LeaderboardManager, PgnManager, FenManager, BoardEditor */
+/* global Chess, SocketHandler, BoardRenderer, GameManager, AnalysisManager, TrainingManager, UIManager, ArrowManager, SoundManager, ClientUtils, MoveHandler, LeaderboardManager, PgnManager, FenManager, BoardEditor, DeveloperManager */
 
 const initApp = () => {
   try {
@@ -31,17 +31,25 @@ const initApp = () => {
         uiManager.logSystemMessage('Disconnected from server', 'error')
       },
       onSent: (cmd) => {
+        if (developerManager) developerManager.logPacket('OUT', cmd)
         if (cmd.startsWith('go ')) {
           uiManager.setThinking(true)
         } else if (cmd === 'stop') {
           uiManager.setThinking(false)
         }
       },
-      onOption: (line) => { uiManager.parseOption(line, (n, v) => sendOption(n, v)) },
+      onOption: (line) => {
+        if (developerManager) developerManager.logPacket('IN', line)
+        uiManager.parseOption(line, (n, v) => sendOption(n, v))
+      },
       onReadyOk: () => {
+        if (developerManager) developerManager.handleMessage('readyok')
+        if (developerManager) developerManager.logPacket('IN', 'readyok')
         if (!gameManager.gameStarted) gameManager.startNewGame()
       },
       onInfo: (msg) => {
+        if (developerManager) developerManager.handleMessage(msg)
+        if (developerManager) developerManager.logPacket('IN', msg)
         if (msg.includes('score cp') || msg.includes('mate')) {
           uiManager.logToOutput(msg)
         }
@@ -52,12 +60,15 @@ const initApp = () => {
         }
       },
       onBestMove: (parts) => {
+        if (developerManager) developerManager.logPacket('IN', parts.join(' '))
         uiManager.setThinking(false)
         analysisManager.handleBestMove()
         handleBestMove(parts)
       },
       onVoteMessage: (data) => handleVoteMessage(data)
     })
+
+    const developerManager = new DeveloperManager(null, socketHandler, game) // uiManager passed later
 
     const uiManager = new UIManager({
       onSendOption: (n, v) => sendOption(n, v),
@@ -273,6 +284,8 @@ const initApp = () => {
       getTurn: () => game.turn()
     })
 
+    developerManager.uiManager = uiManager
+
     const leaderboardManager = new LeaderboardManager(uiManager)
 
     pgnManager = new PgnManager(game, uiManager)
@@ -445,6 +458,9 @@ const initApp = () => {
       if (value !== undefined) command += ` value ${value}`
       socketHandler.send(command)
       uiManager.logToOutput(`> ${command}`)
+      if (name === 'Threads' && developerManager && developerManager.elements.threadsDisplay) {
+        developerManager.elements.threadsDisplay.textContent = value
+      }
     }
 
     function renderClocks () {
