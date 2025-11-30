@@ -493,8 +493,8 @@ const initApp = () => {
             if (remoteVersion && remoteVersion !== localVersion) {
               uiManager.showToast(`New version available: v${remoteVersion}`, 'info')
             }
-          }).catch(() => {})
-      }).catch(() => {})
+          }).catch((e) => console.error('GitHub check failed', e))
+      }).catch((e) => console.error('Version check failed', e))
     }
 
     function setupOfflineIndicator () {

@@ -78,6 +78,52 @@ describe('AccessibilityManager', () => {
     expect(document.getElementById('a11y-status').textContent).toContain('Move 1')
   })
 
+  test('keyboard shortcuts triggers actions', () => {
+    new AccessibilityManager(mockGameManager, mockUiManager, mockRenderFn) // eslint-disable-line no-new
+
+    // Setup Mock Buttons
+    const forceBtn = document.createElement('button')
+    forceBtn.id = 'force-move-btn'
+    forceBtn.click = jest.fn()
+    document.body.appendChild(forceBtn)
+
+    const zenBtn = document.createElement('input')
+    zenBtn.id = 'zen-mode'
+    zenBtn.type = 'checkbox'
+    zenBtn.click = jest.fn()
+    document.body.appendChild(zenBtn)
+
+    const flipBtn = document.createElement('button')
+    flipBtn.id = 'flip-board-btn'
+    flipBtn.click = jest.fn()
+    document.body.appendChild(flipBtn)
+
+    // Arrow Up -> Start
+    const arrowUp = new KeyboardEvent('keydown', { key: 'ArrowUp' })
+    document.dispatchEvent(arrowUp)
+    expect(mockGameManager.currentViewIndex).toBe(-2)
+
+    // Arrow Down -> Live
+    const arrowDown = new KeyboardEvent('keydown', { key: 'ArrowDown' })
+    document.dispatchEvent(arrowDown)
+    expect(mockGameManager.currentViewIndex).toBe(-1)
+
+    // Space -> Force Move
+    const space = new KeyboardEvent('keydown', { key: ' ' })
+    document.dispatchEvent(space)
+    expect(forceBtn.click).toHaveBeenCalled()
+
+    // Escape -> Zen Mode
+    const escape = new KeyboardEvent('keydown', { key: 'Escape' })
+    document.dispatchEvent(escape)
+    expect(zenBtn.click).toHaveBeenCalled()
+
+    // F -> Flip Board
+    const keyF = new KeyboardEvent('keydown', { key: 'f' })
+    document.dispatchEvent(keyF)
+    expect(flipBtn.click).toHaveBeenCalled()
+  })
+
   test('voice announcement speaks move', () => {
     const manager = new AccessibilityManager(mockGameManager, mockUiManager, mockRenderFn)
     manager.setVoiceAnnounce(true)

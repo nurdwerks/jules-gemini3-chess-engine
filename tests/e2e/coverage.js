@@ -28,6 +28,9 @@ const test = base.extend({
       const scriptPath = path.join(__dirname, '../../public', urlPath)
 
       if (fs.existsSync(scriptPath)) {
+        const stats = fs.statSync(scriptPath)
+        if (!stats.isFile()) continue
+
         const converter = v8toIstanbul(scriptPath)
         await converter.load()
         converter.applyCoverage(entry.functions)
