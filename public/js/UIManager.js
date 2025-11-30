@@ -1,46 +1,13 @@
 /* eslint-env browser */
-/* global BoardInfoRenderer, UIOptionFactory */
+/* global BoardInfoRenderer, UIOptionFactory, UIConstants */
 
 window.UIManager = class UIManager {
   constructor (callbacks) {
     this.callbacks = callbacks || {}
     this.elements = this._cacheElements()
     this.boardInfoRenderer = new BoardInfoRenderer(this.elements)
+    this.logHistory = []
     this._bindEvents()
-
-    this.OPTION_GROUPS = {
-      Hash: 'Engine',
-      'Clear Hash': 'Engine',
-      Threads: 'Engine',
-      Ponder: 'Engine',
-      MultiPV: 'Engine',
-      UCI_LimitStrength: 'Search',
-      UCI_Elo: 'Search',
-      AspirationWindow: 'Search',
-      Contempt: 'Search',
-      UseHistory: 'Search',
-      UseCaptureHistory: 'Search',
-      BookFile: 'Search',
-      UCI_UseNNUE: 'Evaluation',
-      UCI_NNUE_File: 'Evaluation'
-    }
-
-    this.OPTION_TOOLTIPS = {
-      Hash: 'Size of the hash table in MB',
-      'Clear Hash': 'Clear the hash table',
-      Threads: 'Number of CPU threads to use',
-      Ponder: "Let the engine think during the opponent's time",
-      MultiPV: 'Number of best lines to show',
-      UCI_LimitStrength: 'Limit the engine strength',
-      UCI_Elo: 'Target Elo rating',
-      AspirationWindow: 'Size of the aspiration window in centipawns',
-      Contempt: 'Contempt factor (negative for drawishness)',
-      UseHistory: 'Use history heuristic',
-      UseCaptureHistory: 'Use capture history heuristic',
-      UCI_UseNNUE: 'Enable NNUE evaluation',
-      UCI_NNUE_File: 'Path or URL to the NNUE network file',
-      BookFile: 'Path to the Polyglot opening book file'
-    }
   }
 
   _cacheElements () {
@@ -71,13 +38,18 @@ window.UIManager = class UIManager {
       // Modals
       promotionModal: document.getElementById('promotion-modal'),
       pgnImportModal: document.getElementById('pgn-import-modal'),
+      pgnSettingsModal: document.getElementById('pgn-settings-modal'),
       duelSetupModal: document.getElementById('duel-setup-modal'),
       leaderboardModal: document.getElementById('leaderboard-modal'),
       analysisReportModal: document.getElementById('analysis-report-modal'),
+      importAnalysisFile: document.getElementById('import-analysis-file'),
 
       // Inputs
       fenInput: document.getElementById('fen-input'),
       pgnInputArea: document.getElementById('pgn-input-area'),
+      pgnWhiteInput: document.getElementById('pgn-white'),
+      pgnBlackInput: document.getElementById('pgn-black'),
+      pgnEventInput: document.getElementById('pgn-event'),
       timeBaseInput: document.getElementById('time-base'),
       timeIncInput: document.getElementById('time-inc'),
       animationSpeedSelect: document.getElementById('animation-speed'),
@@ -100,10 +72,15 @@ window.UIManager = class UIManager {
   }
 
   _bindEvents () {
-    // Buttons
+    // Helpers
     const bindClick = (id, callback) => {
       const el = document.getElementById(id)
       if (el) el.addEventListener('click', callback)
+    }
+
+    const bindChange = (id, callback) => {
+      const el = document.getElementById(id)
+      if (el) el.addEventListener('change', (e) => callback(e))
     }
 
     bindClick('reset-engine-btn', () => this.callbacks.onResetEngine())
@@ -122,8 +99,34 @@ window.UIManager = class UIManager {
     bindClick('replay-btn', () => this.callbacks.onReplayToggle())
     bindClick('load-fen-btn', () => this.callbacks.onLoadFen(this.elements.fenInput.value))
     bindClick('copy-fen-btn', () => this.callbacks.onCopyFen())
+    bindClick('copy-fen-url-btn', () => this.callbacks.onCopyFenUrl())
     bindClick('import-pgn-btn', () => this.elements.pgnImportModal.classList.add('active'))
     bindClick('export-pgn-btn', () => this.callbacks.onExportPgn())
+    bindClick('copy-pgn-btn', () => this.callbacks.onCopyPgn())
+    bindClick('download-pgn-btn', () => this.callbacks.onDownloadPgn())
+    bindClick('pgn-settings-btn', () => {
+      // Pre-fill inputs if available via callback, or rely on persistence
+      if (this.callbacks.onGetPgnSettings) {
+        const settings = this.callbacks.onGetPgnSettings()
+        if (settings) {
+          this.elements.pgnWhiteInput.value = settings.White || 'White'
+          this.elements.pgnBlackInput.value = settings.Black || 'Black'
+          this.elements.pgnEventInput.value = settings.Event || 'Casual Game'
+        }
+      }
+      this.elements.pgnSettingsModal.classList.add('active')
+    })
+    bindClick('save-pgn-settings-btn', () => {
+      const settings = {
+        White: this.elements.pgnWhiteInput.value,
+        Black: this.elements.pgnBlackInput.value,
+        Event: this.elements.pgnEventInput.value
+      }
+      this.callbacks.onSavePgnSettings(settings)
+      this.elements.pgnSettingsModal.classList.remove('active')
+    })
+    bindClick('close-pgn-settings-modal', () => this.elements.pgnSettingsModal.classList.remove('active'))
+
     bindClick('close-pgn-modal', () => this.elements.pgnImportModal.classList.remove('active'))
     bindClick('load-pgn-confirm-btn', () => {
       this.callbacks.onLoadPgn(this.elements.pgnInputArea.value)
@@ -154,6 +157,28 @@ window.UIManager = class UIManager {
       this.elements.analysisReportModal.classList.remove('active')
       this.callbacks.onStopAnalysis()
     })
+    bindClick('export-analysis-btn', () => this.callbacks.onExportAnalysis())
+    bindClick('import-analysis-btn', () => this.elements.importAnalysisFile.click())
+    bindChange('import-analysis-file', (e) => {
+      const file = e.target.files[0]
+      if (file) {
+        const reader = new FileReader()
+        reader.onload = (ev) => this.callbacks.onImportAnalysis(ev.target.result)
+        reader.readAsText(file)
+      }
+    })
+    bindClick('export-log-btn', () => {
+      const text = this.logHistory.join('\n')
+      const blob = new Blob([text], { type: 'text/plain' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `engine_log_${new Date().toISOString().replace(/[:.]/g, '-')}.txt`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    })
     bindClick('leaderboard-btn', () => {
       this.elements.leaderboardModal.classList.add('active')
       this.callbacks.onShowLeaderboard()
@@ -176,11 +201,6 @@ window.UIManager = class UIManager {
     })
 
     // Checkboxes / Selects
-    const bindChange = (id, callback) => {
-      const el = document.getElementById(id)
-      if (el) el.addEventListener('change', (e) => callback(e))
-    }
-
     bindChange('auto-flip', (e) => this.callbacks.onAutoFlipChange(e.target.checked))
     bindChange('auto-queen', (e) => this.callbacks.onAutoQueenChange(e.target.checked))
     bindChange('move-confirmation', (e) => this.callbacks.onMoveConfirmChange(e.target.checked))
@@ -201,6 +221,7 @@ window.UIManager = class UIManager {
     bindChange('analysis-mode', (e) => this.callbacks.onAnalysisModeChange(e.target.checked))
     bindChange('game-mode', (e) => this.callbacks.onGameModeChange(e.target.value))
     bindChange('uci-preset-select', (e) => this._applyPreset(e.target.value))
+    bindChange('history-notation-toggle', (e) => this.callbacks.onHistoryNotationChange(e.target.value))
 
     // Theme & Styling
     bindChange('ui-theme', (e) => this._setUITheme(e.target.value))
@@ -235,8 +256,10 @@ window.UIManager = class UIManager {
   logToOutput (msg) {
     const now = new Date()
     const time = `[${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}]`
+    const logLine = `${time} ${msg}`
+    this.logHistory.push(logLine)
     const line = document.createElement('div')
-    line.textContent = `${time} ${msg}`
+    line.textContent = logLine
     if (this.elements.engineOutput) this.elements.engineOutput.prepend(line)
   }
 
@@ -313,13 +336,15 @@ window.UIManager = class UIManager {
     this.elements.evalBarFill.style.height = `${percent}%`
   }
 
-  renderHistory (game, currentViewIndex, onHistoryClick) {
-    const history = game.history()
+  renderHistory (game, currentViewIndex, onHistoryClick, notation = 'san') {
+    const history = game.history({ verbose: true })
     this.elements.moveHistory.innerHTML = ''
+    const getStr = (m) => notation === 'lan' ? (m.from + m.to + (m.promotion || '')) : m.san
+
     for (let i = 0; i < history.length; i += 2) {
       const moveNum = Math.floor(i / 2) + 1
-      const whiteMove = history[i]
-      const blackMove = history[i + 1]
+      const whiteMoveObj = history[i]
+      const blackMoveObj = history[i + 1]
 
       const numDiv = document.createElement('div')
       numDiv.classList.add('move-number')
@@ -328,15 +353,15 @@ window.UIManager = class UIManager {
 
       const whiteDiv = document.createElement('div')
       whiteDiv.classList.add('move-san')
-      whiteDiv.textContent = whiteMove
+      whiteDiv.textContent = getStr(whiteMoveObj)
       if (currentViewIndex === i) whiteDiv.classList.add('active')
       whiteDiv.addEventListener('click', () => onHistoryClick(i))
       this.elements.moveHistory.appendChild(whiteDiv)
 
-      if (blackMove) {
+      if (blackMoveObj) {
         const blackDiv = document.createElement('div')
         blackDiv.classList.add('move-san')
-        blackDiv.textContent = blackMove
+        blackDiv.textContent = getStr(blackMoveObj)
         if (currentViewIndex === i + 1) blackDiv.classList.add('active')
         blackDiv.addEventListener('click', () => onHistoryClick(i + 1))
         this.elements.moveHistory.appendChild(blackDiv)
@@ -417,7 +442,7 @@ window.UIManager = class UIManager {
   }
 
   createOptionUI (name, type, defaultValue, min, max, vars, onSendOption) {
-    const groupName = this.OPTION_GROUPS[name] || this._inferGroup(name)
+    const groupName = UIConstants.OPTION_GROUPS[name] || this._inferGroup(name)
     let group = this.elements.uciOptions.querySelector(`.option-group[data-group="${groupName}"]`)
     if (!group) {
       group = document.createElement('fieldset')
@@ -431,7 +456,7 @@ window.UIManager = class UIManager {
 
     const container = document.createElement('div')
     container.classList.add('option-item')
-    const tooltip = this.OPTION_TOOLTIPS[name]
+    const tooltip = UIConstants.OPTION_TOOLTIPS[name]
     if (tooltip) container.title = tooltip
 
     const label = document.createElement('label')

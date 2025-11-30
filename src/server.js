@@ -65,7 +65,9 @@ const getContentType = (extname) => {
 }
 
 const serveStatic = (req, res) => {
-  const filePath = path.join(__dirname, '../public', req.url === '/' ? 'index.html' : req.url)
+  const parsedUrl = new URL(req.url, `http://${req.headers.host}`)
+  const pathname = parsedUrl.pathname
+  const filePath = path.join(__dirname, '../public', pathname === '/' ? 'index.html' : pathname)
   const extname = path.extname(filePath)
   const contentType = getContentType(extname)
 

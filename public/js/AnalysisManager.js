@@ -156,4 +156,27 @@ window.AnalysisManager = class AnalysisManager {
     this.socketHandler.send('setoption name MultiPV value 1')
     if (this.callbacks.onComplete) this.callbacks.onComplete()
   }
+
+  exportAnalysis () {
+    return JSON.stringify(this.analysisResults, null, 2)
+  }
+
+  importAnalysis (json) {
+    try {
+      this.analysisResults = JSON.parse(json)
+      // Trigger UI updates to display imported analysis
+      if (this.callbacks.onStart) this.callbacks.onStart(this.analysisResults.length)
+      this.analysisResults.forEach((res, i) => {
+        const task = { moveIndex: res.move, san: res.san }
+        if (this.callbacks.onStepComplete) {
+          this.callbacks.onStepComplete(task, res, i + 1, this.analysisResults.length)
+        }
+      })
+      if (this.callbacks.onComplete) this.callbacks.onComplete()
+      return true
+    } catch (e) {
+      console.error(e)
+      return false
+    }
+  }
 }

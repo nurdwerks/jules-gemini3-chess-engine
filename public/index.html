@@ -205,8 +205,12 @@
                     </div>
                     <div class="button-group mt-10">
                         <button id="copy-fen-btn">Copy FEN</button>
+                        <button id="copy-fen-url-btn">Copy FEN URL</button>
                         <button id="import-pgn-btn">Import PGN</button>
                         <button id="export-pgn-btn">Export PGN</button>
+                        <button id="copy-pgn-btn">Copy PGN</button>
+                        <button id="download-pgn-btn">Download PGN</button>
+                        <button id="pgn-settings-btn">PGN Settings</button>
                     </div>
                 </div>
             </div>
@@ -216,6 +220,13 @@
                     <button id="replay-btn" class="icon-btn" title="Replay Game">▶</button>
                 </div>
                 <div class="panel-content">
+                    <div class="history-options" style="margin-bottom: 5px; display: flex; align-items: center; justify-content: flex-end;">
+                         <label for="history-notation-toggle" style="font-size: 12px; color: var(--grafana-text-secondary); margin-right: 5px;">Notation:</label>
+                         <select id="history-notation-toggle" style="font-size: 12px; padding: 2px;">
+                             <option value="san">SAN (Nf3)</option>
+                             <option value="lan">LAN (g1f3)</option>
+                         </select>
+                    </div>
                     <div id="move-history" class="move-history-list"></div>
                     <div class="history-controls mt-10" style="display: flex; gap: 10px; align-items: center;">
                          <label for="replay-speed" style="color: var(--grafana-text-secondary); font-size: 14px;">Replay Speed:</label>
@@ -458,6 +469,7 @@
             <div class="panel system-log-panel">
                 <div class="panel-header">
                    <h2 class="panel-title">System Log</h2>
+                   <button id="export-log-btn" class="icon-btn" title="Export Log">💾</button>
                </div>
                <div class="panel-content">
                    <div id="system-log"></div>
@@ -548,7 +560,12 @@
       <div class="modal">
           <div class="modal-header">
               <h3 class="modal-title">Game Analysis Report</h3>
-              <button class="modal-close-btn" id="close-analysis-modal">&times;</button>
+              <div style="display: flex; gap: 5px;">
+                  <button id="export-analysis-btn" class="icon-btn" title="Export JSON">💾</button>
+                  <button id="import-analysis-btn" class="icon-btn" title="Import JSON">📂</button>
+                  <input type="file" id="import-analysis-file" accept=".json" style="display: none;">
+                  <button class="modal-close-btn" id="close-analysis-modal">&times;</button>
+              </div>
           </div>
           <div class="modal-content">
               <div id="analysis-progress-bar" style="width: 100%; height: 5px; background: #333; margin-bottom: 10px; display: none;">
@@ -581,6 +598,31 @@
           </div>
           <div class="modal-footer">
               <button id="load-pgn-confirm-btn">Load PGN</button>
+          </div>
+      </div>
+  </div>
+  <div id="pgn-settings-modal" class="modal-overlay">
+      <div class="modal">
+          <div class="modal-header">
+              <h3 class="modal-title">PGN Header Settings</h3>
+              <button class="modal-close-btn" id="close-pgn-settings-modal">&times;</button>
+          </div>
+          <div class="modal-content">
+              <div class="option-item">
+                  <label for="pgn-white">White:</label>
+                  <input type="text" id="pgn-white" value="White">
+              </div>
+              <div class="option-item">
+                  <label for="pgn-black">Black:</label>
+                  <input type="text" id="pgn-black" value="Black">
+              </div>
+              <div class="option-item">
+                  <label for="pgn-event">Event:</label>
+                  <input type="text" id="pgn-event" value="Casual Game">
+              </div>
+          </div>
+          <div class="modal-footer">
+              <button id="save-pgn-settings-btn">Save</button>
           </div>
       </div>
   </div>
@@ -655,9 +697,12 @@
   <script src="js/AnalysisManager.js"></script>
   <script src="js/TrainingManager.js"></script>
   <script src="js/UIOptionFactory.js"></script>
+  <script src="js/UIConstants.js"></script>
   <script src="js/UIManager.js"></script>
   <script src="js/MoveHandler.js"></script>
   <script src="js/LeaderboardManager.js"></script>
+  <script src="js/PgnManager.js"></script>
+  <script src="js/FenManager.js"></script>
   <script src="tournament.js"></script>
   <script src="client.js"></script>
   <div id="toast-container"></div>
