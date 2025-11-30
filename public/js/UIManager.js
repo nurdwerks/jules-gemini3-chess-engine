@@ -500,10 +500,16 @@ window.UIManager = class UIManager {
     tr.innerHTML = `
       <td style="padding: 5px;">${moveNum}${moveDots}</td>
       <td style="padding: 5px; color: ${color}">${task.san} ${annotation}</td>
-      <td style="padding: 5px;">${result.best}</td>
+      <td style="padding: 5px; cursor: pointer; text-decoration: underline;" class="promote-btn" title="Promote (Play) this move">${result.best}</td>
       <td style="padding: 5px;">${typeof diff === 'number' ? (diff / 100).toFixed(2) : '> 0.50'}</td>
       <td style="padding: 5px;">${result.eval}</td>
     `
+    const promoteBtn = tr.querySelector('.promote-btn')
+    if (promoteBtn) {
+      promoteBtn.addEventListener('click', () => {
+        if (this.callbacks.onPromoteVariation) this.callbacks.onPromoteVariation(result.best)
+      })
+    }
     this.elements.analysisTable.appendChild(tr)
   }
 

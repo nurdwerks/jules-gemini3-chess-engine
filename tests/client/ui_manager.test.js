@@ -20,6 +20,7 @@ describe('UIManager', () => {
     }
 
     // Load UIManager
+    require('../../public/js/UIConstants.js')
     require('../../public/js/UIOptionFactory.js')
     require('../../public/js/UIManager.js')
   })
@@ -260,7 +261,12 @@ describe('UIManager', () => {
 
   test('renderHistory renders moves', () => {
     const game = {
-      history: () => ['e4', 'e5', 'Nf3', 'Nc6']
+      history: () => [
+        { san: 'e4', from: 'e2', to: 'e4' },
+        { san: 'e5', from: 'e7', to: 'e5' },
+        { san: 'Nf3', from: 'g1', to: 'f3' },
+        { san: 'Nc6', from: 'b8', to: 'c6' }
+      ]
     }
     const onHistoryClick = jest.fn()
     uiManager.renderHistory(game, 2, onHistoryClick) // index 2 is Nf3 (0, 1, 2)

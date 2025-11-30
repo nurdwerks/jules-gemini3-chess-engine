@@ -16,6 +16,23 @@ window.BoardInfoRenderer = class BoardInfoRenderer {
     this._renderMaterialDiffUI(counts, isFlipped)
   }
 
+  updateClocks (whiteTime, blackTime, isFlipped) {
+    const format = (ms) => {
+      const s = Math.ceil(ms / 1000)
+      return `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`
+    }
+    const wTime = format(whiteTime)
+    const bTime = format(blackTime)
+
+    if (isFlipped) {
+      this.elements.topPlayerClock.textContent = wTime
+      this.elements.bottomPlayerClock.textContent = bTime
+    } else {
+      this.elements.topPlayerClock.textContent = bTime
+      this.elements.bottomPlayerClock.textContent = wTime
+    }
+  }
+
   _calculateBoardCounts (board) {
     const counts = {
       w: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 },

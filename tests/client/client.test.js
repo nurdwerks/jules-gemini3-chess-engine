@@ -89,11 +89,46 @@ describe('client.js', () => {
       this.renderLeaderboard = jest.fn()
       this.updateLeaderboard = jest.fn()
     })
+    global.PgnManager = jest.fn(function () {
+      instances.pgnManager = this
+      this.importPgn = jest.fn()
+      this.exportPgn = jest.fn()
+      this.updateHeader = jest.fn()
+      this.getHeaders = jest.fn()
+    })
+    global.FenManager = jest.fn(function () {
+      instances.fenManager = this
+      this.loadFen = jest.fn()
+      this.copyFen = jest.fn()
+      this.copyFenUrl = jest.fn()
+    })
+    global.BoardEditor = jest.fn(function () {
+      instances.boardEditor = this
+      this.open = jest.fn()
+    })
     global.MoveHandler = jest.fn(function () {
       instances.moveHandler = this
       this.handleSquareClick = jest.fn()
       this.handleDrop = jest.fn()
       this.checkAndExecutePremove = jest.fn()
+    })
+    global.DeveloperManager = jest.fn(function () {
+      instances.developerManager = this
+      this.logPacket = jest.fn()
+      this.handleMessage = jest.fn()
+    })
+    global.MoveListManager = jest.fn(function () {
+      instances.moveListManager = this
+      this.render = jest.fn()
+    })
+    global.OpeningExplorer = jest.fn(function () {
+      instances.openingExplorer = this
+      this.refresh = jest.fn()
+      this.handleBookInfo = jest.fn()
+    })
+    global.TreeManager = jest.fn(function () {
+      instances.treeManager = this
+      this.onTreeReady = jest.fn()
     })
 
     global.ClientUtils = {
@@ -115,6 +150,8 @@ describe('client.js', () => {
         <div id="engine-b-name"></div><div id="engine-b-elo"></div><input id="engine-b-limit" type="checkbox" />
         <div id="endgame-controls"></div>
         <input id="auto-flip" type="checkbox" />
+        <select id="handicap-select"><option value="none">None</option></select>
+        <button id="board-editor-btn"></button>
     `
 
     const initApp = require('../../public/client.js')

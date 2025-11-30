@@ -2009,3 +2009,56 @@ The following Epics were part of the initial development phase and are either co
     *   *Description:* Allow the user to manually enter a "null move" for analysis.
     *   *Acceptance Criteria:*
         *   [x] Turn passes.
+
+### Epic 77: Move List & Annotation
+**Size:** Medium (3 days)
+**Description:** Enhanced game record display and annotation capabilities.
+**User Stories:**
+1. **Game Annotation (S)**
+    *   *Description:* Automatically annotate the move list with symbols like "?", "!" based on score drops.
+    *   *Acceptance Criteria:*
+        *   [x] "??" appears on blunders.
+2. **Variation Tree Visualization (S)**
+    *   *Description:* A graphical tree view of the variations explored by the engine.
+    *   *Acceptance Criteria:*
+        *   [x] D3.js tree layout of PVs.
+3. **Promote Variation (S)**
+    *   *Description:* Button to make a variation the main line in the move list.
+    *   *Acceptance Criteria:*
+        *   [x] Moves update.
+4. **Delete Variation (S)**
+    *   *Description:* Button to remove a specific variation branch.
+    *   *Acceptance Criteria:*
+        *   [x] Variation gone.
+5. **Delete Remaining Moves (S)**
+    *   *Description:* Button to truncate the game history from the current move.
+    *   *Acceptance Criteria:*
+        *   [x] Moves 11+ gone.
+6. **Comment Editor (S)**
+    *   *Description:* Text area to add detailed comments to the current move.
+    *   *Acceptance Criteria:*
+        *   [x] Comment visible.
+7. **NAG Editor (S)**
+    *   *Description:* Interface to add Numeric Annotation Glyphs (, , etc.) to moves.
+    *   *Acceptance Criteria:*
+        *   [x] Symbol appears.
+8. **Move List Scroll Lock (S)**
+    *   *Description:* Option to keep the move list scrolled to the bottom.
+    *   *Acceptance Criteria:*
+        *   [x] List scrolls.
+9. **Search Filter (S)**
+    *   *Description:* Filter the game history by move number or piece.
+    *   *Acceptance Criteria:*
+        *   [x] Only Nf3 moves shown.
+10. **Opening Book Explorer (S)**
+    *   *Description:* A simple UI panel showing book moves available in the current position.
+    *   *Acceptance Criteria:*
+        *   [x] e4, d4, etc shown.
+11. **Opening Name Database (S)**
+    *   *Description:* Display the specific opening name dynamically.
+    *   *Acceptance Criteria:*
+        *   [x] "Sicilian Defense" shown (Placeholder).
+12. **ECO Code Display (S)**
+    *   *Description:* Show the ECO code and opening name.
+    *   *Acceptance Criteria:*
+        *   [x] Code shown (Placeholder).

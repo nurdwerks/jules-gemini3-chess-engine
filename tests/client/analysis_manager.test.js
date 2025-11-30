@@ -13,6 +13,7 @@ if (typeof exports !== 'undefined' && exports.Chess) window.Chess = exports.Ches
 describe('AnalysisManager', () => {
   let AnalysisManager
   let game
+  let gameManager
   let socketHandler
   let callbacks
   let analysisManager
@@ -24,6 +25,9 @@ describe('AnalysisManager', () => {
 
   beforeEach(() => {
     game = new window.Chess()
+    gameManager = {
+      moveMetadata: []
+    }
     socketHandler = {
       send: jest.fn()
     }
@@ -33,7 +37,7 @@ describe('AnalysisManager', () => {
       onStepComplete: jest.fn(),
       onComplete: jest.fn()
     }
-    analysisManager = new AnalysisManager(game, socketHandler, callbacks)
+    analysisManager = new AnalysisManager(game, gameManager, socketHandler, callbacks)
     jest.useFakeTimers()
   })
 
@@ -115,6 +119,11 @@ describe('AnalysisManager', () => {
     expect(result.best).toBe('e2e4')
     expect(result.played).toBe('h2h3')
     expect(result.diff).toBe(60) // 50 - (-10)
+
+    // Check auto-annotation
+    expect(gameManager.moveMetadata[0]).toBeDefined()
+    // Diff 60 is > 50, so ?!
+    expect(gameManager.moveMetadata[0].annotation).toBe('?!')
   })
 
   test('stopAnalysis', () => {
