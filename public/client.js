@@ -1,6 +1,6 @@
 /* eslint-env browser */
 /* eslint-disable max-lines */
-/* global Chess, SocketHandler, BoardRenderer, GameManager, AnalysisManager, TrainingManager, UIManager, ArrowManager, SoundManager, ClientUtils, MoveHandler, LeaderboardManager, PgnManager, FenManager, BoardEditor, DeveloperManager, MoveListManager, OpeningExplorer, TreeManager, AccessibilityManager, SettingsManager, ExternalActions, AutoSaveManager, InfoManager, VisualEffects, BatterySaver */
+/* global Chess, SocketHandler, BoardRenderer, GameManager, AnalysisManager, TrainingManager, UIManager, ArrowManager, SoundManager, ClientUtils, MoveHandler, LeaderboardManager, PgnManager, FenManager, BoardEditor, DeveloperManager, MoveListManager, OpeningExplorer, TreeManager, AccessibilityManager, SettingsManager, ExternalActions, AutoSaveManager, InfoManager, VisualEffects, BatterySaver, LanguageManager */
 
 const initApp = () => {
   try {
@@ -17,6 +17,7 @@ const initApp = () => {
     let infoManager = null
     let visualEffects = null
     let batterySaver = null
+    let moveHandler = null
 
     // Shared State
     const state = {
@@ -423,9 +424,80 @@ const initApp = () => {
     // eslint-disable-next-line no-unused-vars
     batterySaver = new BatterySaver(uiManager)
 
-    const moveHandler = new MoveHandler(game, gameManager, uiManager, boardRenderer, trainingManager, state, render)
+    // Language Manager
+    const languageManager = new LanguageManager()
+    languageManager.init()
+
+    checkVersion()
+    setupOfflineIndicator()
+    setupEmbed()
+
+    moveHandler = new MoveHandler(game, gameManager, uiManager, boardRenderer, trainingManager, state, render)
 
     // --- Helpers ---
+
+    function checkVersion () {
+      fetch('/version').then(res => res.json()).then(data => {
+        const localVersion = data.version
+        const versionDisplay = document.getElementById('version-display')
+        if (versionDisplay) versionDisplay.textContent = `v${localVersion}`
+
+        // Check GitHub
+        fetch('https://api.github.com/repos/nurdwerks/jules-gemini3-chess-engine/releases/latest')
+          .then(res => res.json())
+          .then(release => {
+            const remoteVersion = release.tag_name ? release.tag_name.replace('v', '') : null
+            if (remoteVersion && remoteVersion !== localVersion) {
+              uiManager.showToast(`New version available: v${remoteVersion}`, 'info')
+            }
+          }).catch(() => {})
+      }).catch(() => {})
+    }
+
+    function setupOfflineIndicator () {
+      const badge = document.getElementById('offline-badge')
+      const update = () => {
+        if (!navigator.onLine) {
+          if (badge) badge.style.display = 'block'
+        } else {
+          if (badge) badge.style.display = 'none'
+        }
+      }
+      window.addEventListener('online', update)
+      window.addEventListener('offline', update)
+      update()
+    }
+
+    function setupEmbed () {
+      const btn = document.getElementById('embed-btn')
+      if (btn) {
+        btn.addEventListener('click', () => {
+          const modal = document.getElementById('embed-modal')
+          const area = document.getElementById('embed-code-area')
+          if (modal && area) {
+            const url = window.location.href.split('?')[0] + '?fen=' + encodeURIComponent(game.fen())
+            const code = `<iframe src="${url}" width="600" height="400" frameborder="0"></iframe>`
+            area.value = code
+            modal.classList.add('active')
+          }
+        })
+      }
+      const close = document.getElementById('close-embed-modal')
+      if (close) {
+        close.addEventListener('click', () => {
+          document.getElementById('embed-modal').classList.remove('active')
+        })
+      }
+      const copy = document.getElementById('copy-embed-btn')
+      if (copy) {
+        copy.addEventListener('click', () => {
+          const area = document.getElementById('embed-code-area')
+          area.select()
+          document.execCommand('copy')
+          uiManager.showToast('Embed code copied!', 'success')
+        })
+      }
+    }
 
     function render () {
       state.currentViewIndex = gameManager.currentViewIndex

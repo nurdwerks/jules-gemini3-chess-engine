@@ -150,6 +150,7 @@ describe('client.js', () => {
       startConfetti () {}
     }
     global.BatterySaver = class {}
+    global.LanguageManager = class { init () {} }
 
     global.ClientUtils = {
       parseInfo: jest.fn(),
@@ -158,6 +159,8 @@ describe('client.js', () => {
     }
     global.ArrowManager = { clearEngineArrows: jest.fn(), clearUserArrows: jest.fn() }
     global.SoundManager = { setEnabled: jest.fn(), playSound: jest.fn() }
+
+    global.fetch = jest.fn().mockResolvedValue({ json: () => Promise.resolve({}) })
 
     document.body.innerHTML = `
         <div id="status"></div>

@@ -1,73 +1,64 @@
-/**
- * @jest-environment jsdom
- */
-
-const BatterySaver = require('../../public/js/BatterySaver.js')
+const BatterySaver = require('../../public/js/BatterySaver')
 
 describe('BatterySaver', () => {
   let batterySaver
-  let mockUiManager
-  let mockBattery
+  let mockSelect
+  let mockCheckbox
 
   beforeEach(() => {
-    document.body.innerHTML = `
-      <select id="animation-speed">
-        <option value="0">Instant</option>
-        <option value="200" selected>Fast</option>
-      </select>
-    `
+    mockSelect = document.createElement('select')
+    ;['0', '200', '500'].forEach(val => {
+      const opt = document.createElement('option')
+      opt.value = val
+      mockSelect.appendChild(opt)
+    })
+    mockSelect.value = '200'
+    mockSelect.dispatchEvent = jest.fn()
 
-    mockUiManager = {
-      showToast: jest.fn()
-    }
+    mockCheckbox = document.createElement('input')
+    mockCheckbox.type = 'checkbox'
+    mockCheckbox.checked = false
+    mockCheckbox.addEventListener = jest.fn() // Spy on addEventListener
 
-    mockBattery = {
+    jest.spyOn(document, 'getElementById').mockImplementation((id) => {
+      if (id === 'battery-saver') return mockCheckbox
+      if (id === 'animation-speed') return mockSelect
+      return null
+    })
+
+    // Mock navigator.getBattery
+    global.navigator.getBattery = jest.fn().mockResolvedValue({
       charging: true,
       level: 1.0,
       addEventListener: jest.fn()
-    }
+    })
 
-    global.navigator.getBattery = jest.fn(() => Promise.resolve(mockBattery))
-
-    batterySaver = new BatterySaver(mockUiManager)
+    batterySaver = new BatterySaver({})
   })
 
-  test('should initialize and listen to events', async () => {
-    await batterySaver.init()
-    expect(global.navigator.getBattery).toHaveBeenCalled()
-    expect(mockBattery.addEventListener).toHaveBeenCalledWith('chargingchange', expect.any(Function))
-    expect(mockBattery.addEventListener).toHaveBeenCalledWith('levelchange', expect.any(Function))
+  afterEach(() => {
+    jest.restoreAllMocks()
+    document.body.className = ''
   })
 
-  test('should enable power save when battery low', async () => {
-    await batterySaver.init()
-
-    // Simulate low battery
-    mockBattery.charging = false
-    mockBattery.level = 0.15
-    batterySaver.updateStatus(mockBattery)
-
-    expect(batterySaver.isLowPower).toBe(true)
-    expect(mockUiManager.showToast).toHaveBeenCalledWith(expect.stringContaining('Low Battery'), 'warning')
-    expect(document.getElementById('animation-speed').value).toBe('0')
-    expect(document.body.classList.contains('power-save')).toBe(true)
+  test('should initialize and bind events', () => {
+    batterySaver.init()
+    expect(mockCheckbox.addEventListener).toHaveBeenCalledWith('change', expect.any(Function))
   })
 
-  test('should disable power save when charging', async () => {
-    await batterySaver.init()
+  test('should toggle battery saver mode on', () => {
+    batterySaver.toggle(true)
+    expect(document.body.classList.contains('battery-saver')).toBe(true)
+    expect(mockSelect.value).toBe('0')
+    expect(mockSelect.disabled).toBe(true)
+    expect(mockSelect.dispatchEvent).toHaveBeenCalled()
+  })
 
-    // First enable it
-    mockBattery.charging = false
-    mockBattery.level = 0.15
-    batterySaver.updateStatus(mockBattery)
-
-    // Then plug in
-    mockBattery.charging = true
-    batterySaver.updateStatus(mockBattery)
-
-    expect(batterySaver.isLowPower).toBe(false)
-    expect(mockUiManager.showToast).toHaveBeenCalledWith(expect.stringContaining('Power Restored'), 'success')
-    expect(document.getElementById('animation-speed').value).toBe('200') // Restored to saved value
-    expect(document.body.classList.contains('power-save')).toBe(false)
+  test('should toggle battery saver mode off and restore speed', () => {
+    batterySaver.savedSpeed = '500'
+    batterySaver.toggle(false)
+    expect(document.body.classList.contains('battery-saver')).toBe(false)
+    expect(mockSelect.value).toBe('500')
+    expect(mockSelect.disabled).toBe(false)
   })
 })

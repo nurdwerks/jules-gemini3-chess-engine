@@ -59,6 +59,9 @@ global.AutoSaveManager = class { saveGame () {} checkForSavedGame () {} restoreG
 global.InfoManager = class {}
 global.VisualEffects = class { triggerShake () {} startConfetti () {} }
 global.BatterySaver = class {}
+global.LanguageManager = class { init () {} }
+
+global.fetch = jest.fn().mockResolvedValue({ json: () => Promise.resolve({}) })
 
 // Mock UIManager to capture calls
 const showGameOverModalMock = jest.fn()

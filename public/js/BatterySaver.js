@@ -1,59 +1,57 @@
+/* eslint-env browser */
+/* global Event, navigator, document */
+
 class BatterySaver {
   constructor (uiManager) {
     this.uiManager = uiManager
-    this.isLowPower = false
-    this.init()
+    this.enabled = false
+    this.savedSpeed = '200'
   }
 
-  async init () {
-    if ('getBattery' in navigator) {
-      try {
-        const battery = await navigator.getBattery()
-        this.updateStatus(battery)
+  init () {
+    const cb = document.getElementById('battery-saver')
+    if (cb) {
+      cb.addEventListener('change', (e) => this.toggle(e.target.checked))
+    }
 
-        battery.addEventListener('chargingchange', () => this.updateStatus(battery))
-        battery.addEventListener('levelchange', () => this.updateStatus(battery))
-      } catch (e) {
-        console.warn('Battery API failed', e)
+    // Auto-detect
+    if (navigator.getBattery) {
+      navigator.getBattery().then(battery => {
+        if (!battery.charging && battery.level < 0.2) {
+          if (cb) {
+            cb.checked = true
+            this.toggle(true)
+          }
+        }
+      }).catch(() => {})
+    }
+  }
+
+  toggle (enable) {
+    this.enabled = enable
+    const speedSelect = document.getElementById('animation-speed')
+
+    if (enable) {
+      document.body.classList.add('battery-saver')
+      if (speedSelect) {
+        this.savedSpeed = speedSelect.value
+        speedSelect.value = '0'
+        speedSelect.disabled = true
+        speedSelect.dispatchEvent(new Event('change'))
+      }
+    } else {
+      document.body.classList.remove('battery-saver')
+      if (speedSelect) {
+        speedSelect.disabled = false
+        speedSelect.value = this.savedSpeed
+        speedSelect.dispatchEvent(new Event('change'))
       }
     }
-  }
-
-  updateStatus (battery) {
-    const wasLow = this.isLowPower
-    // Consider low power if not charging and level < 20%
-    this.isLowPower = !battery.charging && battery.level < 0.20
-
-    if (this.isLowPower && !wasLow) {
-      this.enablePowerSave()
-    } else if (!this.isLowPower && wasLow) {
-      this.disablePowerSave()
-    }
-  }
-
-  enablePowerSave () {
-    this.uiManager.showToast('Low Battery: Enabling Power Saver Mode', 'warning')
-    // Force animation speed to Instant (0)
-    const speedSelect = document.getElementById('animation-speed')
-    if (speedSelect) {
-      this.savedSpeed = speedSelect.value
-      speedSelect.value = '0'
-    }
-
-    // Disable heavy visuals
-    document.body.classList.add('power-save')
-  }
-
-  disablePowerSave () {
-    this.uiManager.showToast('Power Restored', 'success')
-    const speedSelect = document.getElementById('animation-speed')
-    if (speedSelect && this.savedSpeed) {
-      speedSelect.value = this.savedSpeed
-    }
-    document.body.classList.remove('power-save')
   }
 }
 
 if (typeof module !== 'undefined') {
   module.exports = BatterySaver
+} else {
+  window.BatterySaver = BatterySaver
 }

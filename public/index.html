@@ -61,7 +61,7 @@
                 <div class="panel-content">
                      <div id="status">Status: Disconnected</div>
                      <div class="button-group">
-                        <button id="new-game-btn">New Game</button>
+                        <button id="new-game-btn" data-i18n="new-game-btn">New Game</button>
                         <button id="new-960-btn">New Chess960</button>
                         <button id="resign-btn" style="background-color: #F2495C;">Resign</button>
                         <button id="offer-draw-btn">Offer Draw</button>
@@ -70,7 +70,7 @@
                         <button id="clear-analysis-btn">Clear Analysis</button>
                      </div>
                      <div class="button-group mt-10">
-                        <button id="flip-board-btn">Flip Board</button>
+                        <button id="flip-board-btn" data-i18n="flip-board-btn">Flip Board</button>
                         <button id="self-play-btn">Self Play</button>
                         <button id="engine-duel-btn">Engine Duel</button>
                         <button id="tournament-btn">Tournament</button>
@@ -280,6 +280,7 @@
                         <div class="button-group">
                             <button id="share-twitter-btn" style="background-color: #1DA1F2;">Twitter</button>
                             <button id="share-reddit-btn" style="background-color: #FF4500;">Reddit</button>
+                            <button id="embed-btn" style="background-color: #555;" data-i18n="embed-btn">Embed</button>
                         </div>
                     </div>
                 </div>
@@ -420,6 +421,13 @@
                         </select>
                      </div>
                      <div class="option-item">
+                        <label for="language-select" data-i18n="language-label">Language:</label>
+                        <select id="language-select">
+                            <option value="en">English</option>
+                            <option value="es">Español</option>
+                        </select>
+                     </div>
+                     <div class="option-item">
                         <label for="board-theme">Theme:</label>
                         <select id="board-theme">
                             <option value="classic">Classic</option>
@@ -473,6 +481,10 @@
                          </select>
                      </div>
                      <div class="option-item">
+                         <label for="battery-saver" data-i18n="battery-saver-label">Battery Saver:</label>
+                         <input type="checkbox" id="battery-saver">
+                     </div>
+                     <div class="option-item">
                          <label for="upload-theme-file">Upload Theme (JSON):</label>
                          <input type="file" id="upload-theme-file" accept=".json">
                      </div>
@@ -509,7 +521,7 @@
             <div class="panel uci-options-panel">
                  <div class="panel-header">
                     <h2 class="panel-title">Engine Options</h2>
-                    <button id="reset-engine-btn" class="icon-btn" title="Reset Engine">↻</button>
+                    <button id="reset-engine-btn" class="icon-btn" title="Reset Engine" data-i18n-title="reset-engine-btn">↻</button>
                 </div>
                 <div class="panel-content">
                     <div class="option-item">
@@ -957,6 +969,7 @@
   <script src="js/InfoManager.js"></script>
   <script src="js/VisualEffects.js"></script>
   <script src="js/BatterySaver.js"></script>
+  <script src="js/LanguageManager.js"></script>
   <script src="tournament.js"></script>
   <script src="client.js"></script>
   <canvas id="confetti-canvas" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999; display: none;"></canvas>
@@ -989,5 +1002,20 @@
           </div>
       </div>
   </div>
+  <div id="embed-modal" class="modal-overlay">
+      <div class="modal">
+          <div class="modal-header">
+              <h3 class="modal-title" data-i18n="embed-btn">Embed</h3>
+              <button class="modal-close-btn" id="close-embed-modal">&times;</button>
+          </div>
+          <div class="modal-content">
+              <p>Copy this code to embed the game in your website:</p>
+              <textarea id="embed-code-area" style="width: 100%; height: 100px; margin-top: 10px; font-family: monospace;"></textarea>
+              <button id="copy-embed-btn" style="margin-top: 10px;">Copy to Clipboard</button>
+          </div>
+      </div>
+  </div>
+  <div id="offline-badge" class="offline-badge" style="display: none;" data-i18n="offline-badge">Offline</div>
+  <div id="version-display" style="position: fixed; bottom: 5px; right: 5px; font-size: 10px; color: #555; opacity: 0.5;"></div>
 </body>
 </html>

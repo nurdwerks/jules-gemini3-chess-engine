@@ -1572,3 +1572,16 @@ body.high-contrast button:hover {
   animation: shake 0.5s;
   animation-iteration-count: 1;
 }
+
+.offline-badge {
+    position: fixed;
+    top: 5px;
+    right: 5px;
+    background: #F2495C;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    z-index: 10000;
+}

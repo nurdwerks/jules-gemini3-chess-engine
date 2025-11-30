@@ -94,46 +94,60 @@ const serveStatic = (req, res) => {
   })
 }
 
+const serveFile = (res, filePath, contentType) => {
+  fs.readFile(filePath, (err, content) => {
+    if (err) {
+      res.writeHead(404, { 'Content-Type': 'text/plain' })
+      res.end('File not found')
+      return
+    }
+    res.writeHead(200, { 'Content-Type': contentType })
+    res.end(content)
+  })
+}
+
+const handleVersion = (res) => {
+  const filePath = path.join(__dirname, '../package.json')
+  fs.readFile(filePath, (err, content) => {
+    if (err) {
+      res.writeHead(500, { 'Content-Type': 'text/plain' })
+      res.end('Error reading package.json')
+      return
+    }
+    try {
+      const pkg = JSON.parse(content)
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ version: pkg.version }))
+    } catch (e) {
+      res.writeHead(500)
+      res.end('Error parsing package.json')
+    }
+  })
+}
+
 // HTTP Server to serve static files
+const GET_ROUTES = {
+  '/debug_tree.json': (res) => serveFile(res, path.join(__dirname, '../debug_tree.json'), 'application/json'),
+  '/changelog': (res) => serveFile(res, path.join(__dirname, '../CHANGELOG.md'), 'text/markdown; charset=utf-8'),
+  '/license': (res) => serveFile(res, path.join(__dirname, '../LICENSE'), 'text/plain; charset=utf-8'),
+  '/version': handleVersion
+}
+
 const server = http.createServer((req, res) => {
   if (req.method === 'POST' && req.url === '/upload') {
     handleUpload(req, res)
-  } else if (req.method === 'GET' && req.url === '/debug_tree.json') {
-    const filePath = path.join(__dirname, '../debug_tree.json')
-    fs.readFile(filePath, (err, content) => {
-      if (err) {
-        res.writeHead(404, { 'Content-Type': 'text/plain' })
-        res.end('Debug tree not found (Run debug_tree command first)')
-        return
-      }
-      res.writeHead(200, { 'Content-Type': 'application/json' })
-      res.end(content)
-    })
-  } else if (req.method === 'GET' && req.url === '/changelog') {
-    const filePath = path.join(__dirname, '../CHANGELOG.md')
-    fs.readFile(filePath, (err, content) => {
-      if (err) {
-        res.writeHead(404, { 'Content-Type': 'text/plain' })
-        res.end('Changelog not found')
-        return
-      }
-      res.writeHead(200, { 'Content-Type': 'text/markdown; charset=utf-8' })
-      res.end(content)
-    })
-  } else if (req.method === 'GET' && req.url === '/license') {
-    const filePath = path.join(__dirname, '../LICENSE')
-    fs.readFile(filePath, (err, content) => {
-      if (err) {
-        res.writeHead(404, { 'Content-Type': 'text/plain' })
-        res.end('License not found')
-        return
-      }
-      res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' })
-      res.end(content)
-    })
-  } else {
-    serveStatic(req, res)
+    return
   }
+
+  if (req.method === 'GET') {
+    const handler = GET_ROUTES[req.url]
+    if (handler) {
+      handler(res)
+      return
+    }
+  }
+
+  serveStatic(req, res)
 })
 
 // WebSocket Server
