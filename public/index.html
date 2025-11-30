@@ -359,6 +359,10 @@
                         <label for="coords-outside">Coordinates Outside:</label>
                         <input type="checkbox" id="coords-outside">
                      </div>
+                     <div class="option-item">
+                        <label for="mind-control-mode" title="Requires EEG Headset">Mind Control (Beta):</label>
+                        <input type="checkbox" id="mind-control-mode">
+                     </div>
                      <hr class="separator">
                      <div class="option-item">
                          <label style="font-weight: bold; color: var(--grafana-accent-blue);">Analysis Visuals:</label>
@@ -486,6 +490,20 @@
                          <button id="factory-reset-btn" style="background-color: #F2495C;">Factory Reset</button>
                      </div>
                      <input type="file" id="import-settings-file" accept=".json" style="display: none;">
+                     <hr class="separator">
+                     <div class="option-item">
+                         <label style="font-weight: bold; color: var(--grafana-accent-blue);">Information:</label>
+                     </div>
+                     <div class="button-group">
+                         <button id="changelog-btn">Changelog</button>
+                         <button id="license-btn">License</button>
+                         <button id="credits-btn">Credits</button>
+                         <button id="shortcuts-btn">Shortcuts</button>
+                     </div>
+                     <div class="button-group mt-10">
+                         <button id="sponsor-btn" style="background-color: #ea4aaa;">Sponsor</button>
+                         <button id="feedback-btn">Feedback</button>
+                     </div>
                 </div>
             </div>
             <div class="panel uci-options-panel">
@@ -935,8 +953,13 @@
   <script src="js/TreeManager.js"></script>
   <script src="js/SettingsManager.js"></script>
   <script src="js/ExternalActions.js"></script>
+  <script src="js/AutoSaveManager.js"></script>
+  <script src="js/InfoManager.js"></script>
+  <script src="js/VisualEffects.js"></script>
+  <script src="js/BatterySaver.js"></script>
   <script src="tournament.js"></script>
   <script src="client.js"></script>
+  <canvas id="confetti-canvas" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999; display: none;"></canvas>
   <div id="toast-container"></div>
   <div id="move-context-menu" class="context-menu" style="display: none;">
     <div class="menu-item" data-action="comment">Add Comment</div>
@@ -953,6 +976,16 @@
               <div class="nag-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px;">
                   <!-- Injected via JS -->
               </div>
+          </div>
+      </div>
+  </div>
+  <div id="info-modal" class="modal-overlay">
+      <div class="modal">
+          <div class="modal-header">
+              <h3 class="modal-title" id="info-modal-title">Info</h3>
+              <button class="modal-close-btn" id="close-info-modal">&times;</button>
+          </div>
+          <div class="modal-content" id="info-modal-content" style="max-height: 400px; overflow-y: auto; white-space: pre-wrap; font-family: monospace; font-size: 13px;">
           </div>
       </div>
   </div>
