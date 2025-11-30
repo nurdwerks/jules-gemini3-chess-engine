@@ -1,5 +1,5 @@
 /* eslint-env browser */
-/* global Chess, SocketHandler, BoardRenderer, GameManager, AnalysisManager, TrainingManager, UIManager, ArrowManager, SoundManager, ClientUtils, MoveHandler, LeaderboardManager, PgnManager, FenManager */
+/* global Chess, SocketHandler, BoardRenderer, GameManager, AnalysisManager, TrainingManager, UIManager, ArrowManager, SoundManager, ClientUtils, MoveHandler, LeaderboardManager, PgnManager, FenManager, BoardEditor */
 
 const initApp = () => {
   try {
@@ -279,6 +279,15 @@ const initApp = () => {
     fenManager = new FenManager(game, uiManager, (fen) => {
       gameManager.startNewGame(fen)
       render()
+    })
+
+    const boardEditor = new BoardEditor('board-editor-modal', (fen) => {
+      gameManager.startNewGame(fen)
+      render()
+      uiManager.showToast('Position loaded from Editor', 'success')
+    })
+    document.getElementById('board-editor-btn').addEventListener('click', () => {
+      boardEditor.open(game.fen())
     })
 
     const boardRenderer = new BoardRenderer(document.getElementById('chessboard'), game, {

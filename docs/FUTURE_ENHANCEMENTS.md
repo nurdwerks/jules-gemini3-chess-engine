@@ -8,60 +8,6 @@ This document outlines the detailed backlog of future enhancements for the Jules
 
 
 
-### Epic 75: Board Editor
-**Size:** Medium (3 days)
-**Description:** Tools for setting up custom positions.
-
-**User Stories:**
-
-134. **Custom FEN Start (S)**
-    *   *Description:* "Setup Position" board editor where users can place pieces freely.
-    *   *Implementation:* Palette of pieces. Drag to board.
-    *   *Tasks:*
-        - [ ] Editor Mode UI.
-        - [ ] Piece Palette.
-    *   *Testing Plan:* Create position.
-    *   *Acceptance Criteria:*
-        - [ ] Valid FEN generated.
-
-135. **Castling Rights Editor (S)**
-    *   *Description:* Checkboxes to manually toggle castling rights in setup editor.
-    *   *Implementation:* Update FEN `KQkq`.
-    *   *Tasks:*
-        - [ ] Checkboxes.
-    *   *Testing Plan:* Toggle.
-    *   *Acceptance Criteria:*
-        - [ ] FEN updates.
-
-136. **En Passant Target Editor (S)**
-    *   *Description:* Input to set the en passant square in setup editor.
-    *   *Implementation:* Text input or click square.
-    *   *Tasks:*
-        - [ ] UI.
-    *   *Testing Plan:* Set square.
-    *   *Acceptance Criteria:*
-        - [ ] FEN updates.
-
-137. **Side to Move Editor (S)**
-    *   *Description:* Toggle to switch whose turn it is in setup editor.
-    *   *Implementation:* Radio button W/B.
-    *   *Tasks:*
-        - [ ] UI.
-    *   *Testing Plan:* Switch.
-    *   *Acceptance Criteria:*
-        - [ ] FEN updates.
-
-138. **Move Counter Editor (S)**
-    *   *Description:* Input to set the fullmove and halfmove clocks.
-    *   *Implementation:* Number inputs.
-    *   *Tasks:*
-        - [ ] UI.
-    *   *Testing Plan:* Change numbers.
-    *   *Acceptance Criteria:*
-        - [ ] FEN updates.
-
----
-
 ### Epic 76: Developer Tools & Debugging
 **Size:** Medium (3 days)
 **Description:** Internal tools for developers to debug the engine and client.

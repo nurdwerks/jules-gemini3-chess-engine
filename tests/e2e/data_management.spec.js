@@ -49,11 +49,11 @@ test.describe('Data Management', () => {
   })
 
   test('Load FEN from URL', async ({ page }) => {
-    const fen = 'rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2'; // Sicilian
-    await page.goto(`http://localhost:3000/?fen=${encodeURIComponent(fen)}`);
-    await page.waitForSelector('.piece');
-    await expect(page.locator('.toast').last()).toContainText('Position loaded from URL');
-  });
+    const fen = 'rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2' // Sicilian
+    await page.goto(`http://localhost:3000/?fen=${encodeURIComponent(fen)}`)
+    await page.waitForSelector('.piece')
+    await expect(page.locator('.toast').last()).toContainText('Position loaded from URL')
+  })
 
   test('History Notation Toggle', async ({ page }) => {
     // Make a move
