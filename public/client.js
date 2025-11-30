@@ -1,5 +1,5 @@
 /* eslint-env browser */
-/* global Chess, SocketHandler, BoardRenderer, GameManager, AnalysisManager, TrainingManager, UIManager, ArrowManager, SoundManager, ClientUtils, MoveHandler, LeaderboardManager, PgnManager, FenManager, BoardEditor, DeveloperManager, MoveListManager, OpeningExplorer, TreeManager, AccessibilityManager, SettingsManager */
+/* global Chess, SocketHandler, BoardRenderer, GameManager, AnalysisManager, TrainingManager, UIManager, ArrowManager, SoundManager, ClientUtils, MoveHandler, LeaderboardManager, PgnManager, FenManager, BoardEditor, DeveloperManager, MoveListManager, OpeningExplorer, TreeManager, AccessibilityManager, SettingsManager, ExternalActions */
 
 const initApp = () => {
   try {
@@ -11,6 +11,7 @@ const initApp = () => {
     let treeManager = null
     let accessibilityManager = null
     let settingsManager = null
+    let externalActions = null
 
     // Shared State
     const state = {
@@ -115,8 +116,11 @@ const initApp = () => {
         if (!gameManager.gameStarted) return
         gameManager.gameStarted = false
         if (gameManager.clockInterval) clearInterval(gameManager.clockInterval)
+        const loser = game.turn() === 'w' ? 'White' : 'Black'
+        const winner = game.turn() === 'w' ? 'Black' : 'White'
+        uiManager.showGameOverModal(`${winner} Wins!`, `${loser} Resigned`)
         uiManager.showToast('You resigned.', 'info')
-        uiManager.logToOutput(`Game Over: ${game.turn() === 'w' ? 'White' : 'Black'} resigns.`)
+        uiManager.logToOutput(`Game Over: ${loser} resigns.`)
       },
       onOfferDraw: () => {
         if (Math.abs(gameManager.lastEngineEval) <= 10) {
@@ -149,6 +153,7 @@ const initApp = () => {
       onLoadFen: (fen) => fenManager.loadFen(fen),
       onCopyFen: () => fenManager.copyFen(),
       onCopyFenUrl: () => fenManager.copyFenUrl(),
+      onDownloadScreenshot: () => externalActions.downloadScreenshot(),
       onLoadPgn: (pgn) => {
         if (pgnManager.importPgn(pgn)) {
           gameManager.gameStarted = true
@@ -168,6 +173,10 @@ const initApp = () => {
         uiManager.showToast('PGN Settings Saved', 'success')
       },
       onGetPgnSettings: () => pgnManager.getHeaders(),
+      onAnalyzeLichess: () => externalActions.analyzeLichess(),
+      onAnalyzeChessCom: () => externalActions.analyzeChessCom(),
+      onShareTwitter: () => externalActions.shareTwitter(),
+      onShareReddit: () => externalActions.shareReddit(),
       onHistoryNotationChange: (val) => {
         state.historyNotation = val
         render()
@@ -320,6 +329,8 @@ const initApp = () => {
       isViewOnly: () => state.currentViewIndex !== -1
     })
 
+    externalActions = new ExternalActions(pgnManager, boardRenderer, uiManager, game)
+
     const gameManager = new GameManager(game, socketHandler, {
       onGameStart: () => {
         render()
@@ -339,11 +350,19 @@ const initApp = () => {
           if (accessibilityManager) accessibilityManager.announceMove(result)
         }
       },
-      onGameOver: (result) => {
-        uiManager.showToast(`Game Over: ${result}`, 'info')
-        uiManager.logToOutput(`Game Over: ${result}`)
+      onGameOver: (outcome) => {
+        let title = 'Game Over'
+        if (outcome.winner === 'white') title = 'White Wins!'
+        else if (outcome.winner === 'black') title = 'Black Wins!'
+        else if (outcome.winner === 'draw') title = 'Draw'
+
+        uiManager.showGameOverModal(title, outcome.reason)
+
+        const msg = `Game Over: ${outcome.winner} (${outcome.reason})`
+        uiManager.showToast(msg, 'info')
+        uiManager.logToOutput(msg)
         if (gameManager.isDuelActive) {
-          leaderboardManager.updateLeaderboard(gameManager.engineAConfig.name, gameManager.engineBConfig.name, result)
+          leaderboardManager.updateLeaderboard(gameManager.engineAConfig.name, gameManager.engineBConfig.name, outcome.winner)
         }
       },
       onClockUpdate: () => renderClocks()
@@ -536,7 +555,7 @@ const initApp = () => {
     }
 
     // Check for FEN in URL
-    checkFenInUrl(gameManager, uiManager)
+    ClientUtils.checkFenInUrl(gameManager, uiManager)
 
     socketHandler.connect()
 
@@ -557,22 +576,6 @@ const initApp = () => {
     }
   } catch (err) {
     console.error('INIT APP ERROR', err)
-  }
-}
-
-function checkFenInUrl (gameManager, uiManager) {
-  const urlParams = new URLSearchParams(window.location.search)
-  const fenParam = urlParams.get('fen')
-  if (fenParam) {
-    setTimeout(() => {
-      const temp = new Chess()
-      if (temp.load(fenParam)) {
-        gameManager.startNewGame(fenParam)
-        uiManager.showToast('Position loaded from URL', 'success')
-      } else {
-        uiManager.showToast('Invalid FEN in URL', 'error')
-      }
-    }, 100)
   }
 }
 

@@ -141,35 +141,37 @@ window.GameManager = class GameManager {
   }
 
   checkGameOver () {
-    let result = null
+    let outcome = null
     if (this.whiteTime <= 0) {
-      result = this._handleTimeout('white')
+      outcome = { winner: 'black', reason: 'Timeout (White)' }
     } else if (this.blackTime <= 0) {
-      result = this._handleTimeout('black')
+      outcome = { winner: 'white', reason: 'Timeout (Black)' }
     } else if (this.game.game_over()) {
-      result = this._handleGameRulesEnd()
+      outcome = this._handleGameRulesEnd()
     }
 
-    if (result) {
-      if (this.callbacks.onGameOver) this.callbacks.onGameOver(result)
+    if (outcome) {
+      if (this.callbacks.onGameOver) this.callbacks.onGameOver(outcome)
       this.gameStarted = false
       if (this.clockInterval) clearInterval(this.clockInterval)
       this.isSelfPlay = false
     }
   }
 
-  _handleTimeout (loserColor) {
-    return loserColor === 'white' ? 'black' : 'white'
-  }
-
   _handleGameRulesEnd () {
     if (this.game.in_checkmate()) {
-      return this.game.turn() === 'w' ? 'black' : 'white'
+      return { winner: this.game.turn() === 'w' ? 'black' : 'white', reason: 'Checkmate' }
     } else if (this.game.in_draw()) {
-      if (this.isArmageddon) return 'black'
-      return 'draw'
+      let reason = 'Draw'
+      if (this.game.in_stalemate()) reason = 'Stalemate'
+      else if (this.game.in_threefold_repetition()) reason = 'Repetition'
+      else if (this.game.insufficient_material()) reason = 'Insufficient Material'
+      else reason = '50-Move Rule'
+
+      if (this.isArmageddon) return { winner: 'black', reason: `Armageddon (${reason})` }
+      return { winner: 'draw', reason }
     }
-    return 'draw'
+    return { winner: 'draw', reason: 'Unknown' }
   }
 
   performMove (moveObj, isHuman = false) {

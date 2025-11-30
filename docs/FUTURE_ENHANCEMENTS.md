@@ -130,28 +130,28 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* Button to "Analyze on Lichess".
     *   *Implementation:* Form post to Lichess import URL with PGN.
     *   *Tasks:*
-        - [ ] Button.
+        - [x] Button.
     *   *Testing Plan:* Click.
     *   *Acceptance Criteria:*
-        - [ ] Opens Lichess with game.
+        - [x] Opens Lichess with game.
 
 189. **Chess.com API Integration (S)**
     *   *Description:* Button to "Analyze on Chess.com".
     *   *Implementation:* Link generation.
     *   *Tasks:*
-        - [ ] Button.
+        - [x] Button.
     *   *Testing Plan:* Click.
     *   *Acceptance Criteria:*
-        - [ ] Opens Chess.com.
+        - [x] Opens Chess.com.
 
 190. **Board Screenshot (S)**
     *   *Description:* Add a button to download the current board state as an image.
     *   *Implementation:* `html2canvas` or similar.
     *   *Tasks:*
-        - [ ] Button.
+        - [x] Button.
     *   *Testing Plan:* Click.
     *   *Acceptance Criteria:*
-        - [ ] Image downloaded.
+        - [x] Image downloaded.
 
 191. **Export to GIF (S)**
     *   *Description:* Generate an animated GIF of the game.
@@ -166,10 +166,10 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* Buttons to share the game PGN/FEN to Twitter/Reddit.
     *   *Implementation:* Intent URLs.
     *   *Tasks:*
-        - [ ] Icons.
+        - [x] Icons.
     *   *Testing Plan:* Click.
     *   *Acceptance Criteria:*
-        - [ ] Opens share dialog.
+        - [x] Opens share dialog.
 
 193. **Embed Code (S)**
     *   *Description:* Generate HTML iframe code to embed the board.
@@ -301,10 +301,10 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* A popup summary when the game ends.
     *   *Implementation:* Modal with result, reason, stats.
     *   *Tasks:*
-        - [ ] Modal.
+        - [x] Modal.
     *   *Testing Plan:* End game.
     *   *Acceptance Criteria:*
-        - [ ] Modal appears.
+        - [x] Modal appears.
 
 ### Epic 80: Advanced Engine Integrations
 **Size:** Medium (3 days)

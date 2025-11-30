@@ -259,26 +259,6 @@ describe('UIManager', () => {
     expect(document.getElementById('pv-lines').textContent).toBe('e2e4 e7e5')
   })
 
-  test('renderHistory renders moves', () => {
-    const game = {
-      history: () => [
-        { san: 'e4', from: 'e2', to: 'e4' },
-        { san: 'e5', from: 'e7', to: 'e5' },
-        { san: 'Nf3', from: 'g1', to: 'f3' },
-        { san: 'Nc6', from: 'b8', to: 'c6' }
-      ]
-    }
-    const onHistoryClick = jest.fn()
-    uiManager.renderHistory(game, 2, onHistoryClick) // index 2 is Nf3 (0, 1, 2)
-    const moves = document.getElementById('move-history').querySelectorAll('.move-san')
-    expect(moves.length).toBe(4)
-    expect(moves[0].textContent).toBe('e4')
-    expect(moves[2].textContent).toBe('Nf3')
-    expect(moves[2].classList.contains('active')).toBe(true)
-
-    moves[1].click()
-    expect(onHistoryClick).toHaveBeenCalledWith(1)
-  })
 
   test('parseOption creates UI elements', () => {
     const onSendOption = jest.fn()

@@ -43,6 +43,9 @@ window.UIManager = class UIManager {
       leaderboardModal: document.getElementById('leaderboard-modal'),
       analysisReportModal: document.getElementById('analysis-report-modal'),
       importAnalysisFile: document.getElementById('import-analysis-file'),
+      gameOverModal: document.getElementById('game-over-modal'),
+      gameOverResult: document.getElementById('game-over-result'),
+      gameOverReason: document.getElementById('game-over-reason'),
 
       // Inputs
       fenInput: document.getElementById('fen-input'),
@@ -108,6 +111,7 @@ window.UIManager = class UIManager {
     bindClick('load-fen-btn', () => this.callbacks.onLoadFen(this.elements.fenInput.value))
     bindClick('copy-fen-btn', () => this.callbacks.onCopyFen())
     bindClick('copy-fen-url-btn', () => this.callbacks.onCopyFenUrl())
+    bindClick('download-board-btn', () => this.callbacks.onDownloadScreenshot())
     bindClick('import-pgn-btn', () => this.elements.pgnImportModal.classList.add('active'))
     bindClick('export-pgn-btn', () => this.callbacks.onExportPgn())
     bindClick('copy-pgn-btn', () => this.callbacks.onCopyPgn())
@@ -134,6 +138,11 @@ window.UIManager = class UIManager {
       this.elements.pgnSettingsModal.classList.remove('active')
     })
     bindClick('close-pgn-settings-modal', () => this.elements.pgnSettingsModal.classList.remove('active'))
+
+    bindClick('analyze-lichess-btn', () => this.callbacks.onAnalyzeLichess())
+    bindClick('analyze-chesscom-btn', () => this.callbacks.onAnalyzeChessCom())
+    bindClick('share-twitter-btn', () => this.callbacks.onShareTwitter())
+    bindClick('share-reddit-btn', () => this.callbacks.onShareReddit())
 
     bindClick('close-pgn-modal', () => this.elements.pgnImportModal.classList.remove('active'))
     bindClick('load-pgn-confirm-btn', () => {
@@ -195,6 +204,15 @@ window.UIManager = class UIManager {
     bindClick('reset-leaderboard-btn', () => this.callbacks.onResetLeaderboard())
     bindClick('repertoire-builder-btn', () => this.callbacks.onRepertoireBuilder())
     bindClick('save-repertoire-btn', () => this.callbacks.onSaveRepertoire())
+    bindClick('close-game-over-modal', () => this.elements.gameOverModal.classList.remove('active'))
+    bindClick('game-over-new-game-btn', () => {
+      this.elements.gameOverModal.classList.remove('active')
+      this.callbacks.onNewGame()
+    })
+    bindClick('game-over-analyze-btn', () => {
+      this.elements.gameOverModal.classList.remove('active')
+      this.callbacks.onAnalyzeGame()
+    })
 
     // Tabs
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -259,6 +277,12 @@ window.UIManager = class UIManager {
     if (theme === 'light') document.body.classList.add('light-mode')
     else document.body.classList.remove('light-mode')
     localStorage.setItem('ui-theme', theme)
+  }
+
+  showGameOverModal (result, reason) {
+    if (this.elements.gameOverResult) this.elements.gameOverResult.textContent = result
+    if (this.elements.gameOverReason) this.elements.gameOverReason.textContent = reason
+    if (this.elements.gameOverModal) this.elements.gameOverModal.classList.add('active')
   }
 
   logToOutput (msg) {
@@ -342,42 +366,6 @@ window.UIManager = class UIManager {
     }
     percent = Math.max(0, Math.min(100, percent))
     this.elements.evalBarFill.style.height = `${percent}%`
-  }
-
-  renderHistory (game, currentViewIndex, onHistoryClick, notation = 'san') {
-    const history = game.history({ verbose: true })
-    this.elements.moveHistory.innerHTML = ''
-    const getStr = (m) => notation === 'lan' ? (m.from + m.to + (m.promotion || '')) : m.san
-
-    for (let i = 0; i < history.length; i += 2) {
-      const moveNum = Math.floor(i / 2) + 1
-      const whiteMoveObj = history[i]
-      const blackMoveObj = history[i + 1]
-
-      const numDiv = document.createElement('div')
-      numDiv.classList.add('move-number')
-      numDiv.textContent = moveNum + '.'
-      this.elements.moveHistory.appendChild(numDiv)
-
-      const whiteDiv = document.createElement('div')
-      whiteDiv.classList.add('move-san')
-      whiteDiv.textContent = getStr(whiteMoveObj)
-      if (currentViewIndex === i) whiteDiv.classList.add('active')
-      whiteDiv.addEventListener('click', () => onHistoryClick(i))
-      this.elements.moveHistory.appendChild(whiteDiv)
-
-      if (blackMoveObj) {
-        const blackDiv = document.createElement('div')
-        blackDiv.classList.add('move-san')
-        blackDiv.textContent = getStr(blackMoveObj)
-        if (currentViewIndex === i + 1) blackDiv.classList.add('active')
-        blackDiv.addEventListener('click', () => onHistoryClick(i + 1))
-        this.elements.moveHistory.appendChild(blackDiv)
-      }
-    }
-    if (currentViewIndex === -1) {
-      this.elements.moveHistory.scrollTop = this.elements.moveHistory.scrollHeight
-    }
   }
 
   showPromotionModal (color, pieceSet) {
