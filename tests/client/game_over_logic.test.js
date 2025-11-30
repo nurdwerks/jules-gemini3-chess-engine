@@ -17,6 +17,23 @@ global.SocketHandler = class {
   connect () {}
   send () {}
 }
+global.LocalEngineManager = class {
+  constructor (callbacks) { this.callbacks = callbacks }
+  load () {}
+  send () {}
+}
+global.CloudEngineManager = class {
+  constructor (callbacks) { this.callbacks = callbacks }
+  connect () {}
+  disconnect () {}
+  send () {}
+}
+global.EngineProxy = class {
+  constructor (def) { this.active = def }
+  setEngine (e) { this.active = e }
+  getEngine () { return this.active }
+  send (c) { if (this.active) this.active.send(c) }
+}
 global.BoardRenderer = class {
   render () {}
   setFlipped () {}
@@ -75,6 +92,8 @@ global.UIManager = class {
     uiCallbacks = callbacks
     this.elements = {
       status: { textContent: '' },
+      localEngineFile: {},
+      useLocalEngine: { checked: false, disabled: true },
       fenInput: { value: '' },
       pgnImportModal: { classList: { add: jest.fn(), remove: jest.fn() } },
       pgnInputArea: { value: '' },
@@ -112,6 +131,11 @@ describe('Game Over Logic', () => {
   beforeEach(() => {
     document.body.innerHTML = `
       <div id="status"></div>
+      <div id="local-engine-file"></div>
+      <input id="use-local-engine" type="checkbox" />
+      <input id="cloud-engine-url" />
+      <button id="connect-cloud-btn"></button>
+      <input id="use-cloud-engine" type="checkbox" />
       <input id="fen-input">
       <div id="handicap-select" value="none"></div>
       <button id="self-play-btn"></button>

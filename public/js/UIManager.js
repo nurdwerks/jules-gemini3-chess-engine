@@ -15,6 +15,11 @@ window.UIManager = class UIManager {
       status: document.getElementById('status'),
       engineOutput: document.getElementById('engine-output'),
       uciOptions: document.getElementById('uci-options'),
+      localEngineFile: document.getElementById('local-engine-file'),
+      useLocalEngine: document.getElementById('use-local-engine'),
+      cloudEngineUrl: document.getElementById('cloud-engine-url'),
+      connectCloudBtn: document.getElementById('connect-cloud-btn'),
+      useCloudEngine: document.getElementById('use-cloud-engine'),
       uciPresetSelect: document.getElementById('uci-preset-select'),
       moveHistory: document.getElementById('move-history'),
       pvLines: document.getElementById('pv-lines'),
@@ -251,6 +256,22 @@ window.UIManager = class UIManager {
     bindChange('uci-preset-select', (e) => this._applyPreset(e.target.value))
     bindChange('history-notation-toggle', (e) => this.callbacks.onHistoryNotationChange(e.target.value))
 
+    bindChange('local-engine-file', (e) => {
+      if (e.target.files.length > 0) {
+        if (this.callbacks.onLocalEngineLoad) this.callbacks.onLocalEngineLoad(e.target.files[0])
+      }
+    })
+    bindChange('use-local-engine', (e) => {
+      if (this.callbacks.onLocalEngineToggle) this.callbacks.onLocalEngineToggle(e.target.checked)
+    })
+
+    bindClick('connect-cloud-btn', () => {
+      if (this.callbacks.onCloudConnect) this.callbacks.onCloudConnect(this.elements.cloudEngineUrl.value)
+    })
+    bindChange('use-cloud-engine', (e) => {
+      if (this.callbacks.onCloudToggle) this.callbacks.onCloudToggle(e.target.checked)
+    })
+
     // Theme & Styling
     bindChange('ui-theme', (e) => this._setUITheme(e.target.value))
     bindChange('board-theme', (e) => this.callbacks.onBoardThemeChange(e.target.value))
@@ -440,7 +461,7 @@ window.UIManager = class UIManager {
   }
 
   createOptionUI (name, type, defaultValue, min, max, vars, onSendOption) {
-    const groupName = UIConstants.OPTION_GROUPS[name] || this._inferGroup(name)
+    const groupName = UIConstants.OPTION_GROUPS[name] || UIConstants.inferGroup(name)
     let group = this.elements.uciOptions.querySelector(`.option-group[data-group="${groupName}"]`)
     if (!group) {
       group = document.createElement('fieldset')
@@ -517,13 +538,6 @@ window.UIManager = class UIManager {
     if (this.elements.analysisProgressFill) this.elements.analysisProgressFill.style.width = `${pct}%`
   }
 
-  _inferGroup (name) {
-    if (['Pawn', 'Knight', 'Bishop', 'Rook', 'Queen', 'King', 'Doubled', 'Isolated', 'Backward', 'Shield', 'Outpost', 'Mobility'].some(k => name.includes(k))) {
-      return 'Tuning'
-    }
-    return 'Other'
-  }
-
   updateCapturedPieces (game, startingFen, pieceSet, isFlipped) {
     this.boardInfoRenderer.updateCapturedPieces(game, startingFen, pieceSet, isFlipped)
   }
@@ -547,40 +561,20 @@ window.UIManager = class UIManager {
   }
 
   _applyPreset (preset) {
-    const send = (n, v) => {
-      if (this.callbacks.onSendOption) this.callbacks.onSendOption(n, v)
-      // Update UI
-      const input = this.elements.uciOptions.querySelector(`[data-option-name="${n}"]`)
+    const options = UIConstants.PRESETS[preset]
+    if (!options) return
+
+    for (const [key, value] of Object.entries(options)) {
+      if (this.callbacks.onSendOption) this.callbacks.onSendOption(key, value)
+      const input = this.elements.uciOptions.querySelector(`[data-option-name="${key}"]`)
       if (input) {
-        if (input.type === 'checkbox') input.checked = v
-        else input.value = v
-        // Trigger change event if needed? No, we are setting it programmatically.
-        // But for slider, we need to update the number input too.
+        if (input.type === 'checkbox') input.checked = value
+        else input.value = value
         if (input.type === 'range') {
           const number = input.nextElementSibling
-          if (number && number.type === 'number') number.value = v
+          if (number && number.type === 'number') number.value = value
         }
       }
-    }
-
-    if (preset === 'blitz') {
-      send('Hash', 64)
-      send('Threads', 1)
-      send('MultiPV', 1)
-      send('Contempt', 0)
-      send('UCI_LimitStrength', false)
-    } else if (preset === 'analysis') {
-      send('Hash', 256)
-      send('Threads', 4)
-      send('MultiPV', 3)
-      send('Contempt', 0)
-      send('UCI_LimitStrength', false)
-    } else if (preset === 'stock') {
-      send('Hash', 16)
-      send('Threads', 1)
-      send('MultiPV', 1)
-      send('Contempt', 0)
-      send('UCI_LimitStrength', false)
     }
   }
 }

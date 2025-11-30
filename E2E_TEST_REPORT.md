@@ -60,6 +60,16 @@ The following scenarios are currently covered by the E2E test suite:
 - **Auto-Queen:** Verifies enabling Auto-Queen skips the promotion modal.
 - **Game History List:** Verifies that clicking moves in the history list navigates the board state.
 
+### 11. Engine Integrations (`engine_integrations.spec.js`)
+- **Local Engine Upload:** Verifies uploading a `.js` worker file and using it as the engine.
+- **Cloud Engine Connection:** Verifies connecting to a WebSocket URL and using it as the engine.
+- **Engine Switching:** Verifies toggling between Remote, Local, and Cloud engines.
+- **Self Play & Force Move:** Implicitly verifies these controls function with custom engines.
+
+### 12. Board Settings (`board_settings.spec.js`)
+- **Visual Toggles:** Verifies Auto-Flip, Blindfold Mode, and Streamer Mode switches update the UI/CSS.
+- **Board Sizing:** Verifies the Board Size slider updates the board container width.
+
 ---
 
 ## Missing Coverage / Untested Features
@@ -67,19 +77,13 @@ The following scenarios are currently covered by the E2E test suite:
 The following features and UI elements are present in the application (`public/index.html`) but are **not** currently covered by E2E tests:
 
 ### 1. Game Controls
-- **Force Move:** Forcing the engine to move immediately.
 - **New Chess960:** Starting a Chess960 game (distinct from standard New Game).
-- **Self Play:** Starting a self-play session.
 
 ### 2. Specific Game Modes
 - **Guess the Move:** "Guess the Move" mode logic and feedback.
 - **Vote Chess:** Vote aggregation and move execution (requires WebSocket simulation).
 
 ### 3. Board Settings (`.board-settings-panel`)
-- **Auto-Flip:** Automatic board rotation on turn change.
-- **Blindfold Mode / Disappearing Pieces:** Visual verification of piece opacity/visibility.
-- **Streamer Mode:** Green screen background application.
-- **Sliders:** Board Size and Animation Speed adjustments.
 - **File Uploads:** Uploading custom theme JSONs or piece set images.
 
 ### 4. Search & History Features

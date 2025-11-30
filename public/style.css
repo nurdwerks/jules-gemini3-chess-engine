@@ -1594,3 +1594,14 @@ body.high-contrast button:hover {
     font-weight: bold;
     z-index: 10000;
 }
+
+.engine-upload-section {
+    border-bottom: 1px solid var(--grafana-border);
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
+
+.engine-upload-label {
+    font-weight: bold;
+    color: var(--grafana-accent-blue);
+}
