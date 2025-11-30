@@ -12,6 +12,7 @@ class SettingsManager {
     this.bindExportImportEvents()
     this.bindSoundEvents()
     this.bindAccessibilityEvents()
+    this.bindAvatarEvents()
   }
 
   bindExportImportEvents () {
@@ -57,6 +58,50 @@ class SettingsManager {
             .catch(() => this.uiManager.showToast('Failed to load sound pack', 'error'))
         }
       })
+    }
+  }
+
+  bindAvatarEvents () {
+    const userAvatarInput = document.getElementById('upload-user-avatar')
+    if (userAvatarInput) {
+      userAvatarInput.addEventListener('change', (e) => {
+        const file = e.target.files[0]
+        if (file) {
+          const reader = new FileReader()
+          reader.onload = (evt) => {
+            const dataUrl = evt.target.result
+            localStorage.setItem('user-avatar', dataUrl)
+            this.updateAvatars()
+            this.uiManager.showToast('User avatar updated', 'success')
+          }
+          reader.readAsDataURL(file)
+        }
+      })
+    }
+
+    const engineAvatarInput = document.getElementById('upload-engine-avatar')
+    if (engineAvatarInput) {
+      engineAvatarInput.addEventListener('change', (e) => {
+        const file = e.target.files[0]
+        if (file) {
+          const reader = new FileReader()
+          reader.onload = (evt) => {
+            const dataUrl = evt.target.result
+            localStorage.setItem('engine-avatar', dataUrl)
+            this.updateAvatars()
+            this.uiManager.showToast('Engine avatar updated', 'success')
+          }
+          reader.readAsDataURL(file)
+        }
+      })
+    }
+  }
+
+  updateAvatars () {
+    const board = document.getElementById('chessboard')
+    const isFlipped = board && board.classList.contains('flipped')
+    if (this.uiManager.updateAvatars) {
+      this.uiManager.updateAvatars(isFlipped)
     }
   }
 

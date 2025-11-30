@@ -98,7 +98,11 @@ global.UIManager = class {
   renderAnalysisRow () {}
   updateAnalysisProgress () {}
   updateCapturedPieces () {}
+  updateAvatars () {}
 }
+
+global.ChatManager = class { init () {} }
+global.TutorialManager = class { start () {} }
 
 const initApp = require('../../public/client.js')
 

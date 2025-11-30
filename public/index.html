@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Jules & Gemini Chess</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -21,6 +22,7 @@
             <div class="panel-content">
                 <div id="a11y-status" class="sr-only" aria-live="polite"></div>
                 <div class="player-info" id="top-player">
+                    <img id="top-player-avatar" src="images/avatars/default.png" class="player-avatar" alt="Avatar" onerror="this.style.display='none'">
                     <div class="player-details">
                         <span class="player-name" id="top-player-name">Black</span>
                         <div id="top-material-diff" class="material-diff"></div>
@@ -41,6 +43,7 @@
                     </div>
                 </div>
                 <div class="player-info" id="bottom-player">
+                    <img id="bottom-player-avatar" src="images/avatars/default.png" class="player-avatar" alt="Avatar" onerror="this.style.display='none'">
                     <div class="player-details">
                         <span class="player-name" id="bottom-player-name">White</span>
                         <div id="bottom-material-diff" class="material-diff"></div>
@@ -194,6 +197,22 @@
                     </div>
                 </div>
             </div>
+            <div class="panel chat-panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">Chat</h2>
+                </div>
+                <div class="panel-content">
+                    <div id="chat-messages" style="height: 150px; overflow-y: auto; background: var(--grafana-input-bg); border: 1px solid var(--grafana-border); padding: 5px; margin-bottom: 5px; font-size: 13px;"></div>
+                    <div class="input-group" style="margin-bottom: 0;">
+                        <button id="emoji-trigger-btn" style="flex: 0 0 auto; width: 40px; padding: 0;">😀</button>
+                        <input type="text" id="chat-input" placeholder="Type a message...">
+                        <button id="chat-send-btn" style="flex: 0 0 auto; width: 60px;">Send</button>
+                    </div>
+                    <div id="emoji-picker" style="display: none; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-top: 5px; background: var(--grafana-input-bg); padding: 5px; border: 1px solid var(--grafana-border);">
+                        <!-- Emojis will be injected -->
+                    </div>
+                </div>
+            </div>
             <div class="panel opening-panel" id="opening-panel" style="display: none;">
                  <div class="panel-header">
                     <h2 class="panel-title">Opening Explorer</h2>
@@ -260,6 +279,7 @@
                         <button id="copy-fen-btn">Copy FEN</button>
                         <button id="copy-fen-url-btn">Copy FEN URL</button>
                         <button id="download-board-btn" title="Download Screenshot">📷 Screenshot</button>
+                        <button id="export-gif-btn" title="Export GIF">🎞️ GIF</button>
                         <button id="board-editor-btn">Board Editor</button>
                         <button id="import-pgn-btn">Import PGN</button>
                         <button id="export-pgn-btn">Export PGN</button>
@@ -280,6 +300,7 @@
                         <div class="button-group">
                             <button id="share-twitter-btn" style="background-color: #1DA1F2;">Twitter</button>
                             <button id="share-reddit-btn" style="background-color: #FF4500;">Reddit</button>
+                            <button id="share-qr-btn" style="background-color: #444;" title="Share via QR Code">QR</button>
                             <button id="embed-btn" style="background-color: #555;" data-i18n="embed-btn">Embed</button>
                         </div>
                     </div>
@@ -492,6 +513,14 @@
                          <label for="upload-piece-set-files">Upload Piece Set:</label>
                          <input type="file" id="upload-piece-set-files" multiple accept="image/*">
                      </div>
+                     <div class="option-item">
+                         <label for="upload-user-avatar">User Avatar:</label>
+                         <input type="file" id="upload-user-avatar" accept="image/*">
+                     </div>
+                     <div class="option-item">
+                         <label for="upload-engine-avatar">Engine Avatar:</label>
+                         <input type="file" id="upload-engine-avatar" accept="image/*">
+                     </div>
                      <hr class="separator">
                      <div class="option-item">
                          <label style="font-weight: bold; color: var(--grafana-accent-blue);">Settings Management:</label>
@@ -511,8 +540,10 @@
                          <button id="license-btn">License</button>
                          <button id="credits-btn">Credits</button>
                          <button id="shortcuts-btn">Shortcuts</button>
+                         <button id="tutorial-btn">Tutorial</button>
                      </div>
                      <div class="button-group mt-10">
+                         <button id="install-app-btn" style="display: none; background-color: var(--grafana-accent-blue);">Install App</button>
                          <button id="sponsor-btn" style="background-color: #ea4aaa;">Sponsor</button>
                          <button id="feedback-btn">Feedback</button>
                      </div>
@@ -693,6 +724,18 @@
           </div>
           <div class="modal-footer">
               <button id="start-tournament-confirm-btn">Start Tournament</button>
+          </div>
+      </div>
+  </div>
+  <div id="qr-modal" class="modal-overlay">
+      <div class="modal">
+          <div class="modal-header">
+              <h3 class="modal-title">Share Game</h3>
+              <button class="modal-close-btn" id="close-qr-modal">&times;</button>
+          </div>
+          <div class="modal-content" style="text-align: center;">
+              <div id="qrcode-container" style="display: inline-block; padding: 10px; background: white;"></div>
+              <p style="margin-top: 10px; font-size: 12px; color: var(--grafana-text-secondary);">Scan to open this game on mobile.</p>
           </div>
       </div>
   </div>
@@ -937,6 +980,8 @@
       </div>
   </div>
   <script src="libs/chess.js"></script>
+  <script src="libs/gif.js"></script>
+  <script src="libs/qrcode.min.js"></script>
   <script src="libs/jszip.min.js"></script>
   <script src="libs/d3.min.js"></script>
   <script src="js/ClientUtils.js"></script>

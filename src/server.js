@@ -175,6 +175,12 @@ wss.on('connection', (ws) => {
           voteRoom.removeClient(ws)
         } else if (data.action === 'vote') {
           voteRoom.handleVote(ws, data.move)
+        } else if (data.type === 'chat' || data.type === 'reaction') {
+          wss.clients.forEach(client => {
+            if (client !== ws && client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify(data))
+            }
+          })
         }
         return // Don't process as UCI
       } catch (e) {}

@@ -52,7 +52,13 @@ window.SocketHandler = class SocketHandler {
   _handleJsonMessage (msg) {
     try {
       const data = JSON.parse(msg)
-      if (this.callbacks.onVoteMessage) this.callbacks.onVoteMessage(data)
+      if (data.type === 'chat') {
+        if (this.callbacks.onChatMessage) this.callbacks.onChatMessage(data)
+      } else if (data.type === 'reaction') {
+        if (this.callbacks.onReaction) this.callbacks.onReaction(data)
+      } else {
+        if (this.callbacks.onVoteMessage) this.callbacks.onVoteMessage(data)
+      }
     } catch (e) {}
   }
 
