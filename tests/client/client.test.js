@@ -134,11 +134,22 @@ describe('client.js', () => {
     })
 
     global.AccessibilityManager = class {
-      constructor () {}
       announceMove () {}
     }
-    global.SettingsManager = class { constructor () {} }
-    global.ExternalActions = class { constructor () {} }
+    global.SettingsManager = class {}
+    global.ExternalActions = class {}
+    global.AutoSaveManager = class {
+      saveGame () {}
+      checkForSavedGame () {}
+      restoreGame () {}
+      clearSave () {}
+    }
+    global.InfoManager = class {}
+    global.VisualEffects = class {
+      triggerShake () {}
+      startConfetti () {}
+    }
+    global.BatterySaver = class {}
 
     global.ClientUtils = {
       parseInfo: jest.fn(),

@@ -33,7 +33,7 @@ describe('External Actions', () => {
 
     game = {}
 
-    global.Blob = class { constructor() {} }
+    global.Blob = class {}
     global.URL.createObjectURL = jest.fn()
     global.URL.revokeObjectURL = jest.fn()
 
@@ -45,7 +45,9 @@ describe('External Actions', () => {
 
   test('Analyze on Lichess submits form', () => {
     const formMock = {
-      method: '', action: '', target: '',
+      method: '',
+      action: '',
+      target: '',
       appendChild: jest.fn(),
       submit: jest.fn()
     }
@@ -103,8 +105,8 @@ describe('External Actions', () => {
     }
     const originalCreateElement = document.createElement.bind(document)
     document.createElement = jest.fn((tag) => {
-        if (tag === 'a') return anchorMock
-        return originalCreateElement(tag)
+      if (tag === 'a') return anchorMock
+      return originalCreateElement(tag)
     })
     document.body.appendChild = jest.fn()
     document.body.removeChild = jest.fn()

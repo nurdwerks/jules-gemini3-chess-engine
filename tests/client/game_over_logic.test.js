@@ -55,6 +55,10 @@ global.TreeManager = class {}
 global.AccessibilityManager = class {}
 global.SettingsManager = class {}
 global.ExternalActions = class {}
+global.AutoSaveManager = class { saveGame () {} checkForSavedGame () {} restoreGame () {} clearSave () {} }
+global.InfoManager = class {}
+global.VisualEffects = class { triggerShake () {} startConfetti () {} }
+global.BatterySaver = class {}
 
 // Mock UIManager to capture calls
 const showGameOverModalMock = jest.fn()

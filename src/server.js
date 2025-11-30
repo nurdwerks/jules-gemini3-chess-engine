@@ -109,6 +109,28 @@ const server = http.createServer((req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(content)
     })
+  } else if (req.method === 'GET' && req.url === '/changelog') {
+    const filePath = path.join(__dirname, '../CHANGELOG.md')
+    fs.readFile(filePath, (err, content) => {
+      if (err) {
+        res.writeHead(404, { 'Content-Type': 'text/plain' })
+        res.end('Changelog not found')
+        return
+      }
+      res.writeHead(200, { 'Content-Type': 'text/markdown; charset=utf-8' })
+      res.end(content)
+    })
+  } else if (req.method === 'GET' && req.url === '/license') {
+    const filePath = path.join(__dirname, '../LICENSE')
+    fs.readFile(filePath, (err, content) => {
+      if (err) {
+        res.writeHead(404, { 'Content-Type': 'text/plain' })
+        res.end('License not found')
+        return
+      }
+      res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' })
+      res.end(content)
+    })
   } else {
     serveStatic(req, res)
   }

@@ -1,5 +1,6 @@
 /* eslint-env browser */
-/* global Chess, SocketHandler, BoardRenderer, GameManager, AnalysisManager, TrainingManager, UIManager, ArrowManager, SoundManager, ClientUtils, MoveHandler, LeaderboardManager, PgnManager, FenManager, BoardEditor, DeveloperManager, MoveListManager, OpeningExplorer, TreeManager, AccessibilityManager, SettingsManager, ExternalActions */
+/* eslint-disable max-lines */
+/* global Chess, SocketHandler, BoardRenderer, GameManager, AnalysisManager, TrainingManager, UIManager, ArrowManager, SoundManager, ClientUtils, MoveHandler, LeaderboardManager, PgnManager, FenManager, BoardEditor, DeveloperManager, MoveListManager, OpeningExplorer, TreeManager, AccessibilityManager, SettingsManager, ExternalActions, AutoSaveManager, InfoManager, VisualEffects, BatterySaver */
 
 const initApp = () => {
   try {
@@ -12,6 +13,10 @@ const initApp = () => {
     let accessibilityManager = null
     let settingsManager = null
     let externalActions = null
+    let autoSaveManager = null
+    let infoManager = null
+    let visualEffects = null
+    let batterySaver = null
 
     // Shared State
     const state = {
@@ -336,6 +341,7 @@ const initApp = () => {
         render()
         uiManager.showToast('New Game Started', 'info')
         if (openingExplorer) openingExplorer.refresh()
+        if (autoSaveManager) autoSaveManager.saveGame()
       },
       onMove: (result) => {
         render()
@@ -348,6 +354,7 @@ const initApp = () => {
             render()
           }
           if (accessibilityManager) accessibilityManager.announceMove(result)
+          if (autoSaveManager) autoSaveManager.saveGame()
         }
       },
       onGameOver: (outcome) => {
@@ -363,6 +370,11 @@ const initApp = () => {
         uiManager.logToOutput(msg)
         if (gameManager.isDuelActive) {
           leaderboardManager.updateLeaderboard(gameManager.engineAConfig.name, gameManager.engineBConfig.name, outcome.winner)
+        }
+        if (autoSaveManager) autoSaveManager.clearSave()
+        if (visualEffects) {
+          if (outcome.reason === 'Checkmate') visualEffects.triggerShake()
+          if (outcome.winner !== 'draw') visualEffects.startConfetti()
         }
       },
       onClockUpdate: () => renderClocks()
@@ -396,6 +408,20 @@ const initApp = () => {
 
     // Settings Manager
     settingsManager = new SettingsManager(uiManager, SoundManager, accessibilityManager)
+
+    // Auto Save Manager
+    autoSaveManager = new AutoSaveManager(gameManager, uiManager, game)
+
+    // Info Manager
+    // eslint-disable-next-line no-unused-vars
+    infoManager = new InfoManager(uiManager)
+
+    // Visual Effects
+    visualEffects = new VisualEffects(uiManager)
+
+    // Battery Saver
+    // eslint-disable-next-line no-unused-vars
+    batterySaver = new BatterySaver(uiManager)
 
     const moveHandler = new MoveHandler(game, gameManager, uiManager, boardRenderer, trainingManager, state, render)
 
@@ -556,6 +582,22 @@ const initApp = () => {
 
     // Check for FEN in URL
     ClientUtils.checkFenInUrl(gameManager, uiManager)
+
+    // Check for Auto Save
+    if (autoSaveManager) {
+      const savedState = autoSaveManager.checkForSavedGame()
+      if (savedState) {
+        // We found a saved game. Ideally we should prompt the user, but for "Crash Recovery" (Story 180),
+        // we might want to just restore it or show a toast.
+        // Let's restore it automatically for now, as per the story "Automatically restore...".
+        // But we should prioritize FEN in URL if present.
+        const urlParams = new URLSearchParams(window.location.search)
+        if (!urlParams.has('fen')) {
+          autoSaveManager.restoreGame(savedState)
+          render()
+        }
+      }
+    }
 
     socketHandler.connect()
 

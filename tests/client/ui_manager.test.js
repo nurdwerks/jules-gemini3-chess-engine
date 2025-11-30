@@ -259,7 +259,6 @@ describe('UIManager', () => {
     expect(document.getElementById('pv-lines').textContent).toBe('e2e4 e7e5')
   })
 
-
   test('parseOption creates UI elements', () => {
     const onSendOption = jest.fn()
     uiManager.parseOption('option name Threads type spin default 1 min 1 max 128', onSendOption)
