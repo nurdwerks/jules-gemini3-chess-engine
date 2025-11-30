@@ -1,160 +1,183 @@
-const http = require('http')
-const fs = require('fs')
+const express = require('express')
+const session = require('express-session')
+const cookieParser = require('cookie-parser')
+const bodyParser = require('body-parser')
 const path = require('path')
+const http = require('http')
 const WebSocket = require('ws')
 const UCI = require('./UCI')
 const VoteRoom = require('./VoteRoom')
+const Auth = require('./Auth')
+const db = require('./Database')
+const fs = require('fs')
 
 const PORT = 3000
+const app = express()
+const server = http.createServer(app)
+const wss = new WebSocket.Server({ server })
 const voteRoom = new VoteRoom()
 
-const handleUpload = (req, res) => {
-  const filename = req.headers['x-filename']
-  if (!filename) {
-    res.writeHead(400)
-    res.end('Missing filename')
-    return
-  }
+// Middleware
+app.use(bodyParser.json())
+app.use(cookieParser())
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'secret-key-jules-gemini-chess',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 } // Secure true if HTTPS
+}))
 
-  // Security: Validate Extension
-  const ext = path.extname(filename).toLowerCase()
-  if (ext !== '.bin' && ext !== '.nnue') {
-    res.writeHead(400)
-    res.end('Invalid file type. Only .bin and .nnue allowed.')
-    return
-  }
+// Static Files
+app.use(express.static(path.join(__dirname, '../public')))
 
-  // Security: Validate Size
-  const contentLength = req.headers['content-length']
-  if (contentLength && parseInt(contentLength, 10) > 50 * 1024 * 1024) {
-    res.writeHead(413)
-    res.end('File too large (max 50MB)')
-    return
-  }
+// Upload Route
+app.post('/upload', (req, res) => {
+    const filename = req.headers['x-filename']
+    if (!filename) return res.status(400).send('Missing filename')
 
-  const safeName = path.basename(filename)
-  const targetDir = path.join(__dirname, '../uploads')
-  const targetPath = path.join(targetDir, safeName)
+    const ext = path.extname(filename).toLowerCase()
+    if (ext !== '.bin' && ext !== '.nnue') return res.status(400).send('Invalid file type')
 
-  if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir)
-
-  const writeStream = fs.createWriteStream(targetPath)
-  req.pipe(writeStream)
-
-  writeStream.on('finish', () => {
-    res.writeHead(200, { 'Content-Type': 'application/json' })
-    res.end(JSON.stringify({ path: `uploads/${safeName}` }))
-  })
-
-  writeStream.on('error', (err) => {
-    res.writeHead(500)
-    res.end('Upload failed: ' + err.message)
-  })
-}
-
-const getContentType = (extname) => {
-  switch (extname) {
-    case '.js': return 'text/javascript; charset=utf-8'
-    case '.css': return 'text/css; charset=utf-8'
-    case '.json': return 'application/json; charset=utf-8'
-    case '.png': return 'image/png'
-    case '.jpg': return 'image/jpg'
-    case '.svg': return 'image/svg+xml'
-    default: return 'text/html; charset=utf-8'
-  }
-}
-
-const serveStatic = (req, res) => {
-  const parsedUrl = new URL(req.url, `http://${req.headers.host}`)
-  const pathname = parsedUrl.pathname
-  const filePath = path.join(__dirname, '../public', pathname === '/' ? 'index.html' : pathname)
-  const extname = path.extname(filePath)
-  const contentType = getContentType(extname)
-
-  fs.readFile(filePath, (err, content) => {
-    if (err) {
-      if (err.code === 'ENOENT') {
-        fs.readFile(path.join(__dirname, '../public', '404.html'), (_err2, content404) => {
-          if (_err2) {
-            res.writeHead(404, { 'Content-Type': 'text/plain' })
-            res.end('404 Not Found')
-            return
-          }
-          res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' })
-          res.end(content404, 'utf-8')
-        })
-      } else {
-        res.writeHead(500)
-        res.end('Server Error: ' + err.code)
-      }
-    } else {
-      res.writeHead(200, { 'Content-Type': contentType })
-      res.end(content, 'utf-8')
+    const contentLength = req.headers['content-length']
+    if (contentLength && parseInt(contentLength, 10) > 50 * 1024 * 1024) {
+      return res.status(413).send('File too large')
     }
-  })
-}
 
-const serveFile = (res, filePath, contentType) => {
-  fs.readFile(filePath, (err, content) => {
-    if (err) {
-      res.writeHead(404, { 'Content-Type': 'text/plain' })
-      res.end('File not found')
-      return
-    }
-    res.writeHead(200, { 'Content-Type': contentType })
-    res.end(content)
-  })
-}
+    const safeName = path.basename(filename)
+    const targetDir = path.join(__dirname, '../uploads')
+    const targetPath = path.join(targetDir, safeName)
 
-const handleVersion = (res) => {
-  const filePath = path.join(__dirname, '../package.json')
-  fs.readFile(filePath, (err, content) => {
-    if (err) {
-      res.writeHead(500, { 'Content-Type': 'text/plain' })
-      res.end('Error reading package.json')
-      return
-    }
-    try {
-      const pkg = JSON.parse(content)
-      res.writeHead(200, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify({ version: pkg.version }))
-    } catch (e) {
-      res.writeHead(500)
-      res.end('Error parsing package.json')
-    }
-  })
-}
+    if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir)
 
-// HTTP Server to serve static files
-const GET_ROUTES = {
-  '/debug_tree.json': (res) => serveFile(res, path.join(__dirname, '../debug_tree.json'), 'application/json'),
-  '/changelog': (res) => serveFile(res, path.join(__dirname, '../CHANGELOG.md'), 'text/markdown; charset=utf-8'),
-  '/license': (res) => serveFile(res, path.join(__dirname, '../LICENSE'), 'text/plain; charset=utf-8'),
-  '/version': handleVersion
-}
+    const writeStream = fs.createWriteStream(targetPath)
+    req.pipe(writeStream)
 
-const server = http.createServer((req, res) => {
-  if (req.method === 'POST' && req.url === '/upload') {
-    handleUpload(req, res)
-    return
-  }
+    writeStream.on('finish', () => {
+      res.json({ path: `uploads/${safeName}` })
+    })
 
-  if (req.method === 'GET') {
-    const handler = GET_ROUTES[req.url]
-    if (handler) {
-      handler(res)
-      return
-    }
-  }
-
-  serveStatic(req, res)
+    writeStream.on('error', (err) => {
+      res.status(500).send('Upload failed: ' + err.message)
+    })
 })
 
-// WebSocket Server
-const wss = new WebSocket.Server({ server })
+// Special Files
+app.get('/debug_tree.json', (req, res) => res.sendFile(path.join(__dirname, '../debug_tree.json')))
+app.get('/changelog', (req, res) => res.sendFile(path.join(__dirname, '../CHANGELOG.md')))
+app.get('/license', (req, res) => res.sendFile(path.join(__dirname, '../LICENSE')))
+app.get('/version', (req, res) => {
+    const pkg = require('../package.json')
+    res.json({ version: pkg.version })
+})
 
-wss.on('connection', (ws) => {
-  console.log('Client connected')
+// --- Auth Routes ---
+
+app.post('/api/auth/register-options', async (req, res) => {
+    const { username } = req.body
+    if (!username) return res.status(400).json({ error: 'Username required' })
+
+    try {
+        const options = await Auth.getRegisterOptions(username)
+        req.session.username = username // Store intent
+        res.json(options)
+    } catch (e) {
+        res.status(500).json({ error: e.message })
+    }
+})
+
+app.post('/api/auth/register-verify', async (req, res) => {
+    const { username } = req.session // Retrieve from session
+    const body = req.body
+
+    try {
+        const { verified, user } = await Auth.verifyRegister(username, body)
+        if (verified) {
+            req.session.loggedIn = true
+            req.session.user = user
+            res.json({ verified: true })
+        } else {
+            res.status(400).json({ verified: false })
+        }
+    } catch (e) {
+        res.status(500).json({ error: e.message })
+    }
+})
+
+app.post('/api/auth/login-options', async (req, res) => {
+    const { username } = req.body
+
+    try {
+        const options = await Auth.getLoginOptions(username)
+        req.session.username = username
+        res.json(options)
+    } catch (e) {
+        res.status(500).json({ error: e.message })
+    }
+})
+
+app.post('/api/auth/login-verify', async (req, res) => {
+    const { username } = req.session
+    const body = req.body
+
+    try {
+        const { verified, user } = await Auth.verifyLogin(username, body)
+        if (verified) {
+            req.session.loggedIn = true
+            req.session.user = user
+            res.json({ verified: true })
+        } else {
+            res.status(400).json({ verified: false })
+        }
+    } catch (e) {
+        res.status(500).json({ error: e.message })
+    }
+})
+
+app.get('/api/user/me', (req, res) => {
+    if (req.session.loggedIn) {
+        res.json({ loggedIn: true, user: req.session.user })
+    } else {
+        res.json({ loggedIn: false })
+    }
+})
+
+app.post('/api/user/sync', async (req, res) => {
+    if (!req.session.loggedIn) return res.status(401).json({ error: 'Unauthorized' })
+
+    const { data } = req.body
+    try {
+        const username = req.session.user.username
+        await db.updateUserData(username, data)
+        const updatedUser = await db.getUser(username)
+        req.session.user = updatedUser // Update session
+        res.json({ success: true, userData: updatedUser.userData })
+    } catch (e) {
+        res.status(500).json({ error: e.message })
+    }
+})
+
+app.get('/api/user/data', async (req, res) => {
+    if (!req.session.loggedIn) return res.status(401).json({ error: 'Unauthorized' })
+    try {
+        const username = req.session.user.username
+        const user = await db.getUser(username)
+        res.json(user.userData || {})
+    } catch(e) {
+        res.status(500).json({ error: e.message })
+    }
+})
+
+app.post('/api/auth/logout', (req, res) => {
+    req.session.destroy()
+    res.json({ success: true })
+})
+
+
+// WebSocket Server
+wss.on('connection', (ws, req) => {
+  // console.log('Client connected')
+  // We can access session via request if we share the session store,
+  // but for now we'll rely on the HTTP gatecheck.
 
   const uci = new UCI((msg) => {
     if (ws.readyState === WebSocket.OPEN) {
@@ -187,14 +210,12 @@ wss.on('connection', (ws) => {
     }
 
     const cmd = msgStr
-    // console.log(`Received command: ${cmd}`); // Optional logging
     uci.processCommand(cmd)
   })
 
   ws.on('close', () => {
-    console.log('Client disconnected')
+    // console.log('Client disconnected')
     voteRoom.removeClient(ws)
-    // UCI instance will be garbage collected
   })
 })
 
