@@ -30,12 +30,20 @@ class FenManager {
   loadFen (fen) {
     // Basic validation
     if (!fen) return
+
+    // Detailed validation
+    const validation = this.game.validate_fen(fen)
+    if (!validation.valid) {
+      this.uiManager.showToast(`Invalid FEN: ${validation.error}`, 'error')
+      return
+    }
+
     const result = this.game.load(fen)
     if (result) {
       if (this.onFenLoaded) this.onFenLoaded(fen)
       this.uiManager.showToast('FEN loaded', 'success')
     } else {
-      this.uiManager.showToast('Invalid FEN', 'error')
+      this.uiManager.showToast('Invalid FEN (unknown error)', 'error')
     }
   }
 

@@ -167,6 +167,7 @@ class Search {
     if (this.options.onInfo) {
       const elapsed = Date.now() - this.startTime
       const nps = elapsed > 0 ? Math.floor(this.nodes / (elapsed / 1000)) : 0
+      const hashFull = this.tt.getHashFull()
       const pvLine = SearchUtils.getPVLine(this.board, this.tt, depth, move)
       const pvString = pvLine.map(m => SearchUtils.moveToString(this.board, m)).join(' ')
       let scoreString = `cp ${score}`
@@ -174,7 +175,7 @@ class Search {
         const mateIn = Math.ceil((20000 - Math.abs(score)) / 2) * (score > 0 ? 1 : -1)
         scoreString = `mate ${mateIn}`
       }
-      this.options.onInfo(`depth ${depth} multipv ${pvIdx + 1} score ${scoreString} nodes ${this.nodes} nps ${nps} time ${elapsed} pv ${pvString}`)
+      this.options.onInfo(`depth ${depth} multipv ${pvIdx + 1} score ${scoreString} nodes ${this.nodes} nps ${nps} hashfull ${hashFull} time ${elapsed} pv ${pvString}`)
     }
   }
 

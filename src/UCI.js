@@ -108,10 +108,49 @@ class UCI {
       ponderhit: () => this.cmdPonderHit(),
       quit: () => process.exit(0),
       debug_tree: () => this.cmdDebugTree(),
-      bench: () => this.cmdBench()
+      bench: () => this.cmdBench(),
+      perft: () => this.cmdPerft(parts.slice(1)),
+      verify: () => this.cmdVerify(),
+      garbage_collect: () => this.cmdGarbageCollect(),
+      zobrist: () => this.cmdZobrist(),
+      memory: () => this.cmdMemory()
     }
 
     if (handlers[cmd]) handlers[cmd]()
+  }
+
+  cmdPerft (args) {
+    const depth = parseInt(args[0], 10) || 5
+    this.output(`info string running perft ${depth}`)
+    const start = performance.now()
+    const nodes = this.board.perft(depth)
+    const time = performance.now() - start
+    const nps = Math.floor(nodes / (time / 1000))
+    this.output(`perft_result ${nodes} ${Math.floor(time)} ${nps}`)
+  }
+
+  cmdVerify () {
+    const result = this.board.verify()
+    this.output(`sanity ${result}`)
+  }
+
+  cmdGarbageCollect () {
+    if (global.gc) {
+      global.gc()
+      this.output('info string GC executed')
+    } else {
+      this.output('info string GC not exposed (run with --expose-gc)')
+    }
+  }
+
+  cmdZobrist () {
+    this.output(`zobrist 0x${this.board.zobristKey.toString(16)}`)
+  }
+
+  cmdMemory () {
+    const mem = process.memoryUsage()
+    const rss = Math.round(mem.rss / 1024 / 1024)
+    this.output(`memory_usage ${rss}`)
   }
 
   cmdUCI () {
