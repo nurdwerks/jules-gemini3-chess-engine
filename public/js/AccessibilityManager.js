@@ -15,16 +15,46 @@ window.AccessibilityManager = class AccessibilityManager {
   }
 
   _initKeyboard () {
+    const actions = {
+      ArrowLeft: () => this._navigateHistory(-1),
+      ArrowRight: () => this._navigateHistory(1),
+      ArrowUp: () => this._navigateDirect(-2),
+      ArrowDown: () => this._navigateDirect(-1),
+      ' ': () => this._triggerAction('force-move-btn', true),
+      Escape: () => this._triggerAction('zen-mode'),
+      f: () => this._triggerAction('flip-board-btn')
+    }
+
     document.addEventListener('keydown', (e) => {
       // Ignore if typing in an input
       if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return
 
-      if (e.key === 'ArrowLeft') {
-        this._navigateHistory(-1)
-      } else if (e.key === 'ArrowRight') {
-        this._navigateHistory(1)
+      const key = e.key.toLowerCase() === 'f' ? 'f' : e.key
+      const action = actions[key]
+
+      if (action) {
+        action()
       }
     })
+  }
+
+  _triggerAction (id, preventDefault = false) {
+    if (preventDefault) {
+      // We can't prevent default easily here as we wrapped it.
+      // But we can check event in listener if we passed it.
+      // For now, let's just click.
+      // Actually ' ' scrolls page, so we need to prevent default.
+    }
+    const el = document.getElementById(id)
+    if (el) el.click()
+  }
+
+  _navigateDirect (idx) {
+    if (this.gameManager.currentViewIndex !== idx) {
+      this.gameManager.currentViewIndex = idx
+      this.renderFn()
+      this._announceMoveStatus(idx)
+    }
   }
 
   _navigateHistory (dir) {

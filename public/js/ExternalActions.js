@@ -104,7 +104,9 @@ window.ExternalActions = class ExternalActions {
 
     const moves = this.game.history({ verbose: true })
     const tempReplay = new window.Chess(this.game.fen())
-    while (tempReplay.undo()) {}
+    while (tempReplay.undo()) {
+      // Undo all moves to get to start
+    }
     const startFen = tempReplay.fen()
 
     const tempGame = new window.Chess(startFen)
