@@ -1,19 +1,32 @@
 const { chromium } = require('playwright');
+const fs = require('fs');
 
 (async () => {
-  const browser = await chromium.launch()
-  const page = await browser.newPage()
-  await page.goto('http://localhost:3000')
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
 
-  // Wait for sidebar
-  await page.waitForSelector('.sidebar', { state: 'visible' })
+  try {
+    await page.goto('http://localhost:3000');
 
-  // Check High Contrast Mode
-  await page.check('#high-contrast')
-  await page.waitForTimeout(500) // Wait for style application
-  await page.screenshot({ path: 'verification/high_contrast_mode.png', fullPage: true })
+    // 1. Open Accessibility Panel (sidebar is open by default on desktop)
+    // Check 'High Contrast'
+    await page.check('#high-contrast');
 
-  console.log('Screenshot taken: verification/high_contrast_mode.png')
+    // Check 'Voice Announcements'
+    await page.check('#voice-announce');
 
-  await browser.close()
-})()
+    // Wait a bit
+    await page.waitForTimeout(500);
+
+    // Take screenshot
+    if (!fs.existsSync('verification')) fs.mkdirSync('verification');
+    await page.screenshot({ path: 'verification/accessibility_high_contrast.png', fullPage: true });
+
+    console.log('Screenshot taken: verification/accessibility_high_contrast.png');
+
+  } catch (err) {
+    console.error(err);
+  } finally {
+    await browser.close();
+  }
+})();
