@@ -5,3 +5,4 @@ coverage/
 uploads/
 playwright-report/
 test-results/
+.nyc_output/
