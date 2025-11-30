@@ -259,12 +259,28 @@
                     <div class="button-group mt-10">
                         <button id="copy-fen-btn">Copy FEN</button>
                         <button id="copy-fen-url-btn">Copy FEN URL</button>
+                        <button id="download-board-btn" title="Download Screenshot">📷 Screenshot</button>
                         <button id="board-editor-btn">Board Editor</button>
                         <button id="import-pgn-btn">Import PGN</button>
                         <button id="export-pgn-btn">Export PGN</button>
                         <button id="copy-pgn-btn">Copy PGN</button>
                         <button id="download-pgn-btn">Download PGN</button>
                         <button id="pgn-settings-btn">PGN Settings</button>
+                    </div>
+                    <div class="separator"></div>
+                    <div class="option-item">
+                        <label>External Analysis:</label>
+                        <div class="button-group">
+                            <button id="analyze-lichess-btn" title="Analyze on Lichess">Lichess</button>
+                            <button id="analyze-chesscom-btn" title="Analyze on Chess.com">Chess.com</button>
+                        </div>
+                    </div>
+                    <div class="option-item">
+                        <label>Share:</label>
+                        <div class="button-group">
+                            <button id="share-twitter-btn" style="background-color: #1DA1F2;">Twitter</button>
+                            <button id="share-reddit-btn" style="background-color: #FF4500;">Reddit</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -650,6 +666,22 @@
           </div>
       </div>
   </div>
+  <div id="game-over-modal" class="modal-overlay">
+      <div class="modal">
+          <div class="modal-header">
+              <h3 class="modal-title">Game Over</h3>
+              <button class="modal-close-btn" id="close-game-over-modal">&times;</button>
+          </div>
+          <div class="modal-content" style="text-align: center;">
+              <h2 id="game-over-result" style="margin: 10px 0;">-</h2>
+              <p id="game-over-reason" style="color: var(--grafana-text-secondary); margin-bottom: 20px;">-</p>
+              <div class="button-group" style="justify-content: center;">
+                  <button id="game-over-new-game-btn">New Game</button>
+                  <button id="game-over-analyze-btn">Analyze</button>
+              </div>
+          </div>
+      </div>
+  </div>
   <div id="leaderboard-modal" class="modal-overlay">
       <div class="modal">
           <div class="modal-header">
@@ -902,6 +934,7 @@
   <script src="js/OpeningExplorer.js"></script>
   <script src="js/TreeManager.js"></script>
   <script src="js/SettingsManager.js"></script>
+  <script src="js/ExternalActions.js"></script>
   <script src="tournament.js"></script>
   <script src="client.js"></script>
   <div id="toast-container"></div>

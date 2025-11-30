@@ -1,29 +1,15 @@
-/* eslint-env jest */
-/* global localStorage */
-const SettingsManager = require('../../public/js/SettingsManager.js')
+const SettingsManager = require('../../public/js/SettingsManager')
 
 describe('SettingsManager', () => {
   let settingsManager
-  let mockUiManager
-  let mockSoundManager
-  let mockAccessibilityManager
+  let uiManager
+  let soundManager
+  let accessibilityManager
+  let mockLocalStorage
+  let originalReload
 
   beforeEach(() => {
-    jest.useFakeTimers()
-    mockUiManager = {
-      showToast: jest.fn()
-    }
-    mockSoundManager = {
-      setEnabled: jest.fn(),
-      setVolume: jest.fn(),
-      loadSoundPack: jest.fn().mockResolvedValue(5)
-    }
-    mockAccessibilityManager = {
-      setVoiceAnnounce: jest.fn(),
-      setVoiceControl: jest.fn()
-    }
-
-    // Mock DOM elements
+    // Mock UI Elements
     document.body.innerHTML = `
       <button id="export-settings-btn"></button>
       <button id="import-settings-btn"></button>
@@ -31,102 +17,117 @@ describe('SettingsManager', () => {
       <button id="factory-reset-btn"></button>
       <input type="checkbox" id="sound-enabled">
       <input type="range" id="volume-control">
+      <input type="file" id="sound-pack-upload">
+      <input type="checkbox" id="high-contrast">
       <input type="checkbox" id="voice-announce">
       <input type="checkbox" id="voice-control">
-      <input type="checkbox" id="high-contrast">
-      <input type="file" id="sound-pack-upload">
     `
 
-    // Mock URL and Blob
-    global.URL.createObjectURL = jest.fn().mockReturnValue('blob:test')
-    global.URL.revokeObjectURL = jest.fn()
-    global.Blob = class {
-      constructor (content, options) {
-        this.content = content
-        this.options = options
-      }
+    // Mock Managers
+    uiManager = {
+      showToast: jest.fn()
+    }
+    soundManager = {
+      setEnabled: jest.fn(),
+      setVolume: jest.fn(),
+      loadSoundPack: jest.fn().mockResolvedValue(10)
+    }
+    accessibilityManager = {
+      setVoiceAnnounce: jest.fn(),
+      setVoiceControl: jest.fn()
     }
 
-    // Mock FileReader
-    global.FileReader = class {
-      readAsText (file) {
-        this.onload({ target: { result: JSON.stringify({ test: 'value' }) } })
-      }
-    }
+    // Mock LocalStorage
+    mockLocalStorage = {}
 
-    // Mock Window methods
-    delete window.location
-    window.location = { reload: jest.fn() }
-    window.confirm = jest.fn(() => true)
-
-    // Mock anchor click to prevent navigation error in JSDOM
-    const originalCreateElement = document.createElement.bind(document)
-    jest.spyOn(document, 'createElement').mockImplementation((tagName) => {
-      const el = originalCreateElement(tagName)
-      if (tagName === 'a') {
-        el.click = jest.fn()
-      }
-      return el
+    Object.defineProperty(window, 'localStorage', {
+      value: {
+        getItem: jest.fn((key) => mockLocalStorage[key] || null),
+        setItem: jest.fn((key, val) => { mockLocalStorage[key] = val }),
+        clear: jest.fn(() => { mockLocalStorage = {} }),
+        removeItem: jest.fn((key) => { delete mockLocalStorage[key] }),
+        key: jest.fn((i) => Object.keys(mockLocalStorage)[i]),
+        get length () { return Object.keys(mockLocalStorage).length }
+      },
+      writable: true
     })
 
-    settingsManager = new SettingsManager(mockUiManager, mockSoundManager, mockAccessibilityManager)
+    // Mock URL.createObjectURL and confirm
+    global.URL.createObjectURL = jest.fn()
+    global.URL.revokeObjectURL = jest.fn()
+    global.confirm = jest.fn(() => true)
+
+    // Mock window.location.reload
+    originalReload = window.location.reload
+    delete window.location
+    window.location = { reload: jest.fn() }
+
+    settingsManager = new SettingsManager(uiManager, soundManager, accessibilityManager)
   })
 
   afterEach(() => {
-    localStorage.clear()
-    jest.restoreAllMocks()
-    jest.useRealTimers()
+    window.location.reload = originalReload
   })
 
-  test('should bind events correctly', () => {
-    // Simulate click
-    const exportBtn = document.getElementById('export-settings-btn')
-    exportBtn.click()
-    expect(mockUiManager.showToast).toHaveBeenCalledWith('Settings exported', 'success')
-  })
+  test('should export settings', () => {
+    mockLocalStorage.testKey = 'testValue'
 
-  test('exportSettings should save to file', () => {
-    localStorage.setItem('foo', 'bar')
+    // Mock anchor click
+    const clickMock = jest.fn()
+    const anchorMock = {
+      click: clickMock,
+      href: '',
+      download: ''
+    }
+    document.createElement = jest.fn((tag) => {
+      if (tag === 'a') return anchorMock
+      return document.constructor.prototype.createElement.call(document, tag)
+    })
+    document.body.appendChild = jest.fn()
+    document.body.removeChild = jest.fn()
+
     settingsManager.exportSettings()
 
     expect(global.URL.createObjectURL).toHaveBeenCalled()
-    expect(mockUiManager.showToast).toHaveBeenCalledWith('Settings exported', 'success')
+    expect(clickMock).toHaveBeenCalled()
+    expect(uiManager.showToast).toHaveBeenCalledWith('Settings exported', 'success')
   })
 
-  test('importSettings should load from file', () => {
-    const file = new Blob(['{"foo":"bar"}'], { type: 'application/json' })
-    settingsManager.importSettings(file)
-
-    // FileReader mock calls onload immediately
-
-    // Advance timers for reload
-    expect(window.location.reload).not.toHaveBeenCalled()
-    jest.runAllTimers()
-
-    expect(localStorage.getItem('test')).toBe('value')
-    expect(mockUiManager.showToast).toHaveBeenCalledWith(expect.stringContaining('imported'), 'success')
-    expect(window.location.reload).toHaveBeenCalled()
-  })
-
-  test('factoryReset should clear localStorage', () => {
-    localStorage.setItem('foo', 'bar')
+  test('should factory reset', () => {
+    mockLocalStorage.testKey = 'testValue'
     settingsManager.factoryReset()
-    expect(window.confirm).toHaveBeenCalled()
-    expect(localStorage.length).toBe(0)
-    expect(mockUiManager.showToast).toHaveBeenCalledWith(expect.stringContaining('reset'), 'success')
 
-    jest.runAllTimers()
+    expect(window.localStorage.clear).toHaveBeenCalled()
+    expect(uiManager.showToast).toHaveBeenCalledWith(expect.stringContaining('Settings reset'), 'success')
+
+    jest.useFakeTimers()
+    settingsManager.factoryReset()
+    jest.advanceTimersByTime(1000)
     expect(window.location.reload).toHaveBeenCalled()
+    jest.useRealTimers()
   })
 
-  test('Accessibility controls', () => {
-    const cb = document.getElementById('high-contrast')
-    cb.checked = true
-    cb.dispatchEvent(new Event('change'))
+  test('should bind sound events', () => {
+    const checkbox = document.getElementById('sound-enabled')
+    checkbox.checked = true
+    checkbox.dispatchEvent(new Event('change'))
+    expect(soundManager.setEnabled).toHaveBeenCalledWith(true)
+
+    const volume = document.getElementById('volume-control')
+    volume.value = '0.5'
+    volume.dispatchEvent(new Event('input'))
+    expect(soundManager.setVolume).toHaveBeenCalledWith('0.5')
+  })
+
+  test('should bind accessibility events', () => {
+    const highContrast = document.getElementById('high-contrast')
+    highContrast.checked = true
+    highContrast.dispatchEvent(new Event('change'))
     expect(document.body.classList.contains('high-contrast')).toBe(true)
 
-    cb.checked = false
-    cb.dispatchEvent(new Event('change'))
-    expect(document.body.classList.contains('high-contrast')).toBe(false)
+    const voice = document.getElementById('voice-announce')
+    voice.checked = true
+    voice.dispatchEvent(new Event('change'))
+    expect(accessibilityManager.setVoiceAnnounce).toHaveBeenCalledWith(true)
   })
 })

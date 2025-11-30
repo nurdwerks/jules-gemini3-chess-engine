@@ -101,7 +101,7 @@ describe('GameManager', () => {
     gm.startNewGame()
     gm.whiteTime = 0
     gm.checkGameOver()
-    expect(onGameOver).toHaveBeenCalledWith('black') // White lost on time
+    expect(onGameOver).toHaveBeenCalledWith({ winner: 'black', reason: 'Timeout (White)' })
     expect(gm.gameStarted).toBe(false)
   })
 

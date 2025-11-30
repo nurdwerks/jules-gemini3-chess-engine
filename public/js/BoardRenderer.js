@@ -417,4 +417,80 @@ window.BoardRenderer = class BoardRenderer {
       }, duration)
     })
   }
+
+  getScreenshotUrl () {
+    const size = 800
+    const squareSize = size / 8
+    const xmlns = 'http://www.w3.org/2000/svg'
+    const svg = document.createElementNS(xmlns, 'svg')
+    svg.setAttribute('width', size)
+    svg.setAttribute('height', size)
+    svg.setAttribute('viewBox', `0 0 ${size} ${size}`)
+
+    const squares = this.boardElement.querySelectorAll('.square')
+    squares.forEach(sq => {
+      const row = parseInt(sq.dataset.row)
+      const col = parseInt(sq.dataset.col)
+
+      let displayRow = row
+      let displayCol = col
+      if (this.isFlipped) {
+        displayRow = 7 - row
+        displayCol = 7 - col
+      }
+
+      const x = displayCol * squareSize
+      const y = displayRow * squareSize
+
+      const rect = document.createElementNS(xmlns, 'rect')
+      rect.setAttribute('x', x)
+      rect.setAttribute('y', y)
+      rect.setAttribute('width', squareSize)
+      rect.setAttribute('height', squareSize)
+      rect.setAttribute('fill', window.getComputedStyle(sq).backgroundColor)
+      svg.appendChild(rect)
+
+      const piece = sq.querySelector('.piece')
+      if (piece) {
+        const img = document.createElementNS(xmlns, 'image')
+        img.setAttribute('x', x)
+        img.setAttribute('y', y)
+        img.setAttribute('width', squareSize)
+        img.setAttribute('height', squareSize)
+        img.setAttribute('href', piece.src)
+        svg.appendChild(img)
+      }
+
+      // Coordinates
+      if (this.showCoords) {
+        const coords = sq.querySelectorAll('.coordinate')
+        coords.forEach(c => {
+          const txt = document.createElementNS(xmlns, 'text')
+          txt.textContent = c.textContent
+          const style = window.getComputedStyle(c)
+
+          // Approximate position based on class
+          if (c.classList.contains('rank')) {
+            txt.setAttribute('x', x + 2)
+            txt.setAttribute('y', y + 12)
+            txt.setAttribute('text-anchor', 'start')
+          } else {
+            txt.setAttribute('x', x + squareSize - 2)
+            txt.setAttribute('y', y + squareSize - 2)
+            txt.setAttribute('text-anchor', 'end')
+          }
+
+          txt.setAttribute('font-family', style.fontFamily)
+          txt.setAttribute('font-size', '12px')
+          txt.setAttribute('fill', style.color)
+          svg.appendChild(txt)
+        })
+      }
+    })
+
+    const serializer = new XMLSerializer()
+    const source = serializer.serializeToString(svg)
+    const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' })
+    return URL.createObjectURL(blob)
+  }
 }

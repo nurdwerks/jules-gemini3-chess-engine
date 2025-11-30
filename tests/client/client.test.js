@@ -35,6 +35,7 @@ describe('client.js', () => {
         bottomPlayerClock: {},
         animationSpeedSelect: { value: '0' }
       }
+      this.boardInfoRenderer = { updateClocks: jest.fn(), updateCapturedPieces: jest.fn() }
       this.logSystemMessage = jest.fn()
       this.logToOutput = jest.fn()
       this.updateSearchStats = jest.fn()
@@ -43,6 +44,7 @@ describe('client.js', () => {
       this.renderHistory = jest.fn()
       this.updateCapturedPieces = jest.fn()
       this.setThinking = jest.fn()
+      this.showGameOverModal = jest.fn()
     })
     global.GameManager = jest.fn(function (g, s, cbs) {
       instances.gameManager = this
@@ -131,9 +133,17 @@ describe('client.js', () => {
       this.onTreeReady = jest.fn()
     })
 
+    global.AccessibilityManager = class {
+      constructor () {}
+      announceMove () {}
+    }
+    global.SettingsManager = class { constructor () {} }
+    global.ExternalActions = class { constructor () {} }
+
     global.ClientUtils = {
       parseInfo: jest.fn(),
-      generate960Fen: jest.fn()
+      generate960Fen: jest.fn(),
+      checkFenInUrl: jest.fn()
     }
     global.ArrowManager = { clearEngineArrows: jest.fn(), clearUserArrows: jest.fn() }
     global.SoundManager = { setEnabled: jest.fn(), playSound: jest.fn() }
@@ -217,7 +227,7 @@ describe('client.js', () => {
     expect(global.ArrowManager.clearEngineArrows).toHaveBeenCalled()
 
     // onGameOver
-    cbs.onGameOver('checkmate')
-    expect(instances.uiManager.showToast).toHaveBeenCalledWith('Game Over: checkmate', 'info')
+    cbs.onGameOver({ winner: 'black', reason: 'Checkmate' })
+    expect(instances.uiManager.showToast).toHaveBeenCalledWith('Game Over: black (Checkmate)', 'info')
   })
 })

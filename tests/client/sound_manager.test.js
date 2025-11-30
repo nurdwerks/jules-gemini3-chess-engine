@@ -55,7 +55,7 @@ describe('SoundManager', () => {
 
   test('playSound plays move sound', () => {
     const move = { flags: 'n' }
-    const game = { in_check: () => false }
+    const game = { in_check: () => false, in_checkmate: () => false, in_draw: () => false }
     SoundManager.playSound(move, game)
     expect(audioContextMock.createOscillator).toHaveBeenCalled()
     expect(oscillatorMock.type).toBe('triangle')
@@ -63,7 +63,7 @@ describe('SoundManager', () => {
 
   test('playSound plays capture sound', () => {
     const move = { flags: 'c' }
-    const game = { in_check: () => false }
+    const game = { in_check: () => false, in_checkmate: () => false, in_draw: () => false }
     SoundManager.playSound(move, game)
     expect(audioContextMock.createOscillator).toHaveBeenCalled()
     expect(oscillatorMock.type).toBe('square')
@@ -71,7 +71,7 @@ describe('SoundManager', () => {
 
   test('playSound plays check sound', () => {
     const move = { flags: 'n' }
-    const game = { in_check: () => true }
+    const game = { in_check: () => true, in_checkmate: () => false, in_draw: () => false }
     SoundManager.playSound(move, game)
     // Check plays 2 tones
     expect(audioContextMock.createOscillator).toHaveBeenCalledTimes(2)

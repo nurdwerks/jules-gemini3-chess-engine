@@ -1,3 +1,5 @@
+/* global Chess */
+
 window.ClientUtils = {
   coordsToAlgebraic: (row, col) => {
     const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
@@ -73,5 +75,21 @@ window.ClientUtils = {
       'pawn-f2': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPP1PP/RNBQKBNR w KQkq - 0 1'
     }
     return map[handicap]
+  },
+
+  checkFenInUrl: (gameManager, uiManager) => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const fenParam = urlParams.get('fen')
+    if (fenParam) {
+      setTimeout(() => {
+        const temp = new Chess()
+        if (temp.load(fenParam)) {
+          gameManager.startNewGame(fenParam)
+          uiManager.showToast('Position loaded from URL', 'success')
+        } else {
+          uiManager.showToast('Invalid FEN in URL', 'error')
+        }
+      }, 100)
+    }
   }
 }
