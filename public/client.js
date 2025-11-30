@@ -58,7 +58,22 @@ const initApp = () => {
   const uiManager = new UIManager({
     onSendOption: (n, v) => sendOption(n, v),
     onResetEngine: () => window.location.reload(),
-    onNewGame: () => gameManager.startNewGame(),
+    onNewGame: () => {
+      const handicap = document.getElementById('handicap-select').value
+      let fen = 'startpos'
+      if (handicap && handicap !== 'none') {
+        const map = {
+          'knight-b1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R1BQKBNR w KQkq - 0 1',
+          'knight-g1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKB1R w KQkq - 0 1',
+          'rook-a1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/1NBQKBNR w KQkq - 0 1',
+          'rook-h1': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBN1 w KQkq - 0 1',
+          queen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNB1KBNR w KQkq - 0 1',
+          'pawn-f2': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPP1PP/RNBQKBNR w KQkq - 0 1'
+        }
+        if (map[handicap]) fen = map[handicap]
+      }
+      gameManager.startNewGame(fen)
+    },
     onNew960: () => {
       const fen = ClientUtils.generate960Fen()
       uiManager.elements.fenInput.value = fen

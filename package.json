@@ -7,6 +7,7 @@
     "test": "jest",
     "coverage": "jest --coverage",
     "eslint": "eslint . --fix",
+    "test:e2e": "playwright test",
     "start": "node src/server.js",
     "tune": "node tools/pipeline.js"
   },
@@ -73,6 +74,7 @@
   },
   "homepage": "https://github.com/nurdwerks/jules-gemini3-chess-engine#readme",
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "eslint": "^8.57.1",
     "eslint-config-standard": "^17.1.0",
     "eslint-plugin-import": "^2.32.0",
