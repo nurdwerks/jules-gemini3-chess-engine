@@ -206,6 +206,7 @@
                     <div class="button-group mt-10">
                         <button id="copy-fen-btn">Copy FEN</button>
                         <button id="copy-fen-url-btn">Copy FEN URL</button>
+                        <button id="board-editor-btn">Board Editor</button>
                         <button id="import-pgn-btn">Import PGN</button>
                         <button id="export-pgn-btn">Export PGN</button>
                         <button id="copy-pgn-btn">Copy PGN</button>
@@ -684,6 +685,65 @@
           </div>
       </div>
   </div>
+  <div id="board-editor-modal" class="modal-overlay">
+      <div class="modal large-modal">
+          <div class="modal-header">
+              <h3 class="modal-title">Board Editor</h3>
+              <button class="modal-close-btn" id="close-board-editor-modal">&times;</button>
+          </div>
+          <div class="modal-content board-editor-content">
+              <div class="editor-main">
+                  <div id="editor-board-container" class="editor-board"></div>
+                  <div class="editor-palette">
+                      <div class="palette-row" id="palette-w"></div>
+                      <div class="palette-row" id="palette-b"></div>
+                      <div class="palette-tools">
+                          <button id="editor-trash-btn" class="icon-btn" title="Trash Mode">🗑️</button>
+                          <button id="editor-clear-btn">Clear Board</button>
+                          <button id="editor-startpos-btn">Start Pos</button>
+                      </div>
+                  </div>
+              </div>
+              <div class="editor-sidebar">
+                  <div class="option-item">
+                      <label>Side to Move:</label>
+                      <div class="radio-group">
+                          <label><input type="radio" name="editor-turn" value="w" checked> White</label>
+                          <label><input type="radio" name="editor-turn" value="b"> Black</label>
+                      </div>
+                  </div>
+                  <div class="option-item">
+                      <label>Castling Rights:</label>
+                      <div class="checkbox-group">
+                          <label><input type="checkbox" id="editor-castling-wk"> White King-side (K)</label>
+                          <label><input type="checkbox" id="editor-castling-wq"> White Queen-side (Q)</label>
+                          <label><input type="checkbox" id="editor-castling-bk"> Black King-side (k)</label>
+                          <label><input type="checkbox" id="editor-castling-bq"> Black Queen-side (q)</label>
+                      </div>
+                  </div>
+                  <div class="option-item">
+                      <label>En Passant Target:</label>
+                      <input type="text" id="editor-ep-target" placeholder="e.g. e3" maxlength="2">
+                  </div>
+                  <div class="option-item">
+                      <label>Fullmove Number:</label>
+                      <input type="number" id="editor-fullmove" value="1" min="1">
+                  </div>
+                  <div class="option-item">
+                      <label>Halfmove Clock:</label>
+                      <input type="number" id="editor-halfmove" value="0" min="0">
+                  </div>
+                  <div class="option-item">
+                      <label>FEN:</label>
+                      <input type="text" id="editor-fen-output" readonly>
+                  </div>
+              </div>
+          </div>
+          <div class="modal-footer">
+              <button id="load-position-btn">Load Position</button>
+          </div>
+      </div>
+  </div>
   <script src="libs/chess.js"></script>
   <script src="js/ClientUtils.js"></script>
   <script src="js/SoundManager.js"></script>
@@ -700,6 +760,7 @@
   <script src="js/UIConstants.js"></script>
   <script src="js/UIManager.js"></script>
   <script src="js/MoveHandler.js"></script>
+  <script src="js/BoardEditor.js"></script>
   <script src="js/LeaderboardManager.js"></script>
   <script src="js/PgnManager.js"></script>
   <script src="js/FenManager.js"></script>

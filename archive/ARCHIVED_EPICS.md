@@ -1878,3 +1878,55 @@ The following Epics were part of the initial development phase and are either co
     *   *Description:* Load a saved JSON analysis file to review later.
     *   *Acceptance Criteria:*
         - [x] Analysis restored.
+
+### Epic 75: Board Editor
+**Size:** Medium (3 days)
+**Description:** Tools for setting up custom positions.
+
+**User Stories:**
+
+134. **Custom FEN Start (S)**
+    *   *Description:* "Setup Position" board editor where users can place pieces freely.
+    *   *Implementation:* Palette of pieces. Drag to board.
+    *   *Tasks:*
+        - [x] Editor Mode UI.
+        - [x] Piece Palette.
+    *   *Testing Plan:* Create position.
+    *   *Acceptance Criteria:*
+        - [x] Valid FEN generated.
+
+135. **Castling Rights Editor (S)**
+    *   *Description:* Checkboxes to manually toggle castling rights in setup editor.
+    *   *Implementation:* Update FEN `KQkq`.
+    *   *Tasks:*
+        - [x] Checkboxes.
+    *   *Testing Plan:* Toggle.
+    *   *Acceptance Criteria:*
+        - [x] FEN updates.
+
+136. **En Passant Target Editor (S)**
+    *   *Description:* Input to set the en passant square in setup editor.
+    *   *Implementation:* Text input or click square.
+    *   *Tasks:*
+        - [x] UI.
+    *   *Testing Plan:* Set square.
+    *   *Acceptance Criteria:*
+        - [x] FEN updates.
+
+137. **Side to Move Editor (S)**
+    *   *Description:* Toggle to switch whose turn it is in setup editor.
+    *   *Implementation:* Radio button W/B.
+    *   *Tasks:*
+        - [x] UI.
+    *   *Testing Plan:* Switch.
+    *   *Acceptance Criteria:*
+        - [x] FEN updates.
+
+138. **Move Counter Editor (S)**
+    *   *Description:* Input to set the fullmove and halfmove clocks.
+    *   *Implementation:* Number inputs.
+    *   *Tasks:*
+        - [x] UI.
+    *   *Testing Plan:* Change numbers.
+    *   *Acceptance Criteria:*
+        - [x] FEN updates.

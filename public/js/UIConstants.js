@@ -1,4 +1,3 @@
-
 window.UIConstants = {
   OPTION_GROUPS: {
     Hash: 'Engine',

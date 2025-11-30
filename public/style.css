@@ -980,6 +980,109 @@ body.light-mode {
     border-color: var(--grafana-accent-green);
 }
 
+/* Board Editor */
+.board-editor-content {
+    display: flex;
+    gap: 20px;
+}
+
+.editor-main {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.editor-board {
+    width: 100%;
+    aspect-ratio: 1/1;
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    border: 2px solid var(--grafana-border);
+}
+
+.editor-palette {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background-color: var(--grafana-input-bg);
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.palette-row {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.palette-piece {
+    width: 40px;
+    height: 40px;
+    cursor: grab;
+    transition: transform 0.2s;
+}
+
+.palette-piece:hover {
+    transform: scale(1.1);
+}
+
+.palette-tools {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 5px;
+}
+
+.palette-tools button {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+#editor-trash-btn.active {
+    background-color: #F2495C;
+    box-shadow: 0 0 5px #F2495C;
+}
+
+.editor-sidebar {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    background-color: var(--grafana-input-bg);
+    padding: 15px;
+    border-radius: 4px;
+    border: 1px solid var(--grafana-border);
+}
+
+.radio-group {
+    display: flex;
+    gap: 15px;
+    margin-top: 5px;
+}
+
+.checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 5px;
+}
+
+.large-modal {
+    width: 900px;
+    max-width: 95vw;
+}
+
+@media (max-width: 768px) {
+    .board-editor-content {
+        flex-direction: column;
+    }
+    .large-modal {
+        width: 100%;
+    }
+}
+
 /* Epic 68: Blindfold Training */
 .blindfold-training .piece {
   animation: fadeOutPiece 3s forwards;
