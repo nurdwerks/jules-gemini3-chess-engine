@@ -23,7 +23,7 @@ test.describe('Settings and Customization', () => {
     // UCI options are loaded dynamically. Wait for them.
     // They are in #uci-options.
     // Let's wait for at least one input.
-    const hashInput = page.locator('input[id*="Hash"]') // ID usually generated from name
+
     // It might be nested or have a specific ID format.
     // Based on memory, UIOptionFactory uses IDs like `uci-option-${name}`.
     // But checking the HTML content might be safer if I wasn't sure.

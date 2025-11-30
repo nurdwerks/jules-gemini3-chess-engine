@@ -63,7 +63,30 @@ window.TrainingManager = class TrainingManager {
   _startMemoryReconstruction () {
     this.game.clear()
     this.boardRenderer.render({ board: this.game.board(), chess: this.game, currentViewIndex: -1 })
+    this.renderPalette()
     if (this.callbacks.onMemoryReconstructionStart) this.callbacks.onMemoryReconstructionStart()
+  }
+
+  renderPalette () {
+    const palette = document.getElementById('piece-palette')
+    if (!palette) return
+    palette.innerHTML = ''
+    const pieces = ['wP', 'wN', 'wB', 'wR', 'wQ', 'wK', 'bP', 'bN', 'bB', 'bR', 'bQ', 'bK']
+    pieces.forEach(p => {
+      const color = p[0]
+      const type = p[1].toLowerCase()
+      const div = document.createElement('div')
+      div.classList.add('palette-piece')
+      const img = document.createElement('img')
+      img.src = `images/${this.boardRenderer.currentPieceSet}/${color}${type}.svg`
+      div.appendChild(img)
+      div.addEventListener('click', () => {
+        document.querySelectorAll('.palette-piece').forEach(el => el.classList.remove('selected'))
+        div.classList.add('selected')
+        this.selectPalettePiece(color, type)
+      })
+      palette.appendChild(div)
+    })
   }
 
   handleMemoryClick (row, col, alg) {

@@ -72,12 +72,12 @@ window.SoundManager = (() => {
 
       const now = context.currentTime + startTime
       if (Array.isArray(freq)) {
-         // Arpeggio or slide
-         freq.forEach((f, i) => {
-            osc.frequency.setValueAtTime(f, now + (i * (duration / freq.length)))
-         })
+        // Arpeggio or slide
+        freq.forEach((f, i) => {
+          osc.frequency.setValueAtTime(f, now + (i * (duration / freq.length)))
+        })
       } else {
-         osc.frequency.setValueAtTime(freq, now)
+        osc.frequency.setValueAtTime(freq, now)
       }
 
       gain.gain.setValueAtTime(0.1, now)
@@ -99,17 +99,17 @@ window.SoundManager = (() => {
     if (!def) return
 
     if (type === 'check') {
-        playTone('sine', 600, 0.15, 0)
-        playTone('sine', 800, 0.15, 0.1)
+      playTone('sine', 600, 0.15, 0)
+      playTone('sine', 800, 0.15, 0.1)
     } else if (type === 'checkmate') {
-        playTone('square', 400, 0.15, 0)
-        playTone('square', 600, 0.15, 0.15)
-        playTone('square', 800, 0.3, 0.3)
+      playTone('square', 400, 0.15, 0)
+      playTone('square', 600, 0.15, 0.15)
+      playTone('square', 800, 0.3, 0.3)
     } else if (type === 'stalemate') {
-        playTone('sine', 300, 0.2, 0)
-        playTone('sine', 200, 0.4, 0.2)
+      playTone('sine', 300, 0.2, 0)
+      playTone('sine', 200, 0.4, 0.2)
     } else {
-        playTone(def.type, def.freq, def.duration)
+      playTone(def.type, def.freq, def.duration)
     }
   }
 
@@ -152,12 +152,12 @@ window.SoundManager = (() => {
 
   return {
     setEnabled: (val) => {
-        enabled = val
-        if (val) init()
+      enabled = val
+      if (val) init()
     },
     setVolume: (val) => {
-        volume = Math.max(0, Math.min(1, parseFloat(val)))
-        if (masterGain) masterGain.gain.value = volume
+      volume = Math.max(0, Math.min(1, parseFloat(val)))
+      if (masterGain) masterGain.gain.value = volume
     },
     init,
     loadSoundPack: processZip,
