@@ -96,6 +96,40 @@ class VisualEffects {
       this.canvas.style.display = 'none'
     }
   }
+
+  showFloatingEmoji (emoji, isSelf) {
+    const el = document.createElement('div')
+    el.textContent = emoji
+    el.style.position = 'absolute'
+    el.style.fontSize = '40px'
+    el.style.pointerEvents = 'none'
+    el.style.zIndex = '1000'
+    el.style.transition = 'all 1s ease-out'
+    el.style.opacity = '1'
+
+    const board = document.getElementById('chessboard')
+    if (!board) return
+    const rect = board.getBoundingClientRect()
+
+    if (isSelf) {
+      el.style.left = (rect.left + rect.width / 2) + 'px'
+      el.style.top = (rect.bottom - 50) + 'px'
+    } else {
+      el.style.left = (rect.left + rect.width / 2) + 'px'
+      el.style.top = rect.top + 'px'
+    }
+
+    document.body.appendChild(el)
+
+    requestAnimationFrame(() => {
+      el.style.transform = `translateY(${isSelf ? '-100px' : '100px'}) scale(1.5)`
+      el.style.opacity = '0'
+    })
+
+    setTimeout(() => {
+      if (el.parentNode) document.body.removeChild(el)
+    }, 1000)
+  }
 }
 
 if (typeof module !== 'undefined') {

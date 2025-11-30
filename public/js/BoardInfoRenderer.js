@@ -16,6 +16,31 @@ window.BoardInfoRenderer = class BoardInfoRenderer {
     this._renderMaterialDiffUI(counts, isFlipped)
   }
 
+  updateAvatars (userAvatar, engineAvatar, isFlipped) {
+    const topAvatar = document.getElementById('top-player-avatar')
+    const bottomAvatar = document.getElementById('bottom-player-avatar')
+
+    if (!topAvatar || !bottomAvatar) return
+
+    // isFlipped = false: Bottom = User (White), Top = Engine (Black)
+    // isFlipped = true: Bottom = Engine (Black), Top = User (White)
+
+    const uAvatar = userAvatar || 'images/avatars/default.png'
+    const eAvatar = engineAvatar || 'images/avatars/default.png'
+
+    if (isFlipped) {
+      topAvatar.src = uAvatar
+      bottomAvatar.src = eAvatar
+    } else {
+      bottomAvatar.src = uAvatar
+      topAvatar.src = eAvatar
+    }
+
+    // Ensure they are visible if src is valid (handled by onerror in HTML, but we can force display here)
+    topAvatar.style.display = 'block'
+    bottomAvatar.style.display = 'block'
+  }
+
   updateClocks (whiteTime, blackTime, isFlipped) {
     const format = (ms) => {
       const s = Math.ceil(ms / 1000)

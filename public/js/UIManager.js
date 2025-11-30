@@ -112,6 +112,7 @@ window.UIManager = class UIManager {
     bindClick('copy-fen-btn', () => this.callbacks.onCopyFen())
     bindClick('copy-fen-url-btn', () => this.callbacks.onCopyFenUrl())
     bindClick('download-board-btn', () => this.callbacks.onDownloadScreenshot())
+    bindClick('export-gif-btn', () => this.callbacks.onExportGif())
     bindClick('import-pgn-btn', () => this.elements.pgnImportModal.classList.add('active'))
     bindClick('export-pgn-btn', () => this.callbacks.onExportPgn())
     bindClick('copy-pgn-btn', () => this.callbacks.onCopyPgn())
@@ -143,6 +144,7 @@ window.UIManager = class UIManager {
     bindClick('analyze-chesscom-btn', () => this.callbacks.onAnalyzeChessCom())
     bindClick('share-twitter-btn', () => this.callbacks.onShareTwitter())
     bindClick('share-reddit-btn', () => this.callbacks.onShareReddit())
+    bindClick('share-qr-btn', () => this.callbacks.onGenerateQr())
 
     bindClick('close-pgn-modal', () => this.elements.pgnImportModal.classList.remove('active'))
     bindClick('load-pgn-confirm-btn', () => {
@@ -524,6 +526,12 @@ window.UIManager = class UIManager {
 
   updateCapturedPieces (game, startingFen, pieceSet, isFlipped) {
     this.boardInfoRenderer.updateCapturedPieces(game, startingFen, pieceSet, isFlipped)
+  }
+
+  updateAvatars (isFlipped) {
+    const userAvatar = localStorage.getItem('user-avatar')
+    const engineAvatar = localStorage.getItem('engine-avatar')
+    this.boardInfoRenderer.updateAvatars(userAvatar, engineAvatar, isFlipped)
   }
 
   setThinking (isThinking) {

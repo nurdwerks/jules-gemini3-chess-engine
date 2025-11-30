@@ -157,10 +157,10 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* Generate an animated GIF of the game.
     *   *Implementation:* `gif.js` combining screenshots of each move.
     *   *Tasks:*
-        - [ ] Generator logic.
+        - [x] Generator logic.
     *   *Testing Plan:* Generate.
     *   *Acceptance Criteria:*
-        - [ ] GIF plays.
+        - [x] GIF plays.
 
 192. **Social Share (S)**
     *   *Description:* Buttons to share the game PGN/FEN to Twitter/Reddit.
@@ -184,19 +184,19 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* Generate a QR code for the current game URL.
     *   *Implementation:* QR library.
     *   *Tasks:*
-        - [ ] Modal.
+        - [x] Modal.
     *   *Testing Plan:* Scan.
     *   *Acceptance Criteria:*
-        - [ ] URL opens.
+        - [x] URL opens.
 
 195. **Mobile App Prompt (S)**
     *   *Description:* Prompt to install the app on mobile home screen (PWA).
     *   *Implementation:* Manifest.json + service worker + install event.
     *   *Tasks:*
-        - [ ] PWA setup.
+        - [x] PWA setup.
     *   *Testing Plan:* Lighthouse audit.
     *   *Acceptance Criteria:*
-        - [ ] Installable.
+        - [x] Installable.
 
 196. **Offline Mode Indicator (S)**
     *   *Description:* Visual badge showing if the app is working offline.
@@ -211,37 +211,37 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* Display a robot icon or avatar for the engine.
     *   *Implementation:* Image.
     *   *Tasks:*
-        - [ ] UI.
+        - [x] UI.
     *   *Testing Plan:* Visual.
     *   *Acceptance Criteria:*
-        - [ ] Visible.
+        - [x] Visible.
 
 198. **Player Avatar (S)**
     *   *Description:* Allow user to upload or select an avatar for themselves.
     *   *Implementation:* File upload / LocalStorage.
     *   *Tasks:*
-        - [ ] UI.
+        - [x] UI.
     *   *Testing Plan:* Set avatar.
     *   *Acceptance Criteria:*
-        - [ ] Avatar shown.
+        - [x] Avatar shown.
 
 199. **Chat Box (S)**
     *   *Description:* A simple chat interface for PvP.
     *   *Implementation:* Websocket message relay.
     *   *Tasks:*
-        - [ ] Chat UI.
+        - [x] Chat UI.
     *   *Testing Plan:* Send message.
     *   *Acceptance Criteria:*
-        - [ ] Received.
+        - [x] Received.
 
 200. **Emoji Reactions (S)**
     *   *Description:* Allow reacting to moves with emojis.
     *   *Implementation:* Floating emoji animation.
     *   *Tasks:*
-        - [ ] UI.
+        - [x] UI.
     *   *Testing Plan:* Click emoji.
     *   *Acceptance Criteria:*
-        - [ ] Animates.
+        - [x] Animates.
 
 201. **Confetti Effect (S)**
     *   *Description:* Particle effect on checkmate or win.
@@ -274,10 +274,10 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* A step-by-step guide explaining how to use the UI features.
     *   *Implementation:* Overlay pointing to elements.
     *   *Tasks:*
-        - [ ] Tutorial flow.
+        - [x] Tutorial flow.
     *   *Testing Plan:* Run tutorial.
     *   *Acceptance Criteria:*
-        - [ ] Steps complete.
+        - [x] Steps complete.
 
 205. **Keyboard Shortcuts Map (S)**
     *   *Description:* A modal showing all available keyboard shortcuts.
@@ -292,10 +292,10 @@ This document outlines the detailed backlog of future enhancements for the Jules
     *   *Description:* (Joke) "Use EEG headset to make moves."
     *   *Implementation:* Text placeholder "Coming Soon".
     *   *Tasks:*
-        - [ ] Joke UI.
+        - [x] Joke UI.
     *   *Testing Plan:* Look for it.
     *   *Acceptance Criteria:*
-        - [ ] Laugh.
+        - [x] Laugh.
 
 207. **Game Over Modal (S)**
     *   *Description:* A popup summary when the game ends.

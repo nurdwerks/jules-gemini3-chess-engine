@@ -1,6 +1,6 @@
 /* eslint-env browser */
 /* eslint-disable max-lines */
-/* global Chess, SocketHandler, BoardRenderer, GameManager, AnalysisManager, TrainingManager, UIManager, ArrowManager, SoundManager, ClientUtils, MoveHandler, LeaderboardManager, PgnManager, FenManager, BoardEditor, DeveloperManager, MoveListManager, OpeningExplorer, TreeManager, AccessibilityManager, SettingsManager, ExternalActions, AutoSaveManager, InfoManager, VisualEffects, BatterySaver, LanguageManager */
+/* global Chess, SocketHandler, BoardRenderer, GameManager, AnalysisManager, TrainingManager, UIManager, ArrowManager, SoundManager, ClientUtils, MoveHandler, LeaderboardManager, PgnManager, FenManager, BoardEditor, DeveloperManager, MoveListManager, OpeningExplorer, TreeManager, AccessibilityManager, SettingsManager, ExternalActions, AutoSaveManager, InfoManager, VisualEffects, BatterySaver, LanguageManager, ChatManager, TutorialManager */
 
 const initApp = () => {
   try {
@@ -18,6 +18,7 @@ const initApp = () => {
     let visualEffects = null
     let batterySaver = null
     let moveHandler = null
+    let chatManager = null
 
     // Shared State
     const state = {
@@ -64,7 +65,9 @@ const initApp = () => {
         analysisManager.handleBestMove()
         handleBestMove(parts)
       },
-      onVoteMessage: (data) => handleVoteMessage(data)
+      onVoteMessage: (data) => handleVoteMessage(data),
+      onChatMessage: (data) => chatManager && chatManager.addMessage(data, false),
+      onReaction: (data) => chatManager && chatManager.showReaction(data.emoji, false)
     })
 
     const handleInfoMessage = (msg) => {
@@ -160,6 +163,7 @@ const initApp = () => {
       onCopyFen: () => fenManager.copyFen(),
       onCopyFenUrl: () => fenManager.copyFenUrl(),
       onDownloadScreenshot: () => externalActions.downloadScreenshot(),
+      onExportGif: () => externalActions.exportGif(),
       onLoadPgn: (pgn) => {
         if (pgnManager.importPgn(pgn)) {
           gameManager.gameStarted = true
@@ -183,6 +187,7 @@ const initApp = () => {
       onAnalyzeChessCom: () => externalActions.analyzeChessCom(),
       onShareTwitter: () => externalActions.shareTwitter(),
       onShareReddit: () => externalActions.shareReddit(),
+      onGenerateQr: () => externalActions.generateQrCode(),
       onHistoryNotationChange: (val) => {
         state.historyNotation = val
         render()
@@ -424,6 +429,14 @@ const initApp = () => {
     // eslint-disable-next-line no-unused-vars
     batterySaver = new BatterySaver(uiManager)
 
+    // Chat Manager
+    chatManager = new ChatManager(uiManager, socketHandler, visualEffects)
+
+    // Tutorial Manager
+    const tutorialManager = new TutorialManager(uiManager)
+    const tutorialBtn = document.getElementById('tutorial-btn')
+    if (tutorialBtn) tutorialBtn.addEventListener('click', () => tutorialManager.start())
+
     // Language Manager
     const languageManager = new LanguageManager()
     languageManager.init()
@@ -431,10 +444,40 @@ const initApp = () => {
     checkVersion()
     setupOfflineIndicator()
     setupEmbed()
+    setupPWA()
 
     moveHandler = new MoveHandler(game, gameManager, uiManager, boardRenderer, trainingManager, state, render)
 
     // --- Helpers ---
+
+    function setupPWA () {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').then(reg => {
+          console.log('SW registered:', reg)
+        }).catch(err => console.error('SW registration failed:', err))
+      }
+
+      let deferredPrompt
+      const installBtn = document.getElementById('install-app-btn')
+
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault()
+        deferredPrompt = e
+        if (installBtn) {
+          installBtn.style.display = 'block'
+          installBtn.addEventListener('click', () => {
+            installBtn.style.display = 'none'
+            deferredPrompt.prompt()
+            deferredPrompt.userChoice.then((choiceResult) => {
+              if (choiceResult.outcome === 'accepted') {
+                console.log('User accepted the install prompt')
+              }
+              deferredPrompt = null
+            })
+          })
+        }
+      })
+    }
 
     function checkVersion () {
       fetch('/version').then(res => res.json()).then(data => {
@@ -518,6 +561,7 @@ const initApp = () => {
 
       renderClocks()
       uiManager.updateCapturedPieces(game, gameManager.startingFen, boardRenderer.currentPieceSet, state.isFlipped)
+      uiManager.updateAvatars(state.isFlipped)
     }
 
     function getBoardState () {

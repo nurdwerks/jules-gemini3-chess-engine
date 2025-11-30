@@ -45,6 +45,7 @@ describe('client.js', () => {
       this.updateCapturedPieces = jest.fn()
       this.setThinking = jest.fn()
       this.showGameOverModal = jest.fn()
+      this.updateAvatars = jest.fn()
     })
     global.GameManager = jest.fn(function (g, s, cbs) {
       instances.gameManager = this
@@ -151,6 +152,14 @@ describe('client.js', () => {
     }
     global.BatterySaver = class {}
     global.LanguageManager = class { init () {} }
+    global.ChatManager = class {
+      init () {}
+      addMessage () {}
+      showReaction () {}
+    }
+    global.TutorialManager = class {
+      start () {}
+    }
 
     global.ClientUtils = {
       parseInfo: jest.fn(),
