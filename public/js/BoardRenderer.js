@@ -23,6 +23,8 @@ window.BoardRenderer = class BoardRenderer {
     this.handleDragLeave = this.handleDragLeave.bind(this)
     this.handleDragEnd = this.handleDragEnd.bind(this)
     this.handleDrop = this.handleDrop.bind(this)
+    this.handleMouseDown = this.handleMouseDown.bind(this)
+    this.handleMouseUp = this.handleMouseUp.bind(this)
   }
 
   setPieceSet (set) {
@@ -90,8 +92,35 @@ window.BoardRenderer = class BoardRenderer {
     square.addEventListener('dragenter', this.handleDragEnter)
     square.addEventListener('dragleave', this.handleDragLeave)
     square.addEventListener('drop', this.handleDrop)
+    square.addEventListener('mousedown', this.handleMouseDown)
+    square.addEventListener('mouseup', this.handleMouseUp)
+    square.addEventListener('contextmenu', (e) => e.preventDefault())
 
     this.boardElement.appendChild(square)
+  }
+
+  handleMouseDown (e) {
+    if (e.button === 2) { // Right click
+      const square = e.target.closest('.square')
+      if (square) {
+        this.rightClickStart = square.dataset.alg
+      }
+    }
+  }
+
+  handleMouseUp (e) {
+    if (e.button === 2) {
+      const square = e.target.closest('.square')
+      if (square && this.rightClickStart) {
+        const to = square.dataset.alg
+        if (this.rightClickStart === to) {
+          if (ArrowManager) ArrowManager.toggleUserHighlight(to)
+        } else {
+          if (ArrowManager) ArrowManager.addUserArrow(this.rightClickStart, to)
+        }
+      }
+      this.rightClickStart = null
+    }
   }
 
   _addPieceToSquare (square, pieceObj, alg) {

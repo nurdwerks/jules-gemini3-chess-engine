@@ -3,3 +3,5 @@ tuned_evaluation_params.json
 *.log
 coverage/
 uploads/
+playwright-report/
+test-results/
