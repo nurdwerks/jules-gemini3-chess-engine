@@ -1,4 +1,4 @@
-const db = require('../../Database')
+const db = require('../../../Database')
 
 module.exports = async function (fastify, opts) {
   fastify.get('/me', async (request, reply) => {

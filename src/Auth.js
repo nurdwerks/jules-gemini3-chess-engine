@@ -7,9 +7,8 @@ const {
 const db = require('./Database')
 
 const rpName = 'Jules & Gemini Chess'
-const rpID = 'localhost' // Will need to be dynamic for production in real world, but fixed for this task
-const origin = `http://${rpID}:3000`
 
+// Random name generator for new users
 const generateRandomName = () => {
   const adjs = ['Mighty', 'Neon', 'Grand', 'Hyper', 'Sonic', 'Quantum', 'Cosmic', 'Silent', 'Rapid', 'Turbo']
   const nouns = ['Pawn', 'Knight', 'Bishop', 'Rook', 'Queen', 'King', 'Engine', 'Gambit', 'Mate', 'Check']
@@ -19,15 +18,8 @@ const generateRandomName = () => {
 }
 
 class Auth {
-  async getRegisterOptions (username) {
+  async getRegisterOptions (username, rpID = 'localhost') {
     const user = await db.getUser(username)
-
-    // We treat "username" as a unique handle for the user in the DB.
-    // If it doesn't exist, we are creating a new one.
-    // However, FIDO2 doesn't use passwords. So "Registration" is "Create Account".
-
-    // Note: FIDO2 best practice is to store user handle as a byte array, not string.
-    // SimpleWebAuthn handles this.
 
     const newUserData = user || {
       id: username,
@@ -44,10 +36,9 @@ class Auth {
     const options = await generateRegistrationOptions({
       rpName,
       rpID,
-      userID: username,
+      userID: Buffer.from(username),
       userName: username,
       attestationType: 'none',
-      // Prevent re-registering existing authenticators
       excludeCredentials: newUserData.authenticators.map(auth => ({
         id: auth.credentialID,
         type: 'public-key',
@@ -64,8 +55,16 @@ class Auth {
     return options
   }
 
-  async verifyRegister (username, body) {
+  async verifyRegister (username, body, rpID = 'localhost', origin) {
     const expectedChallenge = await db.getUserCurrentChallenge(username)
+
+    // If origin is not provided, construct it from rpID (assuming https unless localhost)
+    if (!origin) {
+        const protocol = rpID === 'localhost' ? 'http' : 'https'
+        // Note: Port is tricky. If not localhost, assume 443 (implied).
+        // If localhost, default to 3000? Or just leave it to caller to provide correct origin.
+        origin = `${protocol}://${rpID}${rpID === 'localhost' ? ':3000' : ''}`
+    }
 
     let verification
     try {
@@ -100,7 +99,7 @@ class Auth {
     return { verified: false }
   }
 
-  async getLoginOptions (username) {
+  async getLoginOptions (username, rpID = 'localhost') {
     const user = await db.getUser(username)
     if (!user) throw new Error('User not found')
 
@@ -118,7 +117,7 @@ class Auth {
     return options
   }
 
-  async verifyLogin (username, body) {
+  async verifyLogin (username, body, rpID = 'localhost', origin) {
     const user = await db.getUser(username)
     if (!user) throw new Error('User not found')
 
@@ -128,6 +127,11 @@ class Auth {
     const authenticator = user.authenticators.find(auth => auth.credentialID === body.id)
     if (!authenticator) throw new Error('Authenticator not found')
 
+    if (!origin) {
+        const protocol = rpID === 'localhost' ? 'http' : 'https'
+        origin = `${protocol}://${rpID}${rpID === 'localhost' ? ':3000' : ''}`
+    }
+
     let verification
     try {
       verification = await verifyAuthenticationResponse({
@@ -136,7 +140,7 @@ class Auth {
         expectedOrigin: origin,
         expectedRPID: rpID,
         authenticator,
-        requireUserVerification: false // Depending on device capabilities
+        requireUserVerification: false
       })
     } catch (error) {
       console.error(error)
@@ -146,7 +150,6 @@ class Auth {
     const { verified, authenticationInfo } = verification
 
     if (verified) {
-      // Update counter
       authenticator.counter = authenticationInfo.newCounter
       await db.saveUser(username, user)
       return { verified: true, user }
