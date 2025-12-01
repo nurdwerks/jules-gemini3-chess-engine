@@ -15,11 +15,12 @@
   },
   "nyc": {
     "include": [
-      "src/**/*.js"
+      "src/**/*.js",
+      "public/**/*.js"
     ],
     "exclude": [
       "tests/**",
-      "public/**"
+      "public/libs/**"
     ],
     "reporter": [
       "json"

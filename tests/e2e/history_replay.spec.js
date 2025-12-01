@@ -3,6 +3,11 @@ const { test, expect } = require('./coverage')
 test.describe('Game History & Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
+    // Handle auth modal
+    const guestBtn = page.locator('#btn-guest')
+    if (await guestBtn.isVisible()) {
+      await guestBtn.click()
+    }
     await page.waitForSelector('#chessboard')
   })
 
@@ -66,5 +71,72 @@ test.describe('Game History & Navigation', () => {
 
     // Verify e5 has piece (since we are now after 1... e5)
     await expect(e5.locator('.piece')).toBeVisible()
+  })
+
+  test('Replay Game Controls', async ({ page }) => {
+    // Setup a game with moves
+    await page.selectOption('#animation-speed', '0')
+    await page.selectOption('#game-mode', 'pvp')
+    await page.click('#new-game-btn')
+
+    // 1. e4 e5
+    await page.click('.square[data-alg="e2"]')
+    await page.click('.square[data-alg="e4"]')
+    await expect(page.locator('.square[data-alg="e4"] .piece')).toBeVisible()
+
+    await page.click('.square[data-alg="e7"]')
+    await page.click('.square[data-alg="e5"]')
+    await expect(page.locator('.square[data-alg="e5"] .piece')).toBeVisible()
+
+    // Now trigger Replay
+    // Initially, we are at the end of the game (index 1, assuming 0-based moves 0, 1)
+
+    // Click Replay Button
+    await page.click('#replay-btn')
+
+    // Replay resets view to start (empty board / start pos) then plays moves
+    // We wait for the view index to change.
+
+    // Wait a bit for replay to start (interval is 800ms)
+    // The replay logic: sets index to -1, then increments.
+
+    // We can check if the board goes back to start pos briefly.
+    // At start pos, e4 is empty.
+
+    // However, 800ms is slow. We might miss the check if we are not careful.
+    // Let's rely on the fact that it eventually reaches the end.
+    // Or we can check intermediate state if we are fast enough.
+
+    // Let's just verify that after clicking, the board *eventually* shows the moves again.
+
+    // Check start pos (re-render happens immediately)
+    // We need to wait for the interval to tick.
+
+    // Let's wait 1 second (interval 800ms). Should be at move 1 (e4).
+    await page.waitForTimeout(1000)
+
+    // Verify e4 has piece (White Pawn)
+    await expect(page.locator('.square[data-alg="e4"] .piece')).toBeVisible()
+
+    // Verify e5 might NOT be there yet (move 2 comes at 1600ms)
+    // Actually:
+    // T=0: index=-1 (Start)
+    // T=800: index=0 (1. e4)
+    // T=1600: index=1 (1... e5)
+
+    await expect(page.locator('.square[data-alg="e5"] .piece')).not.toBeVisible()
+
+    // Wait another second
+    await page.waitForTimeout(1000)
+
+    // Now e5 should be visible
+    await expect(page.locator('.square[data-alg="e5"] .piece')).toBeVisible()
+
+    // Stop Replay by clicking again?
+    // The code: toggleReplay clears interval if exists.
+    await page.click('#replay-btn')
+
+    // Wait and verify it doesn't loop or change anymore?
+    // Ideally we'd check internal state or just be happy it played.
   })
 })
