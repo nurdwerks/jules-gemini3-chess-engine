@@ -76,30 +76,90 @@ if (!skipTests) {
     console.log('Skipping test execution as requested.');
 }
 
-// 4. Generate Unified Report
-console.log('--------------------------------------------------');
-console.log('Generating Unified Report...');
-console.log('--------------------------------------------------');
-try {
-    execSync(`npx nyc report --reporter=html --reporter=text --reporter=json-summary --report-dir=${UNIFIED_DIR} --temp-dir=${NYC_OUTPUT}`, { stdio: 'inherit', cwd: ROOT_DIR });
-} catch (e) {
-    console.error('Failed to generate nyc report:', e);
+// 4. Segregate Coverage Data
+const NYC_UNIT = path.join(NYC_OUTPUT, 'unit');
+const NYC_E2E = path.join(NYC_OUTPUT, 'e2e');
+const REPORT_UNIT = path.join(COVERAGE_DIR, 'unit');
+const REPORT_E2E = path.join(COVERAGE_DIR, 'e2e');
+
+// Prepare directories
+if (fs.existsSync(NYC_UNIT)) fs.rmSync(NYC_UNIT, { recursive: true, force: true });
+fs.mkdirSync(NYC_UNIT, { recursive: true });
+if (fs.existsSync(NYC_E2E)) fs.rmSync(NYC_E2E, { recursive: true, force: true });
+fs.mkdirSync(NYC_E2E, { recursive: true });
+
+// Segregate files
+if (fs.existsSync(NYC_OUTPUT)) {
+    const allFiles = fs.readdirSync(NYC_OUTPUT).filter(f => f.endsWith('.json'));
+    allFiles.forEach(f => {
+        const src = path.join(NYC_OUTPUT, f);
+        const stat = fs.statSync(src);
+        if (stat.isFile()) {
+             if (f === 'jest-coverage.json') {
+                fs.copyFileSync(src, path.join(NYC_UNIT, f));
+            } else {
+                fs.copyFileSync(src, path.join(NYC_E2E, f));
+            }
+        }
+    });
 }
 
-// 5. Generate Markdown with Mermaid
+// 5. Generate Reports
+const generateReport = (name, tempDir, reportDir) => {
+    console.log(`Generating ${name} Report...`);
+    try {
+        execSync(`npx nyc report --reporter=html --reporter=text --reporter=json-summary --report-dir=${reportDir} --temp-dir=${tempDir}`, { stdio: 'inherit', cwd: ROOT_DIR });
+        return true;
+    } catch (e) {
+        console.error(`Failed to generate ${name} report:`, e);
+        return false;
+    }
+};
+
+generateReport('Unified', NYC_OUTPUT, UNIFIED_DIR);
+generateReport('Backend Unit', NYC_UNIT, REPORT_UNIT);
+generateReport('E2E', NYC_E2E, REPORT_E2E);
+
+// 6. Generate Markdown with Mermaid
 console.log('Generating Markdown Report with Mermaid Diagrams...');
-const summaryPath = path.join(UNIFIED_DIR, 'coverage-summary.json');
-if (fs.existsSync(summaryPath)) {
-    const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
-    const markdown = generateMarkdown(summary);
+
+const loadSummary = (dir) => {
+    const p = path.join(dir, 'coverage-summary.json');
+    if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf8'));
+    return null;
+};
+
+const summaryUnified = loadSummary(UNIFIED_DIR);
+const summaryUnit = loadSummary(REPORT_UNIT);
+const summaryE2E = loadSummary(REPORT_E2E);
+
+if (summaryUnified) {
+    const markdown = generateMarkdown(summaryUnified, summaryUnit, summaryE2E);
     fs.writeFileSync(REPORT_FILE, markdown);
     console.log(`Report written to ${REPORT_FILE}`);
 } else {
-    console.error('Coverage summary not found!');
+    console.error('Unified coverage summary not found!');
 }
 
-function generateMarkdown(summary) {
-    let md = '# Unified Coverage Report\n\n';
+function generateMarkdown(summary, summaryUnit, summaryE2E) {
+    let md = '# Coverage Report\n\n';
+    md += 'This report contains coverage data from Backend Unit Tests, E2E Tests, and a Unified view.\n\n';
+
+    md += renderSection('Unified Coverage', summary);
+
+    if (summaryUnit) {
+        md += renderSection('Backend Unit Tests Coverage', summaryUnit);
+    }
+
+    if (summaryE2E) {
+        md += renderSection('E2E Tests Coverage', summaryE2E);
+    }
+
+    return md;
+}
+
+function renderSection(title, summary) {
+    let md = `## ${title}\n\n`;
 
     // Calculate totals
     const total = summary.total;
