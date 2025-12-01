@@ -1,6 +1,6 @@
 const fastify = require('fastify')({ logger: true })
 const path = require('path')
-const AutoLoad = require('fastify-autoload')
+const AutoLoad = require('@fastify/autoload')
 
 const start = async () => {
   try {

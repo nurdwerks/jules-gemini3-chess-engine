@@ -5,6 +5,30 @@ const v8toIstanbul = require('v8-to-istanbul')
 
 const test = base.extend({
   page: async ({ page }, use) => {
+    // Mock Auth to bypass modal
+    await page.route('**/api/user/me', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          loggedIn: true,
+          user: {
+            username: 'testuser',
+            displayName: 'Test User',
+            role: 'user'
+          }
+        })
+      })
+    })
+
+    await page.route('**/api/user/data', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({})
+      })
+    })
+
     // Start coverage
     await page.coverage.startJSCoverage({
       resetOnNavigation: false
