@@ -18,6 +18,22 @@ const generateRandomName = () => {
 }
 
 class Auth {
+  _fixBuffer (obj) {
+    if (obj instanceof Uint8Array || Buffer.isBuffer(obj)) return obj
+    if (obj.type === 'Buffer' && Array.isArray(obj.data)) {
+        return new Uint8Array(obj.data)
+    }
+    if (typeof obj === 'object' && obj !== null) {
+        const keys = Object.keys(obj).filter(k => !isNaN(parseInt(k))).sort((a,b) => Number(a) - Number(b))
+        if (keys.length > 0 && Number(keys[0]) === 0 && Number(keys[keys.length-1]) === keys.length - 1) {
+             const arr = new Uint8Array(keys.length)
+             keys.forEach(k => arr[k] = obj[k])
+             return arr
+        }
+    }
+    return obj
+  }
+
   async getRegisterOptions (username, rpID = 'localhost') {
     const user = await db.getUser(username)
 
@@ -40,7 +56,7 @@ class Auth {
       userName: username,
       attestationType: 'none',
       excludeCredentials: newUserData.authenticators.map(auth => ({
-        id: auth.credentialID,
+        id: Buffer.from(this._fixBuffer(auth.credentialID)).toString('base64url'),
         type: 'public-key',
         transports: auth.transports
       })),
@@ -106,7 +122,7 @@ class Auth {
     const options = await generateAuthenticationOptions({
       rpID,
       allowCredentials: user.authenticators.map(auth => ({
-        id: auth.credentialID,
+        id: Buffer.from(this._fixBuffer(auth.credentialID)).toString('base64url'),
         type: 'public-key',
         transports: auth.transports
       })),
@@ -124,8 +140,17 @@ class Auth {
     const expectedChallenge = await db.getUserCurrentChallenge(username)
 
     // Find the authenticator used
-    const authenticator = user.authenticators.find(auth => auth.credentialID === body.id)
+    const authenticator = user.authenticators.find(auth => {
+        // We need to compare against the ID sent by the client (which is base64url string)
+        const fixedId = Buffer.from(this._fixBuffer(auth.credentialID)).toString('base64url')
+        return fixedId === body.id
+    })
+
     if (!authenticator) throw new Error('Authenticator not found')
+
+    // Fix the authenticator object buffers for simplewebauthn
+    authenticator.credentialID = this._fixBuffer(authenticator.credentialID)
+    authenticator.credentialPublicKey = this._fixBuffer(authenticator.credentialPublicKey)
 
     if (!origin) {
         const protocol = rpID === 'localhost' ? 'http' : 'https'
