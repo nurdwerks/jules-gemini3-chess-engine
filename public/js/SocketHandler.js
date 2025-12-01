@@ -10,7 +10,7 @@ window.SocketHandler = class SocketHandler {
 
   connect () {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    this.socket = new WebSocket(`${protocol}//${window.location.host}`)
+    this.socket = new WebSocket(`${protocol}//${window.location.host}/ws`)
 
     this.socket.onopen = () => {
       this.isConnected = true

@@ -1,5 +1,5 @@
-const Evaluation = require('../../src/Evaluation')
-const Board = require('../../src/Board')
+const Evaluation = require('../../src/engine/Evaluation')
+const Board = require('../../src/engine/Board')
 
 describe('Evaluation - Pawn Structure', () => {
   test('Identifies Passed Pawn bonus', () => {

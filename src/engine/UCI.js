@@ -8,6 +8,7 @@ const Polyglot = require('./Polyglot')
 const Syzygy = require('./Syzygy')
 const { TranspositionTable } = require('./TranspositionTable')
 const { Worker } = require('worker_threads')
+const path = require('path')
 
 class UCI {
   constructor (outputCallback = console.log) {
@@ -54,7 +55,7 @@ class UCI {
     const sharedBuffer = this.tt.getSharedBuffer()
     const numWorkers = Math.max(1, this.options.Threads)
     for (let i = 0; i < numWorkers; i++) {
-      const worker = new Worker('./src/Worker.js', {
+      const worker = new Worker(path.join(__dirname, 'Worker.js'), {
         workerData: {
           sharedBuffer,
           stopSignalBuffer: this.stopSignal.buffer,

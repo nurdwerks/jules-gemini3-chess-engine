@@ -1,4 +1,4 @@
-const UCI = require('../../src/UCI')
+const UCI = require('../../src/engine/UCI')
 
 // Mock Worker to avoid threading issues in tests
 jest.mock('worker_threads', () => {

@@ -1,4 +1,4 @@
-const StrengthLimiter = require('../../src/StrengthLimiter')
+const StrengthLimiter = require('../../src/engine/StrengthLimiter')
 
 describe('StrengthLimiter Elo Mapping', () => {
   test('1200 Elo returns approx 1000 nodes', () => {

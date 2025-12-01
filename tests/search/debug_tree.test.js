@@ -1,5 +1,5 @@
-const Search = require('../../src/Search')
-const Board = require('../../src/Board')
+const Search = require('../../src/engine/Search')
+const Board = require('../../src/engine/Board')
 const fs = require('fs')
 const path = require('path')
 

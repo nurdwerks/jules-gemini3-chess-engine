@@ -1,4 +1,4 @@
-const SearchHeuristics = require('../../src/SearchHeuristics')
+const SearchHeuristics = require('../../src/engine/SearchHeuristics')
 
 describe('SearchHeuristics', () => {
   let heuristics

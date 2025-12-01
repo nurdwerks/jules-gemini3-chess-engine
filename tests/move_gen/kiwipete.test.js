@@ -1,4 +1,4 @@
-const Board = require('../../src/Board')
+const Board = require('../../src/engine/Board')
 
 describe('Kiwipete Perft Verification', () => {
   let board

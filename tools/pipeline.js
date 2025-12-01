@@ -2,7 +2,7 @@ const { playMatch } = require('./match.js')
 const EpdLoader = require('./EpdLoader.js')
 const Tuner = require('./Tuner.js')
 const fs = require('fs')
-const { NNUE } = require('../src/NNUE')
+const { NNUE } = require('../src/engine/NNUE')
 
 const EPD_FILE = 'tuning_data.epd'
 const TUNED_PARAMS_FILE = 'tuned_evaluation_params.json'

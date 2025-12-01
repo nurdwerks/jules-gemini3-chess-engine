@@ -1,5 +1,5 @@
-const Board = require('../../src/Board')
-const Piece = require('../../src/Piece')
+const Board = require('../../src/engine/Board')
+const Piece = require('../../src/engine/Piece')
 
 describe('Sliding Pieces Movement (Story 1.3a)', () => {
   let board

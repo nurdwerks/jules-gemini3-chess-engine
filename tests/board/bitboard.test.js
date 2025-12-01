@@ -1,4 +1,4 @@
-const Bitboard = require('../../src/Bitboard')
+const Bitboard = require('../../src/engine/Bitboard')
 
 describe('Bitboard Infrastructure', () => {
   test('setBit/getBit/clearBit', () => {

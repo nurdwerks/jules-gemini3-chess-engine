@@ -72,6 +72,16 @@ class Database {
         throw err
     }
   }
+
+  async getAllUsers () {
+    const users = []
+    for await (const [key, value] of this.db.iterator({ gte: 'user:', lte: 'user:\xFF' })) {
+        if (key.startsWith('user:')) {
+            users.push(value)
+        }
+    }
+    return users
+  }
 }
 
 module.exports = new Database()

@@ -1,4 +1,4 @@
-const PerftTT = require('../../src/PerftTT')
+const PerftTT = require('../../src/engine/PerftTT')
 
 describe('PerftTT Component', () => {
   test('Constructor initializes correctly with default size', () => {
