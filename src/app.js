@@ -61,6 +61,12 @@ const start = async () => {
     // Start server
     await fastify.listen({ port: 3000, host: '0.0.0.0' })
     console.log(`Server running at http://localhost:3000/`)
+
+    process.on('SIGINT', async () => {
+      console.log('Stopping server...')
+      await fastify.close()
+      process.exit(0)
+    })
   } catch (err) {
     fastify.log.error(err)
     process.exit(1)

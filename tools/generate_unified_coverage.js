@@ -1,4 +1,4 @@
-const { execSync } = require('child_process');
+const { execSync, spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -40,10 +40,37 @@ if (!skipTests) {
     console.log('--------------------------------------------------');
     console.log('Running E2E Tests (Playwright)...');
     console.log('--------------------------------------------------');
+
+    // Start backend with coverage
+    console.log('Starting backend with coverage...');
+    const out = fs.openSync(path.join(ROOT_DIR, 'server.log'), 'w');
+    const err = fs.openSync(path.join(ROOT_DIR, 'server.err'), 'w');
+    const server = spawn('npx', ['nyc', '--silent', '--no-clean', 'node', 'src/app.js'], {
+        cwd: ROOT_DIR,
+        detached: true,
+        stdio: ['ignore', out, err]
+    });
+
+    // Wait for server to be ready
+    console.log('Waiting for server to start...');
+    try {
+        execSync('sleep 10');
+    } catch (e) {}
+
     try {
         execSync('npm run test:e2e', { stdio: 'inherit', cwd: ROOT_DIR });
     } catch (e) {
         console.warn('E2E tests failed or had issues. Proceeding with available coverage.');
+    } finally {
+        // Kill server nicely to ensure coverage is written
+        console.log('Stopping backend...');
+        try {
+            process.kill(-server.pid, 'SIGINT');
+            // Give it time to write coverage
+            execSync('sleep 5');
+        } catch (e) {
+            console.error('Error stopping server:', e);
+        }
     }
 } else {
     console.log('Skipping test execution as requested.');

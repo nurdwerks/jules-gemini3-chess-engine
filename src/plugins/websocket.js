@@ -7,6 +7,10 @@ const voteRoom = new VoteRoom()
 
 module.exports = fp(async function (fastify, opts) {
   fastify.get('/ws', { websocket: true }, (connection, req) => {
+    if (!connection || !connection.socket) {
+      fastify.log.error('WebSocket connection or socket is missing')
+      return
+    }
     const ws = connection.socket
 
     // UCI instance per connection

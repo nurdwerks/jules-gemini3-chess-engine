@@ -8,9 +8,23 @@
     "coverage": "jest --coverage",
     "eslint": "eslint . --fix",
     "test:e2e": "playwright test --project=chromium",
-    "report:coverage": "node tools/generate_unified_coverage.js",
+    "report:coverage": "bash tools/report_coverage.sh",
     "start": "node src/app.js",
+    "start:coverage": "nyc --silent --no-clean node src/app.js",
     "tune": "node tools/pipeline.js"
+  },
+  "nyc": {
+    "include": [
+      "src/**/*.js"
+    ],
+    "exclude": [
+      "tests/**",
+      "public/**"
+    ],
+    "reporter": [
+      "json"
+    ],
+    "all": true
   },
   "jest": {
     "collectCoverage": false,
