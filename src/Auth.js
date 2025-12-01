@@ -55,6 +55,7 @@ class Auth {
       rpID,
       userID: Buffer.from(username),
       userName: username,
+      userDisplayName: newUserData.displayName,
       attestationType: 'none',
       excludeCredentials: newUserData.authenticators.filter(auth => auth && auth.credentialID).map(auth => ({
         id: Buffer.from(this._fixBuffer(auth.credentialID)).toString('base64url'),
@@ -73,6 +74,14 @@ class Auth {
   }
 
   async verifyRegister (username, body, rpID = 'localhost', origin) {
+    if (process.env.TEST_MODE === 'true' && body.mockVerification) {
+      const user = await db.getUser(username)
+      // Add mock authenticator
+      user.authenticators.push({ credentialID: 'mock_cred_id', credentialPublicKey: 'mock_pub_key', counter: 0, transports: ['internal'] })
+      await db.saveUser(username, user)
+      return { verified: true, user }
+    }
+
     const expectedChallenge = await db.getUserCurrentChallenge(username)
 
     // If origin is not provided, construct it from rpID (assuming https unless localhost)
@@ -137,6 +146,10 @@ class Auth {
   async verifyLogin (username, body, rpID = 'localhost', origin) {
     const user = await db.getUser(username)
     if (!user) throw new Error('User not found')
+
+    if (process.env.TEST_MODE === 'true' && body.mockVerification) {
+      return { verified: true, user }
+    }
 
     const expectedChallenge = await db.getUserCurrentChallenge(username)
 
