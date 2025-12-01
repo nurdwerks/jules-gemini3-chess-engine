@@ -39,7 +39,8 @@ class AuthManager {
             <input type="text" id="auth-username" placeholder="Username" style="width: 100%; padding: 10px; margin-bottom: 10px; box-sizing: border-box; background: var(--bg-tertiary); border: 1px solid var(--border-color); color: var(--text-primary);">
 
             <button id="btn-login" class="button button-primary" style="width: 100%; margin-bottom: 10px;">Login with FIDO2</button>
-            <button id="btn-register" class="button button-secondary" style="width: 100%;">Register New Account</button>
+            <button id="btn-register" class="button button-secondary" style="width: 100%; margin-bottom: 10px;">Register New Account</button>
+            <button id="btn-guest" class="button" style="width: 100%; background: transparent; border: 1px solid var(--border-color); color: var(--text-secondary);">Play as Guest</button>
         </div>
         <div id="auth-status" style="margin-top: 1rem; color: #ff6b6b; min-height: 1.2em;"></div>
       </div>
@@ -50,6 +51,9 @@ class AuthManager {
 
     document.getElementById('btn-login').addEventListener('click', () => this.login())
     document.getElementById('btn-register').addEventListener('click', () => this.register())
+    document.getElementById('btn-guest').addEventListener('click', () => {
+        this.modal.style.display = 'none'
+    })
   }
 
   async checkSession () {

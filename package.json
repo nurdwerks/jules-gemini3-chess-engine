@@ -7,8 +7,8 @@
     "test": "jest",
     "coverage": "jest --coverage",
     "eslint": "eslint . --fix",
-    "test:e2e": "playwright test",
-    "report:coverage": "nyc report --reporter=text --reporter=html",
+    "test:e2e": "playwright test --project=chromium",
+    "report:coverage": "node tools/generate_unified_coverage.js",
     "start": "node src/server.js",
     "tune": "node tools/pipeline.js"
   },
@@ -17,7 +17,9 @@
     "coverageDirectory": "coverage",
     "coverageReporters": [
       "text",
-      "lcov"
+      "lcov",
+      "json",
+      "json-summary"
     ],
     "projects": [
       {

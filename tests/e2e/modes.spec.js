@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test')
+const { test, expect } = require('./coverage')
 
 test.describe('Game Modes', () => {
   test.beforeEach(async ({ page }) => {
