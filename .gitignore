@@ -6,3 +6,6 @@ uploads/
 playwright-report/
 test-results/
 .nyc_output/
+node_modules/
+db/
+verification/

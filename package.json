@@ -88,7 +88,14 @@
     "v8-to-istanbul": "^9.3.0"
   },
   "dependencies": {
+    "@simplewebauthn/browser": "^13.2.2",
+    "@simplewebauthn/server": "^13.2.2",
+    "body-parser": "^2.2.1",
     "chess.js": "^1.4.0",
+    "classic-level": "^3.0.0",
+    "cookie-parser": "^1.4.7",
+    "express": "^5.1.0",
+    "express-session": "^1.18.2",
     "jszip": "^3.10.1",
     "pgn-parser": "^2.2.1",
     "ws": "^8.18.3"

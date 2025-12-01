@@ -77,6 +77,7 @@ global.InfoManager = class {}
 global.VisualEffects = class { triggerShake () {} startConfetti () {} }
 global.BatterySaver = class {}
 global.LanguageManager = class { init () {} }
+global.AuthManager = class { init () {} }
 
 global.fetch = jest.fn().mockResolvedValue({ json: () => Promise.resolve({}) })
 
@@ -104,7 +105,11 @@ global.UIManager = class {
       animationSpeedSelect: { value: '200' },
       gameOverModal: { classList: { add: jest.fn(), remove: jest.fn() } },
       gameOverResult: { textContent: '' },
-      gameOverReason: { textContent: '' }
+      gameOverReason: { textContent: '' },
+      useCloudEngine: { checked: false, disabled: true },
+      cloudEngineUrl: { value: '' },
+      topPlayerClock: {},
+      bottomPlayerClock: {},
     }
   }
 

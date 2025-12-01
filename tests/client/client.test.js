@@ -173,6 +173,9 @@ describe('client.js', () => {
     global.TutorialManager = class {
       start () {}
     }
+    global.AuthManager = class {
+      init () {}
+    }
 
     global.ClientUtils = {
       parseInfo: jest.fn(),

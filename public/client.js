@@ -19,6 +19,7 @@ const initApp = () => {
     let batterySaver = null
     let moveHandler = null
     let chatManager = null
+    let authManager = null
 
     // Shared State
     const state = {
@@ -539,6 +540,9 @@ const initApp = () => {
     // Language Manager
     const languageManager = new LanguageManager()
     languageManager.init()
+
+    // Auth Manager
+    authManager = new window.AuthManager(uiManager)
 
     checkVersion()
     setupOfflineIndicator()
