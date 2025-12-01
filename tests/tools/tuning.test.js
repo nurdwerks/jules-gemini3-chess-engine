@@ -1,5 +1,5 @@
-const UCI = require('../../src/UCI')
-const Evaluation = require('../../src/Evaluation')
+const UCI = require('../../src/engine/UCI')
+const Evaluation = require('../../src/engine/Evaluation')
 
 describe('Tuning Infrastructure (Stories 5.3a/5.3b)', () => {
   let uci

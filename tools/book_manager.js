@@ -2,8 +2,8 @@
 
 const fs = require('fs')
 const { parse } = require('pgn-parser')
-const Board = require('../src/Board')
-const Polyglot = require('../src/Polyglot')
+const Board = require('../src/engine/Board')
+const Polyglot = require('../src/engine/Polyglot')
 
 function pgnToBin (pgnPath, binPath) {
   const pgn = fs.readFileSync(pgnPath, 'utf-8')

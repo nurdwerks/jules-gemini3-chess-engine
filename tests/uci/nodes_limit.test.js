@@ -1,4 +1,4 @@
-const UCI = require('../../src/UCI')
+const UCI = require('../../src/engine/UCI')
 
 describe('UCI go nodes command', () => {
   let uci

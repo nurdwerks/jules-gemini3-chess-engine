@@ -1,7 +1,7 @@
 const { parentPort } = require('worker_threads')
 const { playGame } = require('./download_and_tune')
-const { TranspositionTable } = require('../src/TranspositionTable')
-const { NNUE } = require('../src/NNUE')
+const { TranspositionTable } = require('../src/engine/TranspositionTable')
+const { NNUE } = require('../src/engine/NNUE')
 
 let tt = null
 let nnue = null

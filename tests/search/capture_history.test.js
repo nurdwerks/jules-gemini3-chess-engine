@@ -1,7 +1,7 @@
-const Search = require('../../src/Search')
-const Board = require('../../src/Board')
-const MoveSorter = require('../../src/MoveSorter')
-const SearchHeuristics = require('../../src/SearchHeuristics')
+const Search = require('../../src/engine/Search')
+const Board = require('../../src/engine/Board')
+const MoveSorter = require('../../src/engine/MoveSorter')
+const SearchHeuristics = require('../../src/engine/SearchHeuristics')
 
 describe('Capture History Heuristic', () => {
   let board

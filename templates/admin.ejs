@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Jules & Gemini Chess</title>
+    <link rel="stylesheet" href="/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        .user-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .user-table th, .user-table td {
+            padding: 10px;
+            border-bottom: 1px solid var(--grafana-border);
+            text-align: left;
+        }
+        .user-table th {
+            background-color: var(--grafana-panel-bg);
+        }
+    </style>
+</head>
+<body class="light-mode">
+    <div class="container" style="padding: 20px; height: auto; overflow: auto;">
+        <h1>Admin Dashboard</h1>
+        <a href="/" class="button" style="display: inline-block; text-decoration: none; color: white; padding: 10px 20px; background: var(--grafana-accent-blue);">Back to Game</a>
+
+        <div class="panel mt-10">
+            <div class="panel-header">
+                <h2 class="panel-title">User Management</h2>
+            </div>
+            <div class="panel-content">
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Display Name</th>
+                            <th>Role</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="user-table-body">
+                        <!-- Users will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Inline simple admin script or move to file
+        async function loadUsers() {
+            try {
+                const response = await fetch('/api/user/list');
+                if (!response.ok) throw new Error('Failed to load users');
+                const users = await response.json();
+                renderUsers(users);
+            } catch (err) {
+                console.error(err);
+                alert('Error loading users');
+            }
+        }
+
+        function renderUsers(users) {
+            const tbody = document.getElementById('user-table-body');
+            tbody.innerHTML = '';
+            users.forEach(user => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${user.username}</td>
+                    <td>${user.displayName || '-'}</td>
+                    <td>${user.role || 'user'}</td>
+                    <td>
+                        <select onchange="updateRole('${user.username}', this.value)">
+                            <option value="user" ${user.role === 'user' || !user.role ? 'selected' : ''}>User</option>
+                            <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                        </select>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function updateRole(username, role) {
+            try {
+                const response = await fetch('/api/user/role', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, role })
+                });
+                if (!response.ok) throw new Error('Failed to update role');
+                alert(`Updated ${username} to ${role}`);
+            } catch (err) {
+                console.error(err);
+                alert('Error updating role');
+            }
+        }
+
+        loadUsers();
+    </script>
+</body>
+</html>

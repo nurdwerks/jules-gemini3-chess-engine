@@ -1,4 +1,4 @@
-const Board = require('../../src/Board.js')
+const Board = require('../../src/engine/Board.js')
 
 describe('En Passant', () => {
   let board

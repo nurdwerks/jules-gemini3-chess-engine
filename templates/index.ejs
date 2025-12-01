@@ -9,6 +9,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <script>
+    window.INITIAL_USER = <%- JSON.stringify(user) %>;
+  </script>
 </head>
 <body>
   <div class="container">
@@ -60,6 +63,9 @@
             <div class="panel controls-panel">
                 <div class="panel-header">
                     <h2 class="panel-title">Game Controls</h2>
+                    <% if (user && user.role === 'admin') { %>
+                        <a href="/admin" class="admin-link-btn" style="font-size: 12px; margin-left: auto;">Admin Panel</a>
+                    <% } %>
                 </div>
                 <div class="panel-content">
                      <div id="status">Status: Disconnected</div>

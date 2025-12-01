@@ -1,4 +1,4 @@
-const TimeManager = require('../../src/TimeManager')
+const TimeManager = require('../../src/engine/TimeManager')
 
 describe('TimeManager', () => {
   let tm

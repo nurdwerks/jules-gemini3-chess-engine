@@ -1,5 +1,5 @@
-const Search = require('../../src/Search')
-const Board = require('../../src/Board')
+const Search = require('../../src/engine/Search')
+const Board = require('../../src/engine/Board')
 
 describe('Strength Limitation & Error Injection', () => {
   let board

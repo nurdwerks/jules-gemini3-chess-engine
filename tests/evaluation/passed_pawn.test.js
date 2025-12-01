@@ -1,6 +1,6 @@
-const Board = require('../../src/Board')
-const Search = require('../../src/Search')
-const Evaluation = require('../../src/Evaluation')
+const Board = require('../../src/engine/Board')
+const Search = require('../../src/engine/Search')
+const Evaluation = require('../../src/engine/Evaluation')
 
 describe('Passed Pawn Extensions', () => {
   let board

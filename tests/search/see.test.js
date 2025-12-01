@@ -1,5 +1,5 @@
-const SEE = require('../../src/SEE')
-const Board = require('../../src/Board')
+const SEE = require('../../src/engine/SEE')
+const Board = require('../../src/engine/Board')
 
 describe('Static Exchange Evaluation (SEE)', () => {
   let board

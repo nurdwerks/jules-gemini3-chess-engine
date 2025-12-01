@@ -7,6 +7,13 @@ test('has title', async ({ page }) => {
 
 test('chessboard loads', async ({ page }) => {
   await page.goto('/')
+
+  // Handle auth modal
+  const guestBtn = page.locator('#btn-guest')
+  if (await guestBtn.isVisible()) {
+    await guestBtn.click()
+  }
+
   const chessboard = page.locator('#chessboard')
   await expect(chessboard).toBeVisible()
 

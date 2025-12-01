@@ -7,9 +7,9 @@ const { spawn } = require('child_process')
 const { Worker } = require('worker_threads')
 const os = require('os')
 
-const Board = require('../src/Board')
-const Search = require('../src/Search')
-const { TranspositionTable } = require('../src/TranspositionTable')
+const Board = require('../src/engine/Board')
+const Search = require('../src/engine/Search')
+const { TranspositionTable } = require('../src/engine/TranspositionTable')
 
 const EPD_JSON_PATH = path.join(__dirname, 'epd.json')
 const CUMULATIVE_DATA_FILE = path.join(process.cwd(), 'tuning_data_cumulative.epd')

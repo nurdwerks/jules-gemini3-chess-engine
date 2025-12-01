@@ -1,4 +1,4 @@
-const { TranspositionTable } = require('../../src/TranspositionTable')
+const { TranspositionTable } = require('../../src/engine/TranspositionTable')
 
 describe('Parallel Search Infrastructure', () => {
   test('TT handles SharedArrayBuffer', () => {

@@ -57,6 +57,15 @@ class AuthManager {
   }
 
   async checkSession () {
+    if (typeof window.INITIAL_USER !== 'undefined') {
+        if (window.INITIAL_USER) {
+            this.onLoginSuccess(window.INITIAL_USER)
+        } else {
+            this.modal.style.display = 'flex'
+        }
+        return
+    }
+
     try {
         const res = await fetch('/api/user/me')
         const data = await res.json()

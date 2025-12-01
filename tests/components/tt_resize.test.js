@@ -1,5 +1,5 @@
-const { TranspositionTable } = require('../../src/TranspositionTable')
-const UCI = require('../../src/UCI')
+const { TranspositionTable } = require('../../src/engine/TranspositionTable')
+const UCI = require('../../src/engine/UCI')
 
 // Mock output
 let output = []

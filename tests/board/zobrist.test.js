@@ -1,5 +1,5 @@
-const Board = require('../../src/Board')
-const Zobrist = require('../../src/Zobrist')
+const Board = require('../../src/engine/Board')
+const Zobrist = require('../../src/engine/Zobrist')
 
 describe('Zobrist Hashing', () => {
   let board

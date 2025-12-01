@@ -1,4 +1,4 @@
-const Syzygy = require('../../src/Syzygy')
+const Syzygy = require('../../src/engine/Syzygy')
 const fs = require('fs')
 const path = require('path')
 
