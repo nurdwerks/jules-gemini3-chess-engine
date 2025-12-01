@@ -224,7 +224,8 @@ class UCI {
 
   cmdDebugTree () {
     this.currentSearch = new Search(this.board, this.tt)
-    this.currentSearch.search(2, { hardLimit: Infinity }, { debug: true, debugFile: 'debug_tree.json' })
+    const debugPath = path.join(__dirname, '../../public/debug_tree.json')
+    this.currentSearch.search(2, { hardLimit: Infinity }, { debug: true, debugFile: debugPath })
     this.currentSearch = null
     this.output('info string Debug tree written to debug_tree.json')
   }

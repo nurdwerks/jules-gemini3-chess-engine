@@ -59,4 +59,19 @@ test('Leaderboard Functionality', async ({ page }) => {
   const secondRow = page.locator('#leaderboard-table tbody tr').nth(1)
   await expect(secondRow.locator('td').nth(0)).toHaveText('Engine B')
   await expect(secondRow.locator('td').nth(5)).toHaveText('16.7%')
+
+  await page.click('#close-leaderboard-modal', { force: true })
+
+  // Test updateLeaderboard
+  await page.evaluate(() => {
+    window.leaderboardManager.updateLeaderboard('Engine A', 'Engine B', 'white') // A wins
+  })
+
+  // Reopen and check data update
+  await page.click('#leaderboard-btn')
+  await expect(page.locator('#leaderboard-modal')).toBeVisible()
+
+  const updatedRow = page.locator('#leaderboard-table tbody tr').first()
+  await expect(updatedRow.locator('td').nth(1)).toHaveText('4') // Games
+  await expect(updatedRow.locator('td').nth(2)).toHaveText('3') // W
 })
