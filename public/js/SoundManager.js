@@ -3,7 +3,7 @@
 
 window.SoundManager = (() => {
   let context = null
-  let enabled = true
+  let enabled = false
   let masterGain = null
   let volume = 1.0
 
