@@ -827,6 +827,7 @@ const initApp = () => {
     window.visualEffects = visualEffects
     window.boardRenderer = boardRenderer
     window.treeManager = treeManager
+    window.moveHandler = moveHandler
 
     window.ChessApp = {
       startMatch: (whiteConfig, blackConfig, onGameEnd) => {
