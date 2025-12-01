@@ -1,4 +1,4 @@
-const UCI = require('../../src/UCI')
+const UCI = require('../../src/engine/UCI')
 
 describe('UCI Developer Tools', () => {
   let uci

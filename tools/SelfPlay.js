@@ -4,7 +4,7 @@
  * Outputs PGN or EPD.
  */
 
-const UCI = require('../src/UCI')
+const UCI = require('../src/engine/UCI')
 
 class SelfPlay {
   constructor () {

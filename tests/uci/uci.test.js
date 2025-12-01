@@ -1,4 +1,4 @@
-const UCI = require('../../src/UCI')
+const UCI = require('../../src/engine/UCI')
 
 // Mock console.log to capture output
 let output = []

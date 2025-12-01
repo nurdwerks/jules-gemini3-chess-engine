@@ -2,7 +2,7 @@
 
 const { spawn } = require('child_process')
 const path = require('path')
-const Board = require('../src/Board')
+const Board = require('../src/engine/Board')
 const fs = require('fs')
 
 const DEFAULT_ENGINE_PATH = path.join(__dirname, '../src/engine.js')

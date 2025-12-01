@@ -1,4 +1,4 @@
-const { TranspositionTable, TT_FLAG } = require('../../src/TranspositionTable')
+const { TranspositionTable, TT_FLAG } = require('../../src/engine/TranspositionTable')
 
 describe('Transposition Table', () => {
   let tt

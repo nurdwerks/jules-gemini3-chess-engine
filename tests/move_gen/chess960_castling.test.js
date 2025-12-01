@@ -1,4 +1,4 @@
-const Board = require('../../src/Board')
+const Board = require('../../src/engine/Board')
 
 describe('Chess960 Castling', () => {
   it('should allow castling when king and rook are in standard positions', () => {

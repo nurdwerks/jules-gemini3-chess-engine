@@ -1,7 +1,7 @@
-const SearchHeuristics = require('../../src/SearchHeuristics')
-const MoveSorter = require('../../src/MoveSorter')
-const Search = require('../../src/Search')
-const { TranspositionTable } = require('../../src/TranspositionTable')
+const SearchHeuristics = require('../../src/engine/SearchHeuristics')
+const MoveSorter = require('../../src/engine/MoveSorter')
+const Search = require('../../src/engine/Search')
+const { TranspositionTable } = require('../../src/engine/TranspositionTable')
 
 describe('History Malus', () => {
   let heuristics

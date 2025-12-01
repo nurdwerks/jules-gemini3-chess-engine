@@ -1,4 +1,4 @@
-const Board = require('../../src/Board')
+const Board = require('../../src/engine/Board')
 
 describe('Perft Verification', () => {
   let board

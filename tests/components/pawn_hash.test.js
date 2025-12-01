@@ -1,4 +1,4 @@
-const PawnHash = require('../../src/PawnHash')
+const PawnHash = require('../../src/engine/PawnHash')
 
 describe('PawnHash', () => {
   let pawnHash

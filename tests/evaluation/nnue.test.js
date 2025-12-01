@@ -1,7 +1,7 @@
 const fs = require('fs')
 const path = require('path')
-const { NNUE, Accumulator } = require('../../src/NNUE')
-const Board = require('../../src/Board')
+const { NNUE, Accumulator } = require('../../src/engine/NNUE')
+const Board = require('../../src/engine/Board')
 
 // No long timeout needed since we generate local file
 // jest.setTimeout(60000);

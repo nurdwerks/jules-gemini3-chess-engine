@@ -1,4 +1,4 @@
-const UCI = require('../../src/UCI')
+const UCI = require('../../src/engine/UCI')
 
 // Mock Worker
 jest.mock('worker_threads', () => {

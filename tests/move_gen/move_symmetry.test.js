@@ -1,4 +1,4 @@
-const Board = require('../../src/Board')
+const Board = require('../../src/engine/Board')
 
 function moveToNotation (board, move) {
   const from = board.toRowCol(move.from)

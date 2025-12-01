@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const readline = require('readline')
-const UCI = require('./UCI')
+const UCI = require('./engine/UCI')
 
 const uci = new UCI((msg) => {
   process.stdout.write(msg + '\n')

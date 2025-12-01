@@ -1,4 +1,4 @@
-const Board = require('../../src/Board')
+const Board = require('../../src/engine/Board')
 
 describe('Pin Logic Verification (Story 1.3a)', () => {
   let board

@@ -1,5 +1,5 @@
-const Polyglot = require('../../src/Polyglot')
-const Board = require('../../src/Board')
+const Polyglot = require('../../src/engine/Polyglot')
+const Board = require('../../src/engine/Board')
 const fs = require('fs')
 const path = require('path')
 
