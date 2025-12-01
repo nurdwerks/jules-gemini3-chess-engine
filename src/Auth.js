@@ -19,6 +19,7 @@ const generateRandomName = () => {
 
 class Auth {
   _fixBuffer (obj) {
+    if (!obj) return obj
     if (obj instanceof Uint8Array || Buffer.isBuffer(obj)) return obj
     if (obj.type === 'Buffer' && Array.isArray(obj.data)) {
         return new Uint8Array(obj.data)
@@ -55,7 +56,7 @@ class Auth {
       userID: Buffer.from(username),
       userName: username,
       attestationType: 'none',
-      excludeCredentials: newUserData.authenticators.map(auth => ({
+      excludeCredentials: newUserData.authenticators.filter(auth => auth && auth.credentialID).map(auth => ({
         id: Buffer.from(this._fixBuffer(auth.credentialID)).toString('base64url'),
         type: 'public-key',
         transports: auth.transports
@@ -121,7 +122,7 @@ class Auth {
 
     const options = await generateAuthenticationOptions({
       rpID,
-      allowCredentials: user.authenticators.map(auth => ({
+      allowCredentials: user.authenticators.filter(auth => auth && auth.credentialID).map(auth => ({
         id: Buffer.from(this._fixBuffer(auth.credentialID)).toString('base64url'),
         type: 'public-key',
         transports: auth.transports
