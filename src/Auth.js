@@ -47,7 +47,7 @@ class Auth {
       authenticatorSelection: {
         residentKey: 'preferred',
         userVerification: 'preferred',
-        authenticatorAttachment: 'platform'
+        // authenticatorAttachment: 'platform' // Removed to allow cross-platform (roaming) authenticators
       }
     })
 
