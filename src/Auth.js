@@ -19,6 +19,7 @@ const generateRandomName = () => {
 
 class Auth {
   _fixBuffer (obj) {
+    if (!obj) return obj
     if (obj instanceof Uint8Array || Buffer.isBuffer(obj)) return obj
     if (obj.type === 'Buffer' && Array.isArray(obj.data)) {
         return new Uint8Array(obj.data)
@@ -49,13 +50,15 @@ class Auth {
         await db.saveUser(username, newUserData)
     }
 
+    const validAuthenticators = newUserData.authenticators.filter(auth => auth && auth.credentialID)
+
     const options = await generateRegistrationOptions({
       rpName,
       rpID,
       userID: Buffer.from(username),
       userName: username,
       attestationType: 'none',
-      excludeCredentials: newUserData.authenticators.map(auth => ({
+      excludeCredentials: validAuthenticators.map(auth => ({
         id: Buffer.from(this._fixBuffer(auth.credentialID)).toString('base64url'),
         type: 'public-key',
         transports: auth.transports
@@ -119,9 +122,11 @@ class Auth {
     const user = await db.getUser(username)
     if (!user) throw new Error('User not found')
 
+    const validAuthenticators = user.authenticators.filter(auth => auth && auth.credentialID)
+
     const options = await generateAuthenticationOptions({
       rpID,
-      allowCredentials: user.authenticators.map(auth => ({
+      allowCredentials: validAuthenticators.map(auth => ({
         id: Buffer.from(this._fixBuffer(auth.credentialID)).toString('base64url'),
         type: 'public-key',
         transports: auth.transports
@@ -142,6 +147,7 @@ class Auth {
     // Find the authenticator used
     const authenticator = user.authenticators.find(auth => {
         // We need to compare against the ID sent by the client (which is base64url string)
+        if (!auth.credentialID) return false
         const fixedId = Buffer.from(this._fixBuffer(auth.credentialID)).toString('base64url')
         return fixedId === body.id
     })
