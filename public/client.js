@@ -823,6 +823,9 @@ const initApp = () => {
     // Expose for testing
     window.gameManager = gameManager
     window.settingsManager = settingsManager
+    window.leaderboardManager = leaderboardManager
+    window.visualEffects = visualEffects
+    window.boardRenderer = boardRenderer
 
     window.ChessApp = {
       startMatch: (whiteConfig, blackConfig, onGameEnd) => {

@@ -6,7 +6,22 @@ test('has title', async ({ page }) => {
 })
 
 test('chessboard loads', async ({ page }) => {
+  const sessionCheck = page.waitForResponse(resp => resp.url().includes('/api/user/me')).catch(() => {});
   await page.goto('/')
+  await sessionCheck;
+
+  // Robustly handle auth modal with polling/retry
+  await expect(async () => {
+      const modal = page.locator('#auth-modal')
+      if (await modal.isVisible()) {
+          const guestBtn = page.locator('#btn-guest')
+          if (await guestBtn.isVisible()) {
+              await guestBtn.click()
+          }
+      }
+      await expect(modal).not.toBeVisible()
+  }).toPass({ timeout: 10000 })
+
   const chessboard = page.locator('#chessboard')
   await expect(chessboard).toBeVisible()
 
@@ -16,13 +31,21 @@ test('chessboard loads', async ({ page }) => {
 })
 
 test('basic interaction', async ({ page }) => {
+  const sessionCheck = page.waitForResponse(resp => resp.url().includes('/api/user/me')).catch(() => {});
   await page.goto('/')
+  await sessionCheck;
 
-  // Handle auth modal
-  const guestBtn = page.locator('#btn-guest')
-  if (await guestBtn.isVisible()) {
-    await guestBtn.click()
-  }
+  // Robustly handle auth modal with polling/retry
+  await expect(async () => {
+      const modal = page.locator('#auth-modal')
+      if (await modal.isVisible()) {
+          const guestBtn = page.locator('#btn-guest')
+          if (await guestBtn.isVisible()) {
+              await guestBtn.click()
+          }
+      }
+      await expect(modal).not.toBeVisible()
+  }).toPass({ timeout: 10000 })
 
   // Wait for board to load
   await page.waitForSelector('.square')
