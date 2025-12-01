@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test')
+const { test, expect } = require('./coverage')
 
 test('has title', async ({ page }) => {
   await page.goto('/')
@@ -17,11 +17,18 @@ test('chessboard loads', async ({ page }) => {
 
 test('basic interaction', async ({ page }) => {
   await page.goto('/')
+
+  // Handle auth modal
+  const guestBtn = page.locator('#btn-guest')
+  if (await guestBtn.isVisible()) {
+    await guestBtn.click()
+  }
+
   // Wait for board to load
   await page.waitForSelector('.square')
 
   // Click e2
-  const e2 = page.locator('div[data-alg="e2"]')
+  const e2 = page.locator('#chessboard div[data-alg="e2"]')
   await e2.click()
 
   // Check if it got highlighted (usually .selected or similar, checking .highlight-last might be tricky if it's just selection)

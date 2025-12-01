@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test')
+const { test, expect } = require('./coverage')
 
 test('Graphs Visibility', async ({ page }) => {
   await page.goto('/')
