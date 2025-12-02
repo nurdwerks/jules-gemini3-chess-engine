@@ -166,6 +166,10 @@ class Auth {
     authenticator.credentialID = this._fixBuffer(authenticator.credentialID)
     authenticator.credentialPublicKey = this._fixBuffer(authenticator.credentialPublicKey)
 
+    // Ignore counter checks (e.g. for Passkeys/iOS which might not strictly increment)
+    // Setting to -1 ensures any non-negative counter (0, 1, ...) provided by the authenticator will pass the > stored check.
+    authenticator.counter = -1
+
     if (!origin) {
         const protocol = rpID === 'localhost' ? 'http' : 'https'
         origin = `${protocol}://${rpID}${rpID === 'localhost' ? ':3000' : ''}`
