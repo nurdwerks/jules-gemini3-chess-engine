@@ -1,60 +1,92 @@
 const { test, expect } = require('./coverage')
 
-test.describe('Authentication Flow', () => {
+test.describe('Authentication Flow (CDP)', () => {
+  let client
+
   test.beforeEach(async ({ page }) => {
     // Unroute the mocks from coverage.js to hit the real server
     await page.unroute('**/api/user/me')
     await page.unroute('**/api/user/data')
 
-    // Mock SimpleWebAuthnBrowser library
-    await page.route('**/libs/simplewebauthn-browser.min.js', route => {
-        route.fulfill({
-            status: 200,
-            contentType: 'application/javascript',
-            body: `
-                window.SimpleWebAuthnBrowser = {
-                    startRegistration: async () => ({ mockVerification: true }),
-                    startAuthentication: async () => ({ mockVerification: true })
-                }
-            `
-        })
+    // Initialize CDP Session
+    client = await page.context().newCDPSession(page)
+    await client.send('WebAuthn.enable')
+    await client.send('WebAuthn.addVirtualAuthenticator', {
+      options: {
+        protocol: 'ctap2',
+        transport: 'internal',
+        hasResidentKey: true,
+        hasUserVerification: true,
+        isUserVerified: true,
+        automaticPresenceSimulation: true
+      }
     })
   })
 
-  test('should allow a user to register and logout with WebAuthn (Mocked)', async ({ page }) => {
+  test.afterEach(async () => {
+    if (client) {
+      await client.send('WebAuthn.disable')
+      await client.detach()
+    }
+  })
+
+  test('Registration and Login Success Flow', async ({ page }) => {
     await page.goto('/')
 
     const authModal = page.locator('#auth-modal')
-    await expect(authModal).toBeVisible({ timeout: 10000 })
+    await expect(authModal).toBeVisible()
 
-    // 2. Register
-    const username = `user_${Date.now()}`
-    console.log(`Registering: ${username}`)
+    const username = `cdp_user_${Date.now()}`
+
+    // 1. Register Success
     await page.fill('#auth-username', username)
     await page.click('#btn-register')
 
-    // Wait for "Logged In" state
-    await expect(page.locator('body')).toContainText(`@${username}`, { timeout: 20000 })
+    // Expect to be logged in (checking for username in UI)
+    await expect(page.locator('body')).toContainText(`@${username}`)
     await expect(authModal).not.toBeVisible()
 
-    // 4. Logout
-    console.log('Logging out')
+    // 2. Logout
     await page.click('#btn-logout')
+    // Wait for page reload/modal appearance
+    await expect(authModal).toBeVisible()
 
-    // Wait for "Guest" state (Modal appears)
-    await expect(authModal).toBeVisible({ timeout: 20000 })
+    // 3. Login Success
+    await page.fill('#auth-username', username)
+    await page.click('#btn-login')
+
+    // Expect to be logged in again
+    await expect(page.locator('body')).toContainText(`@${username}`)
+    await expect(authModal).not.toBeVisible()
   })
 
-  test('should handle invalid login attempts', async ({ page }) => {
+  test('Login Failure (User not found)', async ({ page }) => {
     await page.goto('/')
     const authModal = page.locator('#auth-modal')
     await expect(authModal).toBeVisible()
 
-    // 2. Try to login with non-existent user
-    await page.fill('#auth-username', 'non_existent_user')
+    const username = `non_existent_user_${Date.now()}`
+    await page.fill('#auth-username', username)
     await page.click('#btn-login')
 
-    // 3. Verify error message
+    // Expect error message
     await expect(page.locator('#auth-status')).toContainText('Error: User not found')
+    // Modal should still be visible
+    await expect(authModal).toBeVisible()
+  })
+
+  test('Registration Failure (Empty Username)', async ({ page }) => {
+    await page.goto('/')
+    const authModal = page.locator('#auth-modal')
+    await expect(authModal).toBeVisible()
+
+    // Leave username empty
+    await page.fill('#auth-username', '')
+    await page.click('#btn-register')
+
+    // Expect validation error
+    await expect(page.locator('#auth-status')).toContainText('Please enter a username')
+    // Modal should still be visible
+    await expect(authModal).toBeVisible()
   })
 })

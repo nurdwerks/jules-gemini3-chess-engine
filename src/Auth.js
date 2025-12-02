@@ -80,21 +80,11 @@ class Auth {
     const body = req.body
     let origin = req.headers.origin
 
-    if (process.env.TEST_MODE === 'true' && body.mockVerification) {
-      const user = await db.getUser(username)
-      // Add mock authenticator
-      user.authenticators.push({ credentialID: 'mock_cred_id', credentialPublicKey: 'mock_pub_key', counter: 0, transports: ['internal'] })
-      await db.saveUser(username, user)
-      return { verified: true, user }
-    }
-
     const expectedChallenge = await db.getUserCurrentChallenge(username)
 
     // If origin is not provided, construct it from rpID (assuming https unless localhost)
     if (!origin) {
         const protocol = rpID === 'localhost' ? 'http' : 'https'
-        // Note: Port is tricky. If not localhost, assume 443 (implied).
-        // If localhost, default to 3000? Or just leave it to caller to provide correct origin.
         origin = `${protocol}://${rpID}${rpID === 'localhost' ? ':3000' : ''}`
     }
 
@@ -114,7 +104,24 @@ class Auth {
     const { verified, registrationInfo } = verification
 
     if (verified && registrationInfo) {
-      const { credentialPublicKey, credentialID, counter } = registrationInfo
+      let credentialID, credentialPublicKey, counter
+
+      // SimpleWebAuthn v10+ structure
+      if (registrationInfo.credential) {
+          credentialID = registrationInfo.credential.id
+          credentialPublicKey = registrationInfo.credential.publicKey
+          counter = registrationInfo.credential.counter
+      } else {
+          // Fallback
+          credentialID = registrationInfo.credentialID
+          credentialPublicKey = registrationInfo.credentialPublicKey
+          counter = registrationInfo.counter
+      }
+
+      // Ensure credentialID is Buffer (if string, it's likely base64url)
+      if (typeof credentialID === 'string') {
+          credentialID = Buffer.from(credentialID, 'base64url')
+      }
 
       const user = await db.getUser(username)
       const newAuthenticator = {
@@ -159,18 +166,14 @@ class Auth {
     const user = await db.getUser(username)
     if (!user) throw new Error('User not found')
 
-    if (process.env.TEST_MODE === 'true') {
-      if (body.mockVerification || username.startsWith('cdp_')) {
-        return { verified: true, user }
-      }
-    }
-
     const expectedChallenge = await db.getUserCurrentChallenge(username)
 
     // Find the authenticator used
     const authenticator = user.authenticators.find(auth => {
         // We need to compare against the ID sent by the client (which is base64url string)
-        const fixedId = Buffer.from(this._fixBuffer(auth.credentialID)).toString('base64url')
+        const credId = this._fixBuffer(auth.credentialID)
+        if (!credId) return false
+        const fixedId = Buffer.from(credId).toString('base64url')
         return fixedId === body.id
     })
 
@@ -180,12 +183,17 @@ class Auth {
     authenticator.credentialID = this._fixBuffer(authenticator.credentialID)
     authenticator.credentialPublicKey = this._fixBuffer(authenticator.credentialPublicKey)
 
-    // Ignore counter checks (e.g. for Passkeys/iOS which might not strictly increment)
-    authenticator.counter = -1
-
     if (!origin) {
         const protocol = rpID === 'localhost' ? 'http' : 'https'
         origin = `${protocol}://${rpID}${rpID === 'localhost' ? ':3000' : ''}`
+    }
+
+    // Map to SimpleWebAuthn v10+ expected structure 'credential'
+    const credential = {
+        id: authenticator.credentialID,
+        publicKey: authenticator.credentialPublicKey,
+        counter: authenticator.counter,
+        transports: authenticator.transports
     }
 
     let verification
@@ -195,7 +203,7 @@ class Auth {
         expectedChallenge,
         expectedOrigin: origin,
         expectedRPID: rpID,
-        authenticator,
+        credential, // Pass 'credential' instead of 'authenticator'
         requireUserVerification: false
       })
     } catch (error) {
