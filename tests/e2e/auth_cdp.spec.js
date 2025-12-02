@@ -52,16 +52,12 @@ test.describe('Authentication Flow (CDP)', () => {
     await expect(authModal).toBeVisible()
 
     // 3. Login Success
-    // Note: Login Success with CDP is currently failing due to potential signature verification issues
-    // specific to the virtual authenticator environment, despite relaxed constraints.
-    /*
     await page.fill('#auth-username', username)
     await page.click('#btn-login')
 
     // Expect to be logged in again
     await expect(page.locator('body')).toContainText(`@${username}`)
     await expect(authModal).not.toBeVisible()
-    */
   })
 
   test('Login Failure (User not found)', async ({ page }) => {
