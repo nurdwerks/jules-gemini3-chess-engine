@@ -13,6 +13,8 @@ const { generateAuthenticationOptions } = require('@simplewebauthn/server')
 
 describe('Auth Logic', () => {
 
+    const mockRequest = { hostname: 'localhost' }
+
     beforeEach(() => {
         jest.clearAllMocks()
     })
@@ -32,7 +34,7 @@ describe('Auth Logic', () => {
             }]
         })
 
-        await Auth.getLoginOptions('testuser')
+        await Auth.getLoginOptions('testuser', mockRequest)
 
         // Verify generateAuthenticationOptions was called with correct ID
         expect(generateAuthenticationOptions).toHaveBeenCalledWith(expect.objectContaining({
@@ -54,7 +56,7 @@ describe('Auth Logic', () => {
             }]
         })
 
-        await Auth.getLoginOptions('testuser')
+        await Auth.getLoginOptions('testuser', mockRequest)
 
         expect(generateAuthenticationOptions).toHaveBeenCalledWith(expect.objectContaining({
             allowCredentials: expect.arrayContaining([
@@ -75,7 +77,7 @@ describe('Auth Logic', () => {
             }]
         })
 
-        await Auth.getLoginOptions('testuser')
+        await Auth.getLoginOptions('testuser', mockRequest)
 
         expect(generateAuthenticationOptions).toHaveBeenCalledWith(expect.objectContaining({
             allowCredentials: expect.arrayContaining([

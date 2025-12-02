@@ -35,7 +35,9 @@ class Auth {
     return obj
   }
 
-  async getRegisterOptions (username, rpID = 'localhost') {
+  async getRegisterOptions (username, req) {
+    const rpID = req.hostname.split(':')[0]
+
     const user = await db.getUser(username)
 
     const newUserData = user || {
@@ -73,7 +75,11 @@ class Auth {
     return options
   }
 
-  async verifyRegister (username, body, rpID = 'localhost', origin) {
+  async verifyRegister (username, req) {
+    const rpID = req.hostname.split(':')[0]
+    const body = req.body
+    let origin = req.headers.origin
+
     if (process.env.TEST_MODE === 'true' && body.mockVerification) {
       const user = await db.getUser(username)
       // Add mock authenticator
@@ -125,7 +131,9 @@ class Auth {
     return { verified: false }
   }
 
-  async getLoginOptions (username, rpID = 'localhost') {
+  async getLoginOptions (username, req) {
+    const rpID = req.hostname.split(':')[0]
+
     const user = await db.getUser(username)
     if (!user) throw new Error('User not found')
 
@@ -143,7 +151,11 @@ class Auth {
     return options
   }
 
-  async verifyLogin (username, body, rpID = 'localhost', origin) {
+  async verifyLogin (username, req) {
+    const rpID = req.hostname.split(':')[0]
+    const body = req.body
+    let origin = req.headers.origin
+
     const user = await db.getUser(username)
     if (!user) throw new Error('User not found')
 

@@ -1,22 +1,13 @@
 const Auth = require('../../../Auth')
 const db = require('../../../Database')
 
-const getRpId = (request) => {
-    return request.hostname.split(':')[0]
-}
-
-const getOrigin = (request) => {
-    return request.headers.origin || `http://${request.hostname}`
-}
-
 module.exports = async function (fastify, opts) {
     fastify.post('/register-options', async (request, reply) => {
         const { username } = request.body
         if (!username) return reply.code(400).send({ error: 'Username required' })
 
         try {
-            const rpID = getRpId(request)
-            const options = await Auth.getRegisterOptions(username, rpID)
+            const options = await Auth.getRegisterOptions(username, request)
             request.session.username = username // Store intent
             return options
         } catch (e) {
@@ -29,9 +20,7 @@ module.exports = async function (fastify, opts) {
         const body = request.body
 
         try {
-            const rpID = getRpId(request)
-            const origin = getOrigin(request)
-            const { verified, user } = await Auth.verifyRegister(username, body, rpID, origin)
+            const { verified, user } = await Auth.verifyRegister(username, request)
             if (verified) {
                 // Assign role
                 if (!user.role) {
@@ -59,8 +48,7 @@ module.exports = async function (fastify, opts) {
         const { username } = request.body
 
         try {
-            const rpID = getRpId(request)
-            const options = await Auth.getLoginOptions(username, rpID)
+            const options = await Auth.getLoginOptions(username, request)
             request.session.username = username
             return options
         } catch (e) {
@@ -73,9 +61,7 @@ module.exports = async function (fastify, opts) {
         const body = request.body
 
         try {
-            const rpID = getRpId(request)
-            const origin = getOrigin(request)
-            const { verified, user } = await Auth.verifyLogin(username, body, rpID, origin)
+            const { verified, user } = await Auth.verifyLogin(username, request)
             if (verified) {
                 request.session.loggedIn = true
                 request.session.user = user

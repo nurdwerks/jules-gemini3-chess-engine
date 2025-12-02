@@ -6,6 +6,8 @@ jest.mock('../src/Database.js')
 jest.mock('@simplewebauthn/server')
 
 describe('Auth Configuration', () => {
+    const mockRequest = { hostname: 'localhost' }
+
     beforeEach(() => {
         jest.clearAllMocks()
         db.getUser.mockResolvedValue(null) // Simulate new user
@@ -15,7 +17,7 @@ describe('Auth Configuration', () => {
     })
 
     test('getRegisterOptions should NOT restrict authenticatorAttachment to platform', async () => {
-        await Auth.getRegisterOptions('newuser')
+        await Auth.getRegisterOptions('newuser', mockRequest)
 
         const callArgs = simpleWebAuthn.generateRegistrationOptions.mock.calls[0][0]
 
