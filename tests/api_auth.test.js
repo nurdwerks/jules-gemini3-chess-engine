@@ -36,7 +36,7 @@ describe('Auth API', () => {
 
         expect(response.statusCode).toBe(200)
         expect(JSON.parse(response.payload)).toEqual({ challenge: 'mock-challenge' })
-        expect(Auth.getRegisterOptions).toHaveBeenCalledWith('testuser', expect.any(String))
+        expect(Auth.getRegisterOptions).toHaveBeenCalledWith('testuser', expect.objectContaining({ hostname: expect.any(String) }))
     })
 
     test('POST /register-options should 400 without username', async () => {
@@ -82,6 +82,14 @@ describe('Auth API', () => {
 
         expect(res.statusCode).toBe(200)
         expect(JSON.parse(res.payload)).toEqual({ verified: true })
-        expect(Auth.verifyRegister).toHaveBeenCalledWith('testuser', { response: 'mock-response' }, expect.any(String), expect.any(String))
+        // verifyRegister now accepts (username, req)
+        // req will contain body
+        expect(Auth.verifyRegister).toHaveBeenCalledWith(
+            'testuser',
+            expect.objectContaining({
+                body: { response: 'mock-response' },
+                hostname: expect.any(String)
+            })
+        )
     })
 })
