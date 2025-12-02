@@ -166,6 +166,9 @@ class Auth {
     authenticator.credentialID = this._fixBuffer(authenticator.credentialID)
     authenticator.credentialPublicKey = this._fixBuffer(authenticator.credentialPublicKey)
 
+    // Ignore counter checks (e.g. for Passkeys/iOS which might not strictly increment)
+    authenticator.counter = -1
+
     if (!origin) {
         const protocol = rpID === 'localhost' ? 'http' : 'https'
         origin = `${protocol}://${rpID}${rpID === 'localhost' ? ':3000' : ''}`
@@ -183,7 +186,7 @@ class Auth {
       })
     } catch (error) {
       console.error(error)
-      throw new Error('Verification failed')
+      throw new Error('Verification failed: ' + error.message)
     }
 
     const { verified, authenticationInfo } = verification
