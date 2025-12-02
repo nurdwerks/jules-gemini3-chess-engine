@@ -216,6 +216,11 @@ class Auth {
     if (verified) {
       authenticator.counter = authenticationInfo.newCounter
       await db.saveUser(username, user)
+
+      if (process.env.ROOT_ADMIN && process.env.ROOT_ADMIN === username) {
+        user.role = 'admin'
+      }
+
       return { verified: true, user }
     }
     return { verified: false }
