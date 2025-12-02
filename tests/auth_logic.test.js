@@ -88,3 +88,74 @@ describe('Auth Logic', () => {
         }))
     })
 })
+
+describe('Root Admin Logic', () => {
+    const username = 'rootuser'
+    const credentialID = Buffer.from([1, 2, 3, 4])
+    const credentialIDBase64Url = 'AQIDBA' // Base64URL of [1, 2, 3, 4]
+
+    const mockRequest = {
+        hostname: 'localhost',
+        headers: { origin: 'http://localhost:3000' },
+        body: {
+            id: credentialIDBase64Url,
+            response: { transports: [] }
+        }
+    }
+
+    const originalEnv = process.env
+    let capturedSavedUser = null;
+
+    beforeEach(() => {
+        jest.clearAllMocks()
+        process.env = { ...originalEnv }
+        capturedSavedUser = null;
+
+        db.getUser.mockResolvedValue({
+            username: username,
+            role: 'user',
+            authenticators: [{
+                credentialID: credentialID,
+                credentialPublicKey: Buffer.from([]),
+                counter: 0,
+                transports: []
+            }]
+        })
+
+        db.getUserCurrentChallenge.mockResolvedValue('mock-challenge')
+
+        db.saveUser.mockImplementation((u, data) => {
+            capturedSavedUser = JSON.parse(JSON.stringify(data));
+            return Promise.resolve();
+        })
+    })
+
+    afterAll(() => {
+        process.env = originalEnv
+    })
+
+    test('Should return user with role "user" when ROOT_ADMIN is not set', async () => {
+        const { user } = await Auth.verifyLogin(username, mockRequest)
+        expect(user.role).toBe('user')
+    })
+
+    test('Should return user with role "admin" when ROOT_ADMIN matches username', async () => {
+        process.env.ROOT_ADMIN = username
+        const { user } = await Auth.verifyLogin(username, mockRequest)
+        expect(user.role).toBe('admin')
+    })
+
+    test('Should return user with role "user" when ROOT_ADMIN does not match username', async () => {
+        process.env.ROOT_ADMIN = 'otheradmin'
+        const { user } = await Auth.verifyLogin(username, mockRequest)
+        expect(user.role).toBe('user')
+    })
+
+    test('Should not save admin role to database', async () => {
+        process.env.ROOT_ADMIN = username
+        await Auth.verifyLogin(username, mockRequest)
+
+        expect(capturedSavedUser).not.toBeNull()
+        expect(capturedSavedUser.role).toBe('user')
+    })
+})
