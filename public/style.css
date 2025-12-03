@@ -800,7 +800,7 @@ body.streamer-mode #chessboard {
     /* Reset full height constraints for mobile */
     html, body {
         height: auto;
-        overflow: auto;
+        overflow: visible; /* Required for sticky positioning to work on mobile */
     }
 
     .container {
