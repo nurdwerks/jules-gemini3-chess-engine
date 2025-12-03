@@ -192,7 +192,7 @@ class Auth {
     const credential = {
         id: authenticator.credentialID,
         publicKey: authenticator.credentialPublicKey,
-        counter: authenticator.counter,
+        counter: 0, // Always pass 0 to disable counter check (for iOS/Mac passkeys)
         transports: authenticator.transports
     }
 
@@ -214,7 +214,8 @@ class Auth {
     const { verified, authenticationInfo } = verification
 
     if (verified) {
-      authenticator.counter = authenticationInfo.newCounter
+      // Do not update counter as it is not supported on iOS/Mac/Safari/iCloud
+      // authenticator.counter = authenticationInfo.newCounter
       await db.saveUser(username, user)
 
       if (process.env.ROOT_ADMIN && process.env.ROOT_ADMIN === username) {
