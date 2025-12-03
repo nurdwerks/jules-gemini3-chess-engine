@@ -688,8 +688,21 @@ const initApp = () => {
       const move = parts[1]
       if (move && move !== '(none)') {
         const from = move.substring(0, 2)
-        const to = move.substring(2, 4)
+        let to = move.substring(2, 4)
         const promotion = move.length > 4 ? move[4] : undefined
+
+        // Fix for 960 castling notation (e.g. e1h1 -> e1g1)
+        const piece = game.get(from)
+        const target = game.get(to)
+        if (piece && piece.type === 'k' && target && target.type === 'r' && target.color === piece.color) {
+          if (from === 'e1') {
+            if (to === 'h1') to = 'g1'
+            if (to === 'a1') to = 'c1'
+          } else if (from === 'e8') {
+            if (to === 'h8') to = 'g8'
+            if (to === 'a8') to = 'c8'
+          }
+        }
 
         const moveObj = { from, to, promotion }
         const speed = parseInt(uiManager.elements.animationSpeedSelect.value)
