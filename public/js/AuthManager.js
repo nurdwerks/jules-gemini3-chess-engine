@@ -32,7 +32,7 @@ class AuthManager {
 
     modal.innerHTML = `
       <div style="background: var(--bg-secondary); padding: 2rem; border-radius: 8px; text-align: center; max-width: 400px; width: 100%;">
-        <h2 style="margin-top: 0;">Welcome to Jules & Gemini Chess</h2>
+        <h2 style="margin-top: 0;">Welcome to NurdWerks Chess</h2>
         <p>Please log in or register to play.</p>
 
         <div id="auth-forms">

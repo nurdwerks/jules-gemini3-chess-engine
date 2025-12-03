@@ -6,7 +6,7 @@ window.TutorialManager = class TutorialManager {
     this.steps = [
       {
         target: null,
-        title: 'Welcome to Jules & Gemini Chess!',
+        title: 'Welcome to NurdWerks Chess!',
         text: 'This is a powerful chess engine built with Node.js and WebSockets. Let\'s take a quick tour.'
       },
       {

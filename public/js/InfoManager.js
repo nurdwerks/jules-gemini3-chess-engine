@@ -33,7 +33,7 @@ class InfoManager {
     if (sponsorBtn) sponsorBtn.addEventListener('click', () => window.open('https://github.com/sponsors', '_blank'))
 
     const feedbackBtn = document.getElementById('feedback-btn')
-    if (feedbackBtn) feedbackBtn.addEventListener('click', () => window.open('https://github.com/jules-gemini/chess-engine/issues', '_blank'))
+    if (feedbackBtn) feedbackBtn.addEventListener('click', () => window.open('https://github.com/nurdwerks/jules-gemini3-chess-engine/issues', '_blank'))
   }
 
   open (title, content) {
@@ -69,7 +69,7 @@ class InfoManager {
 
   showCredits () {
     const credits = `
-      <h3>Jules & Gemini Chess Engine</h3>
+      <h3>NurdWerks Chess Engine</h3>
       <p>Developed as a testbed for complex software engineering tasks.</p>
 
       <h4>Libraries</h4>

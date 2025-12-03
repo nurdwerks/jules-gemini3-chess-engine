@@ -32,7 +32,7 @@ window.ExternalActions = class ExternalActions {
   }
 
   shareTwitter () {
-    const text = 'Check out my game on Jules & Gemini Chess!'
+    const text = 'Check out my game on NurdWerks Chess!'
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&hashtags=chess,engine`
     window.open(url, '_blank')
   }

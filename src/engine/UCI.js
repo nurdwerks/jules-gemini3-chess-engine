@@ -165,8 +165,8 @@ class UCI {
   }
 
   cmdUCI () {
-    this.output('id name JulesGemini')
-    this.output('id author JulesGemini')
+    this.output('id name NurdWerks')
+    this.output('id author NurdWerks')
     this.output(`option name Hash type spin default ${this.options.Hash} min 1 max 1024`)
     this.output('option name Clear Hash type button')
     this.output(`option name Threads type spin default ${this.options.Threads} min 1 max 64`)

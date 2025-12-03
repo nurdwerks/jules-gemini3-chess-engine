@@ -4,7 +4,7 @@ class PgnManager {
     this.uiManager = uiManager
     this.customHeaders = {
       Event: 'Casual Game',
-      Site: 'Jules & Gemini Chess Engine',
+      Site: 'NurdWerks Chess Engine',
       Date: new Date().toISOString().split('T')[0],
       White: 'White',
       Black: 'Black'

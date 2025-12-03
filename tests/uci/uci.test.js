@@ -18,8 +18,8 @@ describe('UCI Protocol', () => {
 
   test('Command: uci', () => {
     uci.processCommand('uci')
-    expect(output).toContain('id name JulesGemini')
-    expect(output).toContain('id author JulesGemini')
+    expect(output).toContain('id name NurdWerks')
+    expect(output).toContain('id author NurdWerks')
     expect(output).toContain('uciok')
   })
 

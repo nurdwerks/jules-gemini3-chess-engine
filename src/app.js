@@ -7,7 +7,7 @@ const start = async () => {
     // Register Cookie and Session
     await fastify.register(require('@fastify/cookie'))
     await fastify.register(require('@fastify/session'), {
-      secret: process.env.SESSION_SECRET || 'secret-key-jules-gemini-chess-very-long-secret-key',
+      secret: process.env.SESSION_SECRET || 'secret-key-nurdwerks-chess-very-long-secret-key',
       cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 },
       saveUninitialized: false
     })

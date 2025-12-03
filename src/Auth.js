@@ -6,7 +6,7 @@ const {
 } = require('@simplewebauthn/server')
 const db = require('./Database')
 
-const rpName = 'Jules & Gemini Chess'
+const rpName = 'NurdWerks Chess'
 
 // Random name generator for new users
 const generateRandomName = () => {

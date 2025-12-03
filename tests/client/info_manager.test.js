@@ -70,7 +70,7 @@ describe('InfoManager', () => {
   test('should show credits', () => {
     infoManager.showCredits()
     expect(document.getElementById('info-modal-title').textContent).toBe('Credits')
-    expect(document.getElementById('info-modal-content').textContent).toContain('Jules & Gemini')
+    expect(document.getElementById('info-modal-content').textContent).toContain('NurdWerks')
   })
 
   test('should show shortcuts', () => {
@@ -84,6 +84,6 @@ describe('InfoManager', () => {
     expect(global.window.open).toHaveBeenCalledWith('https://github.com/sponsors', '_blank')
 
     document.getElementById('feedback-btn').click()
-    expect(global.window.open).toHaveBeenCalledWith('https://github.com/jules-gemini/chess-engine/issues', '_blank')
+    expect(global.window.open).toHaveBeenCalledWith('https://github.com/nurdwerks/jules-gemini3-chess-engine/issues', '_blank')
   })
 })
