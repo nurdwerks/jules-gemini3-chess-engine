@@ -86,6 +86,14 @@ describe('GameManager', () => {
     jest.useFakeTimers()
     const gm = new GameManager(game, socketHandlerMock)
     gm.startNewGame()
+
+    // Clock should NOT start immediately
+    jest.advanceTimersByTime(200)
+    expect(gm.whiteTime).toBe(300000)
+
+    // Manually start clock to verify update logic
+    gm.startClock()
+
     const initialTime = gm.whiteTime
     jest.advanceTimersByTime(200)
     // Clock updates every 100ms

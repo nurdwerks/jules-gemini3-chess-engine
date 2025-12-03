@@ -201,7 +201,9 @@ const initApp = () => {
           const map = ClientUtils.getHandicapFen(handicap)
           if (map) fen = map
         }
-        gameManager.startNewGame(fen)
+        const timeBase = parseFloat(uiManager.elements.timeBaseInput.value) || 5
+        const timeInc = parseFloat(uiManager.elements.timeIncInput.value) || 0
+        gameManager.startNewGame(fen, timeBase, timeInc)
       },
       onNew960: () => {
         const fen = ClientUtils.generate960Fen()
@@ -380,6 +382,10 @@ const initApp = () => {
       },
       onShowArrowLastChange: (checked) => {
         boardRenderer.showArrowLast = checked
+        render()
+      },
+      onShowLastMoveChange: (checked) => {
+        boardRenderer.showLastMove = checked
         render()
       },
       onShowThreatsChange: (checked) => {

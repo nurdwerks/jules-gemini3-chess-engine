@@ -46,7 +46,9 @@ describe('client.js', () => {
         analysisTable: {},
         topPlayerClock: {},
         bottomPlayerClock: {},
-        animationSpeedSelect: { value: '0' }
+        animationSpeedSelect: { value: '0' },
+        timeBaseInput: { value: '5' },
+        timeIncInput: { value: '0' }
       }
       this.boardInfoRenderer = { updateClocks: jest.fn(), updateCapturedPieces: jest.fn() }
       this.logSystemMessage = jest.fn()

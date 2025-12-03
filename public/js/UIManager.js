@@ -254,6 +254,7 @@ window.UIManager = class UIManager {
     })
     bindChange('show-coords', (e) => this.callbacks.onShowCoordsChange(e.target.checked))
     bindChange('show-arrow-last', (e) => this.callbacks.onShowArrowLastChange(e.target.checked))
+    bindChange('show-last-move', (e) => this.callbacks.onShowLastMoveChange(e.target.checked))
     bindChange('show-threats', (e) => this.callbacks.onShowThreatsChange(e.target.checked))
     bindChange('analysis-mode', (e) => this.callbacks.onAnalysisModeChange(e.target.checked))
     bindChange('game-mode', (e) => this.callbacks.onGameModeChange(e.target.value))

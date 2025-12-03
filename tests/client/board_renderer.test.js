@@ -147,6 +147,7 @@ describe('BoardRenderer', () => {
 
   test('highlights last move', () => {
     const renderer = new BoardRenderer(boardElement, game, callbacks)
+    renderer.showLastMove = true
     game.move('e4')
     const state = {
       board: game.board(),

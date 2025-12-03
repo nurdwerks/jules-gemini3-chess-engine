@@ -72,7 +72,8 @@ window.GameManager = class GameManager {
 
     this._resetStats()
 
-    this.startClock()
+    // Clock starts lazily on first move or whenever performMove is called
+    // this.startClock()
 
     if (this.callbacks.onGameStart) this.callbacks.onGameStart()
 
@@ -175,6 +176,10 @@ window.GameManager = class GameManager {
   }
 
   performMove (moveObj, isHuman = false) {
+    if (!this.clockInterval && this.gameStarted) {
+      this.startClock()
+    }
+
     // moveObj: { from, to, promotion }
     // Sync metadata with current history length (truncate if we undid)
     const currentPly = this.game.history().length
@@ -275,7 +280,7 @@ window.GameManager = class GameManager {
       }
     } else {
       this.socketHandler.send(cmd)
-      this.socketHandler.send(`go wtime ${Math.floor(this.whiteTime)} btime ${Math.floor(this.blackTime)}`)
+      this.socketHandler.send(`go wtime ${Math.floor(this.whiteTime)} btime ${Math.floor(this.blackTime)} winc ${Math.floor(this.whiteIncrement)} binc ${Math.floor(this.blackIncrement)}`)
     }
     return cmd // Return for reference
   }

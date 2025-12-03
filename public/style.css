@@ -396,6 +396,15 @@ button#factory-reset-btn {
     color: var(--system-red);
     background-color: rgba(255, 69, 58, 0.25);
 }
+
+.btn-danger {
+    background-color: #F2495C !important;
+    color: white !important;
+}
+.btn-danger:active {
+    background-color: #D43F4F !important;
+}
+
 button#resign-btn:active {
     background-color: rgba(255, 69, 58, 0.35);
 }
@@ -897,6 +906,7 @@ body.light-mode .clock {
 .toast.error { border-left: 4px solid var(--system-red); }
 .toast.success { border-left: 4px solid var(--system-green); }
 @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
 
 /* Zen Mode */
 body.zen-mode #dashboard { justify-content: center; align-items: center; height: 100vh; }

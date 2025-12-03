@@ -10,7 +10,8 @@ window.BoardRenderer = class BoardRenderer {
     this.customPieceImages = {}
     this.isFlipped = false
     this.showCoords = true
-    this.showArrowLast = false
+    this.showArrowLast = true
+    this.showLastMove = false
     this.showThreats = false
 
     this.draggedPiece = null
@@ -327,6 +328,8 @@ window.BoardRenderer = class BoardRenderer {
   }
 
   _applyLastMoveHighlight (square, alg, state) {
+    if (!this.showLastMove) return
+
     const history = this.game.history({ verbose: true })
     let lastMove = null
 

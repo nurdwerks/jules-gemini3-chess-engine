@@ -61,7 +61,7 @@
                 <div class="panel-header">
                     <h2 class="panel-title">Game Controls</h2>
                     <% if (user && user.role === 'admin') { %>
-                        <a href="/admin" class="admin-link-btn" style="font-size: 12px; margin-left: auto;">Admin Panel</a>
+                        <button onclick="window.location.href='/admin'" class="admin-link-btn" style="font-size: 12px; margin-left: auto; width: auto; padding: 4px 8px; min-height: 24px;">Admin Panel</button>
                     <% } %>
                 </div>
                 <div class="panel-content">
@@ -69,7 +69,7 @@
                      <div class="button-group">
                         <button id="new-game-btn" data-i18n="new-game-btn">New Game</button>
                         <button id="new-960-btn">New Chess960</button>
-                        <button id="resign-btn" style="background-color: #F2495C;">Resign</button>
+                        <button id="resign-btn" class="btn-danger">Resign</button>
                         <button id="offer-draw-btn">Offer Draw</button>
                         <button id="takeback-btn">Takeback</button>
                         <button id="force-move-btn">Force Move</button>
@@ -343,7 +343,11 @@
                      </div>
                      <div class="option-item">
                         <label for="show-arrow-last">Last Move Arrow:</label>
-                        <input type="checkbox" id="show-arrow-last">
+                        <input type="checkbox" id="show-arrow-last" checked>
+                     </div>
+                     <div class="option-item">
+                        <label for="show-last-move">Last Move Highlight:</label>
+                        <input type="checkbox" id="show-last-move">
                      </div>
                      <div class="option-item">
                         <label for="show-threats">Show Threats:</label>
@@ -500,7 +504,7 @@
                      <div class="button-group">
                          <button id="export-settings-btn">Export Settings</button>
                          <button id="import-settings-btn">Import Settings</button>
-                         <button id="factory-reset-btn" style="background-color: #F2495C;">Factory Reset</button>
+                         <button id="factory-reset-btn" class="btn-danger">Factory Reset</button>
                      </div>
                      <input type="file" id="import-settings-file" accept=".json" style="display: none;">
                      <hr class="separator">
@@ -684,7 +688,7 @@
                    </table>
                    <div class="tournament-match-list" id="tournament-match-queue"></div>
                    <div class="button-group mt-10">
-                       <button id="stop-tournament-btn" style="background-color: #F2495C;">Stop Tournament</button>
+                       <button id="stop-tournament-btn" class="btn-danger">Stop Tournament</button>
                    </div>
                </div>
            </div>
