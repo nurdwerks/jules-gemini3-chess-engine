@@ -13,8 +13,8 @@ test.describe('Gameplay', () => {
     await page.click('#load-fen-btn')
 
     // Move pawn a7 -> a8
-    const a7 = page.locator('.square[data-alg="a7"]')
-    const a8 = page.locator('.square[data-alg="a8"]')
+    const a7 = page.locator('#chessboard .square[data-alg="a7"]')
+    const a8 = page.locator('#chessboard .square[data-alg="a8"]')
 
     await a7.click()
     await a8.click()
@@ -55,8 +55,8 @@ test.describe('Gameplay', () => {
     // In this app, "Time starts after first move" is common.
     // Let's make a move.
 
-    const e2 = page.locator('.square[data-alg="e2"]')
-    const e4 = page.locator('.square[data-alg="e4"]')
+    const e2 = page.locator('#chessboard .square[data-alg="e2"]')
+    const e4 = page.locator('#chessboard .square[data-alg="e4"]')
     await e2.click()
     await e4.click()
 

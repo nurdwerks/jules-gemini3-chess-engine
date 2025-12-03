@@ -7,11 +7,11 @@ const voteRoom = new VoteRoom()
 
 module.exports = fp(async function (fastify, opts) {
   fastify.get('/ws', { websocket: true }, (connection, req) => {
-    if (!connection || !connection.socket) {
+    const ws = connection ? (connection.socket || connection) : null
+    if (!ws) {
       fastify.log.error('WebSocket connection or socket is missing')
       return
     }
-    const ws = connection.socket
 
     // UCI instance per connection
     const uci = new UCI((msg) => {
@@ -34,12 +34,6 @@ module.exports = fp(async function (fastify, opts) {
           } else if (data.action === 'vote') {
             voteRoom.handleVote(ws, data.move)
           } else if (data.type === 'chat' || data.type === 'reaction') {
-            // Broadcast to all clients
-            // Note: fastify-websocket exposes fastify.websocketServer which is the wss
-            // But voteRoom manages its own list of clients potentially?
-            // Let's look at VoteRoom.js logic. It likely assumes it manages the list.
-            // But here "wss.clients.forEach" was used in server.js for chat/reaction.
-
             fastify.websocketServer.clients.forEach(client => {
               if (client !== ws && client.readyState === 1) {
                 client.send(JSON.stringify(data))
@@ -56,10 +50,7 @@ module.exports = fp(async function (fastify, opts) {
 
     ws.on('close', () => {
       voteRoom.removeClient(ws)
-      // uci cleanup if needed? uci.stopWorkers() is called in UCI commands usually.
-      // But if client disconnects, we might want to kill the uci search.
       uci.cmdStop()
-      // UCI class spawns workers in constructor. We should probably terminate them on disconnect.
       if (uci.workers) {
           uci.stopWorkers()
       }
