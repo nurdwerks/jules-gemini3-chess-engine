@@ -35,7 +35,7 @@ test.describe('Training Tools', () => {
     // Place it on the board (e.g., e4)
     // Need to click a square
     // Since board is cleared, square exists but is empty.
-    const e4 = page.locator('.square[data-alg="e4"]')
+    const e4 = page.locator('#chessboard .square[data-alg="e4"]')
     await e4.click()
 
     // Verify piece is placed

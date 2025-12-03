@@ -8,8 +8,8 @@ test.describe('Full Analysis', () => {
 
   test('Run Full Game Analysis', async ({ page }) => {
     // Make some moves so there is a game to analyze
-    const e2 = page.locator('.square[data-alg="e2"]')
-    const e4 = page.locator('.square[data-alg="e4"]')
+    const e2 = page.locator('#chessboard .square[data-alg="e2"]')
+    const e4 = page.locator('#chessboard .square[data-alg="e4"]')
     await e2.click()
     await e4.click()
 

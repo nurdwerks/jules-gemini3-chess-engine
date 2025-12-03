@@ -35,8 +35,7 @@ test.describe('Vote Chess', () => {
     })
 
     // Check for Toast Notification
-    const toast = page.locator('.toast')
+    const toast = page.locator('.toast').filter({ hasText: 'Vote Result: e2e4' })
     await expect(toast).toBeVisible()
-    await expect(toast).toContainText('Vote Result: e2e4')
   })
 })

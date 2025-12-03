@@ -282,7 +282,53 @@ window.UIManager = class UIManager {
     bindChange('piece-set', (e) => this.callbacks.onPieceSetChange(e.target.value))
     bindChange('board-size', (e) => {
       document.getElementById('chessboard').style.setProperty('--board-max-width', `${e.target.value}px`)
+      this.resizeBoard()
     })
+
+    window.addEventListener('resize', () => this.resizeBoard())
+    // Initial resize after layout stabilizes
+    setTimeout(() => this.resizeBoard(), 100)
+  }
+
+  resizeBoard () {
+    const container = document.querySelector('.board-container')
+    const wrapper = document.querySelector('.board-wrapper')
+    const evalBar = document.getElementById('eval-bar-container')
+    if (!container || !wrapper) return
+
+    // Get available dimensions from container (flex item)
+    // We can't simply use clientWidth because container might be stretched by children if they are too big.
+    // However, since we overflow: hidden on parent, container is constrained.
+
+    // Reset wrapper size to allow container to shrink if needed
+    wrapper.style.width = ''
+    wrapper.style.height = ''
+    if (evalBar) evalBar.style.height = ''
+
+    const contWidth = container.clientWidth
+    const contHeight = container.clientHeight
+
+    const evalWidth = evalBar ? evalBar.offsetWidth : 0
+    const gap = 10 // CSS gap
+
+    const availWidth = contWidth - evalWidth - gap
+    const availHeight = contHeight
+
+    let size = Math.min(availWidth, availHeight)
+
+    // Respect max-width slider
+    const maxSetting = document.getElementById('board-size')
+    if (maxSetting) {
+      const maxVal = parseInt(maxSetting.value)
+      if (!isNaN(maxVal)) size = Math.min(size, maxVal)
+    }
+
+    if (size > 0) {
+      wrapper.style.width = `${size}px`
+      wrapper.style.height = `${size}px`
+      // Sync eval bar height
+      if (evalBar) evalBar.style.height = `${size}px`
+    }
   }
 
   _toggleFullscreen () {

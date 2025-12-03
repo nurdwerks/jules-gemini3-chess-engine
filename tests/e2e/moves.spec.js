@@ -11,8 +11,8 @@ test.describe('Move Handler Logic', () => {
     await page.check('#move-confirmation')
 
     // Attempt move e2-e4
-    const e2 = page.locator('.square[data-alg="e2"]')
-    const e4 = page.locator('.square[data-alg="e4"]')
+    const e2 = page.locator('#chessboard .square[data-alg="e2"]')
+    const e4 = page.locator('#chessboard .square[data-alg="e4"]')
 
     // First click (select)
     await e2.click()
@@ -36,8 +36,8 @@ test.describe('Move Handler Logic', () => {
 
   test('Illegal Move', async ({ page }) => {
     // Attempt e2-e5 (illegal for pawn on first move)
-    const e2 = page.locator('.square[data-alg="e2"]')
-    const e5 = page.locator('.square[data-alg="e5"]')
+    const e2 = page.locator('#chessboard .square[data-alg="e2"]')
+    const e5 = page.locator('#chessboard .square[data-alg="e5"]')
 
     await e2.click()
     await e5.click()
