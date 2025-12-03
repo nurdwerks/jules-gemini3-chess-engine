@@ -6,7 +6,7 @@ describe('ArrowManager', () => {
   let ArrowManager
 
   beforeAll(() => {
-    document.body.innerHTML = '<svg id="arrow-layer"></svg>'
+    document.body.innerHTML = '<svg id="arrow-layer" viewBox="0 0 100 100"></svg>'
     require('../../public/js/ArrowManager.js')
     ArrowManager = window.ArrowManager
   })
