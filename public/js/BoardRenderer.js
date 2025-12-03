@@ -41,7 +41,6 @@ window.BoardRenderer = class BoardRenderer {
   }
 
   render (state) {
-    this.boardElement.innerHTML = ''
     const board = state.board
     const chess = state.chess
     const selectedSquare = state.selectedSquare
@@ -50,44 +49,47 @@ window.BoardRenderer = class BoardRenderer {
       VisualizationManager.calculate(chess, selectedSquare)
     }
 
+    // Check if board is already initialized
+    const hasSquares = this.boardElement.children.length === 64
+
+    if (!hasSquares) {
+      this.boardElement.innerHTML = ''
+    }
+
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
-        this._createSquare(r, c, board, chess, state)
+        let square
+        if (hasSquares) {
+          // Assuming the squares are in order
+          square = this.boardElement.children[r * 8 + c]
+          this._updateSquare(square, r, c, board, chess, state)
+        } else {
+          square = this._initSquare(r, c)
+          this._updateSquare(square, r, c, board, chess, state)
+          this.boardElement.appendChild(square)
+        }
       }
     }
 
     this._updateLastMoveArrow(state)
   }
 
-  _createSquare (r, c, board, chess, state) {
+  _initSquare (r, c) {
     const row = r
     const col = c
     const alg = ClientUtils.coordsToAlgebraic(row, col)
 
     const square = document.createElement('div')
-    square.classList.add('square')
-    if ((row + col) % 2 === 0) square.classList.add('white')
-    else square.classList.add('black')
-
-    this._addCoordinates(square, row, col)
-    this._addLegalMoveHints(square, alg, state.legalMoves)
-
-    const pieceObj = board[row][col]
-    this._addPieceToSquare(square, pieceObj, alg)
-
     square.dataset.row = row
     square.dataset.col = col
     square.dataset.alg = alg
 
-    this._applySquareHighlights(square, row, col, alg, chess, state)
-
+    // Drag and Drop
     square.addEventListener('click', () => {
       if (this.callbacks.onSquareClick) {
         this.callbacks.onSquareClick(row, col)
       }
     })
-
-    // Drag and Drop
     square.addEventListener('dragover', this.handleDragOver)
     square.addEventListener('dragenter', this.handleDragEnter)
     square.addEventListener('dragleave', this.handleDragLeave)
@@ -96,6 +98,33 @@ window.BoardRenderer = class BoardRenderer {
     square.addEventListener('mouseup', this.handleMouseUp)
     square.addEventListener('contextmenu', (e) => e.preventDefault())
 
+    return square
+  }
+
+  _updateSquare (square, r, c, board, chess, state) {
+    const alg = square.dataset.alg
+
+    // Reset base classes
+    square.className = 'square'
+    if ((r + c) % 2 === 0) square.classList.add('white')
+    else square.classList.add('black')
+
+    // Clear content (pieces, coords, hints)
+    square.innerHTML = ''
+
+    this._addCoordinates(square, r, c)
+    this._addLegalMoveHints(square, alg, state.legalMoves)
+
+    const pieceObj = board[r][c]
+    this._addPieceToSquare(square, pieceObj, alg)
+
+    this._applySquareHighlights(square, r, c, alg, chess, state)
+  }
+
+  // Legacy method kept if needed, but logic is now split
+  _createSquare (r, c, board, chess, state) {
+    const square = this._initSquare(r, c)
+    this._updateSquare(square, r, c, board, chess, state)
     this.boardElement.appendChild(square)
   }
 
