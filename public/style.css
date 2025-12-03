@@ -932,11 +932,19 @@ body.light-mode .clock {
         opacity: 0;
         transition: opacity 0.3s;
     }
+
+    .board-container {
+        container-type: normal;
+        height: auto;
+        overflow: visible;
+    }
+
     .board-wrapper {
         max-height: 80vh;
-        width: auto !important;
+        width: 100% !important;
         height: auto !important;
         max-width: 100%;
+        aspect-ratio: 1/1;
     }
     .sidebar-toggle {
         font-size: 20px;
