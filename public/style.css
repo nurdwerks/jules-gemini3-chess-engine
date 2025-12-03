@@ -1605,3 +1605,29 @@ body.high-contrast button:hover {
     font-weight: bold;
     color: var(--grafana-accent-blue);
 }
+
+/* Accessibility Button */
+#accessibility-btn {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 1000;
+    font-size: 24px;
+    background: var(--grafana-panel-bg);
+    border: 1px solid var(--grafana-border);
+    padding: 10px;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    color: var(--grafana-text-secondary);
+}
+
+#accessibility-btn:hover {
+    background: var(--grafana-input-bg);
+    color: var(--grafana-accent-blue);
+}
