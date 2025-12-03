@@ -55,8 +55,8 @@ test.describe('Layout & Viewport', () => {
       const bodyOverflow = await page.evaluate(() => {
           return window.getComputedStyle(document.body).overflow;
       });
-      // Media query sets overflow to auto
-      expect(bodyOverflow).toBe('auto');
+      // Media query sets overflow to visible to support sticky positioning
+      expect(bodyOverflow).toBe('visible');
 
       // Check sidebar width
       const sidebarWidth = await page.$eval('.sidebar', el => el.clientWidth);
