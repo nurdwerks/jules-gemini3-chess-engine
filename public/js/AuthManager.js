@@ -202,7 +202,10 @@ class AuthManager {
     userInfo.style.padding = '10px'
     userInfo.style.borderBottom = '1px solid var(--border-color)'
     userInfo.innerHTML = `
-        <div style="font-weight: bold; color: var(--accent-color);">${user.displayName}</div>
+        <div style="font-weight: bold; color: var(--accent-color);">
+            ${user.displayName}
+            <span style="font-size: 0.8em; color: var(--text-secondary); margin-left: 5px; border: 1px solid var(--border-color); padding: 1px 4px; border-radius: 4px;">${user.role || 'user'}</span>
+        </div>
         <div style="font-size: 0.8em; color: var(--text-secondary);">@${user.username}</div>
         <button id="btn-logout" class="button button-danger" style="margin-top: 5px; font-size: 0.8em; padding: 2px 5px;">Logout</button>
     `
