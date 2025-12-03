@@ -9,8 +9,9 @@ test.describe('Analysis Visualizations', () => {
   test('Toggle Visuals', async ({ page }) => {
     // Start a game and enable analysis to ensure data exists for visuals
     await page.click('#new-game-btn')
-    const e2 = page.locator('.square[data-alg="e2"]')
-    const e4 = page.locator('.square[data-alg="e4"]')
+    // Scope to #chessboard to avoid ambiguity with Board Editor
+    const e2 = page.locator('#chessboard .square[data-alg="e2"]')
+    const e4 = page.locator('#chessboard .square[data-alg="e4"]')
     await e2.click()
     await e4.click()
 
