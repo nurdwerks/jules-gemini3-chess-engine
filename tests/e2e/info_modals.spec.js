@@ -29,7 +29,7 @@ test.describe('Info Modals & Links', () => {
     await page.click('#credits-btn')
     await expect(page.locator('#info-modal')).toBeVisible()
     await expect(page.locator('#info-modal-title')).toHaveText('Credits')
-    await expect(page.locator('#info-modal-content')).toContainText('Jules & Gemini')
+    await expect(page.locator('#info-modal-content')).toContainText('NurdWerks')
     await page.click('#close-info-modal')
   })
 

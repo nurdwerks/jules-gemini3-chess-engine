@@ -2,7 +2,7 @@ const { test, expect } = require('./coverage')
 
 test('has title', async ({ page }) => {
   await page.goto('/')
-  await expect(page).toHaveTitle(/Jules & Gemini Chess/)
+  await expect(page).toHaveTitle(/NurdWerks Chess/)
 })
 
 test('chessboard loads', async ({ page }) => {
