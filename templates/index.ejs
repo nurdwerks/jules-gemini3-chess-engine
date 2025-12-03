@@ -121,37 +121,6 @@
                      </div>
                 </div>
             </div>
-            <div class="panel accessibility-panel">
-                <div class="panel-header">
-                    <h2 class="panel-title">Accessibility & Sound</h2>
-                </div>
-                <div class="panel-content">
-                     <div class="option-item">
-                        <label for="sound-enabled">Enable Sound:</label>
-                        <input type="checkbox" id="sound-enabled">
-                     </div>
-                     <div class="option-item">
-                         <label for="volume-control">Volume:</label>
-                         <input type="range" id="volume-control" min="0" max="1" step="0.1" value="1.0">
-                     </div>
-                     <div class="option-item">
-                        <label for="voice-announce">Voice Announcements:</label>
-                        <input type="checkbox" id="voice-announce">
-                     </div>
-                     <div class="option-item">
-                        <label for="voice-control">Voice Control:</label>
-                        <input type="checkbox" id="voice-control">
-                     </div>
-                     <div class="option-item">
-                        <label for="high-contrast">High Contrast Mode:</label>
-                        <input type="checkbox" id="high-contrast">
-                     </div>
-                     <div class="option-item">
-                         <label for="sound-pack-upload">Upload Sound Pack (ZIP):</label>
-                         <input type="file" id="sound-pack-upload" accept=".zip">
-                     </div>
-                </div>
-            </div>
             <div class="panel training-panel">
                 <div class="panel-header">
                     <h2 class="panel-title">Training</h2>
@@ -724,6 +693,41 @@
            </div>
         </div>
     </main>
+  </div>
+  <button id="accessibility-btn" class="icon-btn" title="Accessibility Options">♿</button>
+  <div id="accessibility-modal" class="modal-overlay">
+      <div class="modal">
+          <div class="modal-header">
+              <h3 class="modal-title">Accessibility & Sound</h3>
+              <button class="modal-close-btn" id="close-accessibility-modal">&times;</button>
+          </div>
+          <div class="modal-content">
+               <div class="option-item">
+                  <label for="sound-enabled">Enable Sound:</label>
+                  <input type="checkbox" id="sound-enabled">
+               </div>
+               <div class="option-item">
+                   <label for="volume-control">Volume:</label>
+                   <input type="range" id="volume-control" min="0" max="1" step="0.1" value="1.0">
+               </div>
+               <div class="option-item">
+                  <label for="voice-announce">Voice Announcements:</label>
+                  <input type="checkbox" id="voice-announce">
+               </div>
+               <div class="option-item">
+                  <label for="voice-control">Voice Control:</label>
+                  <input type="checkbox" id="voice-control">
+               </div>
+               <div class="option-item">
+                  <label for="high-contrast">High Contrast Mode:</label>
+                  <input type="checkbox" id="high-contrast">
+               </div>
+               <div class="option-item">
+                   <label for="sound-pack-upload">Upload Sound Pack (ZIP):</label>
+                   <input type="file" id="sound-pack-upload" accept=".zip">
+               </div>
+          </div>
+      </div>
   </div>
   <div id="tournament-setup-modal" class="modal-overlay">
       <div class="modal">

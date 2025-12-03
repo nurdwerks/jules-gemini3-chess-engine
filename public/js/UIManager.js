@@ -44,6 +44,7 @@ window.UIManager = class UIManager {
       promotionModal: document.getElementById('promotion-modal'),
       pgnImportModal: document.getElementById('pgn-import-modal'),
       pgnSettingsModal: document.getElementById('pgn-settings-modal'),
+      accessibilityModal: document.getElementById('accessibility-modal'),
       duelSetupModal: document.getElementById('duel-setup-modal'),
       leaderboardModal: document.getElementById('leaderboard-modal'),
       analysisReportModal: document.getElementById('analysis-report-modal'),
@@ -150,6 +151,9 @@ window.UIManager = class UIManager {
     bindClick('share-twitter-btn', () => this.callbacks.onShareTwitter())
     bindClick('share-reddit-btn', () => this.callbacks.onShareReddit())
     bindClick('share-qr-btn', () => this.callbacks.onGenerateQr())
+
+    bindClick('accessibility-btn', () => this.elements.accessibilityModal.classList.add('active'))
+    bindClick('close-accessibility-modal', () => this.elements.accessibilityModal.classList.remove('active'))
 
     bindClick('close-pgn-modal', () => this.elements.pgnImportModal.classList.remove('active'))
     bindClick('load-pgn-confirm-btn', () => {
