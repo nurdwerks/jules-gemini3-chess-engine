@@ -36,6 +36,7 @@ class Auth {
   }
 
   async getRegisterOptions (username, req) {
+    username = username.toLowerCase()
     const rpID = req.hostname.split(':')[0]
 
     const user = await db.getUser(username)
@@ -76,6 +77,7 @@ class Auth {
   }
 
   async verifyRegister (username, req) {
+    username = username.toLowerCase()
     const rpID = req.hostname.split(':')[0]
     const body = req.body
     let origin = req.headers.origin
@@ -139,6 +141,7 @@ class Auth {
   }
 
   async getLoginOptions (username, req) {
+    username = username.toLowerCase()
     const rpID = req.hostname.split(':')[0]
 
     const user = await db.getUser(username)
@@ -159,6 +162,7 @@ class Auth {
   }
 
   async verifyLogin (username, req) {
+    username = username.toLowerCase()
     const rpID = req.hostname.split(':')[0]
     const body = req.body
     let origin = req.headers.origin
@@ -218,7 +222,7 @@ class Auth {
       // authenticator.counter = authenticationInfo.newCounter
       await db.saveUser(username, user)
 
-      if (process.env.ROOT_ADMIN && process.env.ROOT_ADMIN === username) {
+      if (process.env.ROOT_ADMIN && process.env.ROOT_ADMIN.toLowerCase() === username) {
         user.role = 'admin'
       }
 

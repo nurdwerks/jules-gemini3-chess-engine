@@ -11,7 +11,7 @@ class Database {
 
   async getUser (username) {
     try {
-      return await this.db.get(`user:${username}`)
+      return await this.db.get(`user:${username.toLowerCase()}`)
     } catch (err) {
       if (err.code === 'LEVEL_NOT_FOUND') return null
       throw err
@@ -19,7 +19,7 @@ class Database {
   }
 
   async saveUser (username, data) {
-    await this.db.put(`user:${username}`, data)
+    await this.db.put(`user:${username.toLowerCase()}`, data)
   }
 
   async getUserAuthenticator (username, credentialID) {
@@ -33,12 +33,12 @@ class Database {
   }
 
   async setUserCurrentChallenge (username, challenge) {
-    await this.db.put(`challenge:${username}`, challenge)
+    await this.db.put(`challenge:${username.toLowerCase()}`, challenge)
   }
 
   async getUserCurrentChallenge (username) {
     try {
-      return await this.db.get(`challenge:${username}`)
+      return await this.db.get(`challenge:${username.toLowerCase()}`)
     } catch (err) {
       if (err.code === 'LEVEL_NOT_FOUND') return null
       throw err
