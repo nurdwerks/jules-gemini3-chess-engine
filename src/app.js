@@ -23,16 +23,15 @@ const start = async () => {
     // Register Static
     await fastify.register(require('@fastify/static'), {
       root: path.join(__dirname, '../public'),
-      prefix: '/public/' // Serve public assets under /public/ or root? Old app served at root.
+      prefix: '/public/',
+      maxAge: 0 // Disable caching
     })
-    // Also serve public at root to match old behavior if needed, but usually templates handle it.
-    // The old app: app.use(express.static(path.join(__dirname, '../public')))
-    // This means /client.js was available at /client.js.
-    // So I should map root.
+
     await fastify.register(require('@fastify/static'), {
         root: path.join(__dirname, '../public'),
         prefix: '/',
-        decorateReply: false // Avoid conflict
+        decorateReply: false,
+        maxAge: 0 // Disable caching
     })
 
     // Register View Engine
@@ -60,7 +59,7 @@ const start = async () => {
 
     // Start server
     await fastify.listen({ port: 3000, host: '0.0.0.0' })
-    console.log(`Server running at http://localhost:3000/`)
+    console.log(`Server VERSION 2 running at http://localhost:3000/`)
 
     process.on('SIGINT', async () => {
       console.log('Stopping server...')
