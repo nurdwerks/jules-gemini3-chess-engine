@@ -137,9 +137,12 @@ window.ExternalActions = class ExternalActions {
     gif.render()
   }
 
-  _captureFrame (gif, renderer = null) {
+  async _captureFrame (gif, renderer = null) {
     const r = renderer || this.boardRenderer
-    const svgUrl = r.getScreenshotUrl()
+    const rawSvgUrl = r.getScreenshotUrl()
+    const svgUrl = await this._embedImagesInSvg(rawSvgUrl)
+    URL.revokeObjectURL(rawSvgUrl)
+
     return new Promise((resolve) => {
       const img = new Image()
       img.onload = () => {
@@ -149,6 +152,41 @@ window.ExternalActions = class ExternalActions {
       }
       img.src = svgUrl
     })
+  }
+
+  async _embedImagesInSvg (svgUrl) {
+    try {
+      const res = await fetch(svgUrl)
+      const text = await res.text()
+      const parser = new DOMParser()
+      const doc = parser.parseFromString(text, 'image/svg+xml')
+      const images = doc.querySelectorAll('image')
+
+      for (const img of images) {
+        const href = img.getAttribute('href')
+        if (href && !href.startsWith('data:')) {
+          try {
+            const blob = await fetch(href).then(r => r.blob())
+            const reader = new FileReader()
+            const dataUrl = await new Promise(resolve => {
+              reader.onload = () => resolve(reader.result)
+              reader.readAsDataURL(blob)
+            })
+            img.setAttribute('href', dataUrl)
+          } catch (e) {
+            console.warn('Failed to embed image:', href, e)
+          }
+        }
+      }
+
+      const serializer = new XMLSerializer()
+      const newSource = serializer.serializeToString(doc)
+      const newBlob = new Blob([newSource], { type: 'image/svg+xml;charset=utf-8' })
+      return URL.createObjectURL(newBlob)
+    } catch (e) {
+      console.error('Error embedding images in SVG:', e)
+      return svgUrl
+    }
   }
 }
 

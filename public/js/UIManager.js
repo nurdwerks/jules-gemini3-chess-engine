@@ -366,7 +366,12 @@ window.UIManager = class UIManager {
     this.logHistory.push(logLine)
     const line = document.createElement('div')
     line.textContent = logLine
-    if (this.elements.engineOutput) this.elements.engineOutput.prepend(line)
+    if (this.elements.engineOutput) {
+      this.elements.engineOutput.prepend(line)
+      while (this.elements.engineOutput.children.length > 100) {
+        this.elements.engineOutput.removeChild(this.elements.engineOutput.lastChild)
+      }
+    }
   }
 
   logSystemMessage (msg, type = 'info') {
@@ -378,6 +383,9 @@ window.UIManager = class UIManager {
     if (type === 'error') line.style.color = '#F2495C'
     else if (type === 'success') line.style.color = '#9AC42A'
     this.elements.systemLog.prepend(line)
+    while (this.elements.systemLog.children.length > 100) {
+      this.elements.systemLog.removeChild(this.elements.systemLog.lastChild)
+    }
   }
 
   showToast (message, type = 'info') {
