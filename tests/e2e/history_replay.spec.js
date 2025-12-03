@@ -21,22 +21,22 @@ test.describe('Game History & Navigation', () => {
 
     // Make Moves: 1. e4 e5 2. Nf3
     // e2-e4
-    await page.click('.square[data-alg="e2"]')
-    await page.click('.square[data-alg="e4"]')
+    await page.click('#chessboard .square[data-alg="e2"]')
+    await page.click('#chessboard .square[data-alg="e4"]')
     // Wait for move to complete (White Pawn on e4)
-    await expect(page.locator('.square[data-alg="e4"] .piece')).toBeVisible()
+    await expect(page.locator('#chessboard .square[data-alg="e4"] .piece')).toBeVisible()
 
     // e7-e5
-    await page.click('.square[data-alg="e7"]')
-    await page.click('.square[data-alg="e5"]')
+    await page.click('#chessboard .square[data-alg="e7"]')
+    await page.click('#chessboard .square[data-alg="e5"]')
     // Wait for move to complete (Black Pawn on e5)
-    await expect(page.locator('.square[data-alg="e5"] .piece')).toBeVisible()
+    await expect(page.locator('#chessboard .square[data-alg="e5"] .piece')).toBeVisible()
 
     // g1-f3
-    await page.click('.square[data-alg="g1"]')
-    await page.click('.square[data-alg="f3"]')
+    await page.click('#chessboard .square[data-alg="g1"]')
+    await page.click('#chessboard .square[data-alg="f3"]')
     // Wait for move to complete (White Knight on f3)
-    await expect(page.locator('.square[data-alg="f3"] .piece')).toBeVisible()
+    await expect(page.locator('#chessboard .square[data-alg="f3"] .piece')).toBeVisible()
 
     // Check history list has moves
     const historyContainer = page.locator('#move-history')
@@ -51,8 +51,8 @@ test.describe('Game History & Navigation', () => {
     await moves.nth(0).click()
 
     // Verify board state: e4 occupied, e5 EMPTY (since we went back to after 1. e4)
-    const e4 = page.locator('.square[data-alg="e4"]')
-    const e5 = page.locator('.square[data-alg="e5"]')
+    const e4 = page.locator('#chessboard .square[data-alg="e4"]')
+    const e5 = page.locator('#chessboard .square[data-alg="e5"]')
 
     // After 1. e4: White pawn on e4. Black pawn still on e7 (so e5 is empty).
     await expect(e4.locator('.piece')).toBeVisible()
@@ -66,7 +66,7 @@ test.describe('Game History & Navigation', () => {
     await moves.nth(2).click()
 
     // Verify f3 has piece
-    const f3 = page.locator('.square[data-alg="f3"]')
+    const f3 = page.locator('#chessboard .square[data-alg="f3"]')
     await expect(f3.locator('.piece')).toBeVisible()
 
     // Verify e5 has piece (since we are now after 1... e5)
@@ -80,13 +80,13 @@ test.describe('Game History & Navigation', () => {
     await page.click('#new-game-btn')
 
     // 1. e4 e5
-    await page.click('.square[data-alg="e2"]')
-    await page.click('.square[data-alg="e4"]')
-    await expect(page.locator('.square[data-alg="e4"] .piece')).toBeVisible()
+    await page.click('#chessboard .square[data-alg="e2"]')
+    await page.click('#chessboard .square[data-alg="e4"]')
+    await expect(page.locator('#chessboard .square[data-alg="e4"] .piece')).toBeVisible()
 
-    await page.click('.square[data-alg="e7"]')
-    await page.click('.square[data-alg="e5"]')
-    await expect(page.locator('.square[data-alg="e5"] .piece')).toBeVisible()
+    await page.click('#chessboard .square[data-alg="e7"]')
+    await page.click('#chessboard .square[data-alg="e5"]')
+    await expect(page.locator('#chessboard .square[data-alg="e5"] .piece')).toBeVisible()
 
     // Now trigger Replay
     // Initially, we are at the end of the game (index 1, assuming 0-based moves 0, 1)
@@ -116,7 +116,7 @@ test.describe('Game History & Navigation', () => {
     await page.waitForTimeout(1000)
 
     // Verify e4 has piece (White Pawn)
-    await expect(page.locator('.square[data-alg="e4"] .piece')).toBeVisible()
+    await expect(page.locator('#chessboard .square[data-alg="e4"] .piece')).toBeVisible()
 
     // Verify e5 might NOT be there yet (move 2 comes at 1600ms)
     // Actually:
@@ -124,13 +124,13 @@ test.describe('Game History & Navigation', () => {
     // T=800: index=0 (1. e4)
     // T=1600: index=1 (1... e5)
 
-    await expect(page.locator('.square[data-alg="e5"] .piece')).not.toBeVisible()
+    await expect(page.locator('#chessboard .square[data-alg="e5"] .piece')).not.toBeVisible()
 
     // Wait another second
     await page.waitForTimeout(1000)
 
     // Now e5 should be visible
-    await expect(page.locator('.square[data-alg="e5"] .piece')).toBeVisible()
+    await expect(page.locator('#chessboard .square[data-alg="e5"] .piece')).toBeVisible()
 
     // Stop Replay by clicking again?
     // The code: toggleReplay clears interval if exists.
