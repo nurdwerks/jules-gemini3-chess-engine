@@ -1220,7 +1220,7 @@ body.high-contrast button:hover {
 
 /* Arrow Styles */
 .arrow {
-    stroke-width: 12; /* Will be scaled */
+    stroke-width: 1.5%; /* Scaled to viewBox */
     stroke-linecap: round;
     opacity: 0.7;
 }
