@@ -42,11 +42,13 @@ window.GameManager = class GameManager {
     this.pendingConfirmationMove = null
     this.lastEngineEval = 0
     this.isEngineThinking = false
+    this.isNoTimer = false
   }
 
-  startNewGame (fen = 'startpos', timeBase = 5, timeInc = 0) {
+  startNewGame (fen = 'startpos', timeBase = 5, timeInc = 0, isNoTimer = false) {
     this.game.reset()
     this.startingFen = fen
+    this.isNoTimer = isNoTimer
 
     if (this.startingFen === 'startpos') {
       this.game.reset()
@@ -110,6 +112,7 @@ window.GameManager = class GameManager {
 
   _updateClock () {
     if (this.game.game_over() || !this.gameStarted) return
+    if (this.isNoTimer) return
 
     const now = Date.now()
     const delta = now - this.lastFrameTime
@@ -285,7 +288,15 @@ window.GameManager = class GameManager {
         this.startClock()
       }
       this.socketHandler.send(cmd)
-      this.socketHandler.send(`go wtime ${Math.floor(this.whiteTime)} btime ${Math.floor(this.blackTime)} winc ${Math.floor(this.whiteIncrement)} binc ${Math.floor(this.blackIncrement)}`)
+      if (this.isNoTimer) {
+        // In No Timer mode, we give the engine a fixed time to move (e.g. 3s)
+        // so it doesn't think forever, but we don't enforce game clock limits.
+        // Unless strength limit is active, then 'go' might rely on nodes.
+        // Safe default: 3000ms
+        this.socketHandler.send('go movetime 3000')
+      } else {
+        this.socketHandler.send(`go wtime ${Math.floor(this.whiteTime)} btime ${Math.floor(this.blackTime)} winc ${Math.floor(this.whiteIncrement)} binc ${Math.floor(this.blackIncrement)}`)
+      }
     }
     return cmd // Return for reference
   }

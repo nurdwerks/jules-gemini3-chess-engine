@@ -61,6 +61,7 @@ window.UIManager = class UIManager {
       pgnEventInput: document.getElementById('pgn-event'),
       timeBaseInput: document.getElementById('time-base'),
       timeIncInput: document.getElementById('time-inc'),
+      noTimerMode: document.getElementById('no-timer-mode'),
       animationSpeedSelect: document.getElementById('animation-speed'),
       boardThemeSelect: document.getElementById('board-theme'),
       pieceSetSelect: document.getElementById('piece-set'),
@@ -259,6 +260,12 @@ window.UIManager = class UIManager {
     bindChange('analysis-mode', (e) => this.callbacks.onAnalysisModeChange(e.target.checked))
     bindChange('game-mode', (e) => this.callbacks.onGameModeChange(e.target.value))
     bindChange('uci-preset-select', (e) => this._applyPreset(e.target.value))
+
+    bindChange('no-timer-mode', (e) => {
+      const disabled = e.target.checked
+      this.elements.timeBaseInput.disabled = disabled
+      this.elements.timeIncInput.disabled = disabled
+    })
     bindChange('history-notation-toggle', (e) => this.callbacks.onHistoryNotationChange(e.target.value))
 
     bindChange('local-engine-file', (e) => {
