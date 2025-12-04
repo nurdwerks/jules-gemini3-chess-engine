@@ -17,7 +17,8 @@ class AutoSaveManager {
       timestamp: Date.now(),
       mode: this.gameManager.gameMode,
       whiteTime: this.gameManager.whiteTime,
-      blackTime: this.gameManager.blackTime
+      blackTime: this.gameManager.blackTime,
+      isNoTimer: this.gameManager.isNoTimer
     }
 
     try {
@@ -49,7 +50,7 @@ class AutoSaveManager {
   restoreGame (state) {
     if (!state) return
 
-    this.gameManager.startNewGame(state.fen)
+    this.gameManager.startNewGame(state.fen, 0, 0, state.isNoTimer)
 
     // Restore PGN if possible to keep history
     // Note: pgn-parser might be needed if we want full headers,
@@ -64,6 +65,14 @@ class AutoSaveManager {
 
     // Restore mode if valid
     if (state.mode) this.gameManager.gameMode = state.mode
+
+    if (state.isNoTimer) {
+      if (this.uiManager.elements.noTimerMode) {
+        this.uiManager.elements.noTimerMode.checked = true
+        this.uiManager.elements.timeBaseInput.disabled = true
+        this.uiManager.elements.timeIncInput.disabled = true
+      }
+    }
 
     this.uiManager.showToast('Game Restored from Auto-Save', 'success')
   }

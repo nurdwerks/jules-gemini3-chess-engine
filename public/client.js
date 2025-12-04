@@ -222,7 +222,8 @@ const initApp = () => {
         }
         const timeBase = parseFloat(uiManager.elements.timeBaseInput.value) || 5
         const timeInc = parseFloat(uiManager.elements.timeIncInput.value) || 0
-        gameManager.startNewGame(fen, timeBase, timeInc)
+        const isNoTimer = uiManager.elements.noTimerMode ? uiManager.elements.noTimerMode.checked : false
+        gameManager.startNewGame(fen, timeBase, timeInc, isNoTimer)
 
         const btn = document.getElementById('self-play-btn')
         if (btn) btn.textContent = 'Self Play'
