@@ -289,6 +289,32 @@ window.UIManager = class UIManager {
     window.addEventListener('resize', () => this.resizeBoard())
     // Initial resize after layout stabilizes
     setTimeout(() => this.resizeBoard(), 100)
+
+    this._bindStaticTooltips()
+  }
+
+  _bindStaticTooltips () {
+    document.querySelectorAll('label').forEach(label => {
+      // Extract text, ignoring children inputs if possible, but mostly labels just have text
+      // For labels wrapping inputs, we need to be careful.
+      // E.g. <label><input> Text</label> or <label>Text: <input></label>
+      // Simplest: get first text node
+      let text = label.firstChild && label.firstChild.nodeType === 3 ? label.firstChild.textContent.trim() : label.textContent.trim()
+      text = text.replace(':', '')
+
+      const tooltip = UIConstants.OPTION_TOOLTIPS[text]
+      if (tooltip) {
+        label.title = tooltip
+        label.style.cursor = 'help'
+        label.addEventListener('click', (e) => {
+          // If clicking the label focuses an input, we might not want to prevent default unless it's a checkbox toggling?
+          // But preventing default might stop the input from being focused.
+          // Requirement is just to show popup.
+          // e.preventDefault()
+          this.showToast(tooltip, 'info')
+        })
+      }
+    })
   }
 
   resizeBoard () {
@@ -539,6 +565,12 @@ window.UIManager = class UIManager {
 
     const label = document.createElement('label')
     label.textContent = name + ': '
+    if (tooltip) {
+      label.style.cursor = 'help'
+      label.addEventListener('click', (e) => {
+        this.showToast(tooltip, 'info')
+      })
+    }
     container.appendChild(label)
 
     let input = null
