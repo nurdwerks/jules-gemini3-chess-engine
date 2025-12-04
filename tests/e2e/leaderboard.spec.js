@@ -1,6 +1,14 @@
 const { test, expect } = require('./coverage')
 
 test('Leaderboard Functionality', async ({ page }) => {
+  // Mock logged-in user to enable features
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'INITIAL_USER', {
+      value: { username: 'testuser', role: 'user' },
+      writable: false
+    });
+  });
+
   const sessionCheck = page.waitForResponse(resp => resp.url().includes('/api/user/me')).catch(() => {});
   await page.goto('/')
   await sessionCheck;

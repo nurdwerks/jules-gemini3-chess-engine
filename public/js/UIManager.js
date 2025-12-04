@@ -675,4 +675,61 @@ window.UIManager = class UIManager {
       }
     }
   }
+
+  applyGuestRestrictions () {
+    const hide = (selector) => {
+      const el = document.querySelector(selector)
+      if (el) el.style.display = 'none'
+    }
+
+    // Hide Panels
+    hide('.uci-options-panel')
+    hide('.search-stats-panel')
+    hide('.engine-output-panel')
+    hide('.developer-panel')
+    hide('.graphs-panel')
+    hide('.training-panel')
+    hide('.opening-panel')
+
+    // Hide Controls
+    hide('#force-move-btn')
+    hide('#self-play-btn')
+    hide('#engine-duel-btn')
+    hide('#tournament-btn')
+    hide('#leaderboard-btn')
+    hide('#armageddon-btn')
+
+    // Hide Analysis Mode Checkbox (and label)
+    const analysisMode = document.getElementById('analysis-mode')
+    if (analysisMode && analysisMode.parentElement) {
+      analysisMode.parentElement.style.display = 'none'
+    }
+
+    // Restrict Game Mode - Hide container completely as most options require engine
+    // Except maybe PvP, but prompt said "Disable and hide any functionality that would use the UCI engine"
+    // PGN/FEN import allows "manipulation".
+    const gameMode = document.getElementById('game-mode')
+    if (gameMode && gameMode.parentElement) {
+      gameMode.parentElement.style.display = 'none'
+    }
+
+    // Hide External Analysis buttons (Lichess/Chess.com) if desired?
+    // Prompt: "Hide and disable engine and analysis functionality for guest users."
+    // External analysis sends FEN to external site. That doesn't use *our* engine.
+    // "Only allow PGN and Fen import and manipulation within the front end."
+    // This implies external links might be okay, but maybe "within the front end" is restrictive.
+    // I will hide external analysis too to be safe and strictly follow "disable and hide all other features".
+    hide('#analyze-lichess-btn')
+    hide('#analyze-chesscom-btn')
+
+    // Hide Stockfish/Engine preset selector in UCI panel (panel is already hidden)
+
+    // Hide Developer Tools button (if any exists outside panel)
+
+    // Ensure Import/Export is visible (it is by default)
+
+    // Hide Vote Chess, Guess Move if they were accessible elsewhere
+
+    this.showToast('Guest Mode: Engine features disabled.', 'info')
+  }
 }

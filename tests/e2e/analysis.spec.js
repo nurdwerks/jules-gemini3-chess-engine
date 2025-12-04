@@ -2,6 +2,13 @@ const { test, expect } = require('./coverage')
 
 test.describe('Analysis Mode', () => {
   test.beforeEach(async ({ page }) => {
+    // Mock logged-in user to enable features
+    await page.addInitScript(() => {
+        Object.defineProperty(window, 'INITIAL_USER', {
+            value: { username: 'testuser', role: 'user' },
+            writable: false
+        });
+    });
     await page.goto('/')
     await page.waitForSelector('#chessboard')
   })
