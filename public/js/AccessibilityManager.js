@@ -140,7 +140,25 @@ window.AccessibilityManager = class AccessibilityManager {
 
   _setIndicator (visible) {
     const el = document.getElementById('voice-indicator')
-    if (el) el.style.display = visible ? 'flex' : 'none'
+    if (el) {
+      el.style.display = visible ? 'flex' : 'none'
+      if (visible) {
+        // Reset state
+        this._setHearing(false)
+      }
+    }
+  }
+
+  _setHearing (hearing) {
+    const el = document.getElementById('voice-indicator')
+    if (!el) return
+    if (hearing) {
+      el.classList.add('hearing')
+      el.textContent = '🎤 Hearing...'
+    } else {
+      el.classList.remove('hearing')
+      el.textContent = '🎤 Listening...'
+    }
   }
 
   _initSpeechRecognition () {
@@ -156,8 +174,17 @@ window.AccessibilityManager = class AccessibilityManager {
       if (this.voiceControlEnabled) this._setIndicator(true)
     }
 
+    this.recognition.onspeechstart = () => {
+      if (this.voiceControlEnabled) this._setHearing(true)
+    }
+
+    this.recognition.onspeechend = () => {
+      if (this.voiceControlEnabled) this._setHearing(false)
+    }
+
     this.recognition.onresult = (event) => {
       if (!this.voiceControlEnabled) return
+      this._setHearing(false) // Reset on result just in case
       const last = event.results.length - 1
       const command = event.results[last][0].transcript.trim().toLowerCase()
       this._handleVoiceCommand(command)
