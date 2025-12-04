@@ -1061,3 +1061,14 @@ body.light-mode .clock {
 body.zen-mode #dashboard { justify-content: center; align-items: center; height: 100vh; }
 body.zen-mode .sidebar, body.zen-mode .panel-header, body.zen-mode .sidebar-toggle { display: none; }
 body.zen-mode .panel { background: transparent; border: none; box-shadow: none; backdrop-filter: none; }
+
+.voice-indicator.hearing {
+    background: var(--system-green);
+    animation: pulse-green 1s infinite;
+}
+
+@keyframes pulse-green {
+    0% { box-shadow: 0 0 0 0 rgba(48, 209, 88, 0.4); }
+    70% { box-shadow: 0 0 0 15px rgba(48, 209, 88, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(48, 209, 88, 0); }
+}
