@@ -15,6 +15,7 @@ class MockWebSocket {
   send (data) {}
   close () {}
 }
+MockWebSocket.OPEN = 1
 global.WebSocket = MockWebSocket
 
 describe('SocketHandler', () => {

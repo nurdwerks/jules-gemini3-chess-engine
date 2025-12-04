@@ -2,18 +2,33 @@
 /* global window */
 
 window.SocketHandler = class SocketHandler {
-  constructor (callbacks) {
+  constructor (callbacks, options = {}) {
     this.socket = null
     this.callbacks = callbacks || {}
     this.isConnected = false
+    this.options = {
+      autoReconnect: true,
+      reconnectInterval: 2000,
+      ...options
+    }
+    this.reconnectTimer = null
   }
 
   connect () {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer)
+      this.reconnectTimer = null
+    }
+
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     this.socket = new WebSocket(`${protocol}//${window.location.host}/ws`)
 
     this.socket.onopen = () => {
       this.isConnected = true
+      if (this.reconnectTimer) {
+        clearTimeout(this.reconnectTimer)
+        this.reconnectTimer = null
+      }
       if (this.callbacks.onOpen) this.callbacks.onOpen()
     }
 
@@ -25,11 +40,17 @@ window.SocketHandler = class SocketHandler {
     this.socket.onclose = () => {
       this.isConnected = false
       if (this.callbacks.onClose) this.callbacks.onClose()
+
+      if (this.options.autoReconnect) {
+        this.reconnectTimer = setTimeout(() => {
+          this.connect()
+        }, this.options.reconnectInterval)
+      }
     }
   }
 
   send (command) {
-    if (this.isConnected && this.socket) {
+    if (this.isConnected && this.socket && this.socket.readyState === WebSocket.OPEN) {
       this.socket.send(command)
       if (this.callbacks.onSent) this.callbacks.onSent(command)
     }
