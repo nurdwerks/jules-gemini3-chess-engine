@@ -1072,3 +1072,32 @@ body.zen-mode .panel { background: transparent; border: none; box-shadow: none; 
     70% { box-shadow: 0 0 0 15px rgba(48, 209, 88, 0); }
     100% { box-shadow: 0 0 0 0 rgba(48, 209, 88, 0); }
 }
+
+#accessibility-btn {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 1000;
+    width: 44px;
+    height: 44px;
+    font-size: 24px;
+    background-color: var(--grafana-panel-bg);
+    border: 1px solid var(--grafana-border);
+    backdrop-filter: blur(10px);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+#accessibility-btn:hover {
+    background-color: var(--grafana-input-bg);
+}
+
+@media (max-width: 768px) {
+    #accessibility-btn {
+        bottom: 10px;
+        left: 10px;
+    }
+}
