@@ -78,12 +78,15 @@ const initApp = () => {
       },
       onReadyOk: () => {
         if (engineProxy.getEngine() === getEngineInstance()) {
-          if (developerManager) developerManager.handleMessage('readyok')
-          if (developerManager) developerManager.logPacket('IN', 'readyok')
+          let isLatencyPing = false
+          if (developerManager) {
+            isLatencyPing = developerManager.handleMessage('readyok')
+            developerManager.logPacket('IN', 'readyok')
+          }
           if (!hasAutoStarted && !gameManager.gameStarted) {
             hasAutoStarted = true
             gameManager.startNewGame()
-          } else if (gameManager.gameStarted && gameManager.isEngineThinking) {
+          } else if (gameManager.gameStarted && gameManager.isEngineThinking && !isLatencyPing) {
             uiManager.showToast('Resuming Session...', 'info')
             gameManager.sendPositionAndGo()
           }
