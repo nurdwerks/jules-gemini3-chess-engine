@@ -13,7 +13,9 @@ window.UIConstants = {
     UseCaptureHistory: 'Search',
     BookFile: 'Search',
     UCI_UseNNUE: 'Evaluation',
-    UCI_NNUE_File: 'Evaluation'
+    UCI_NNUE_File: 'Evaluation',
+    SyzygyPath: 'Endgame',
+    SyzygyProbeLimit: 'Endgame'
   },
   OPTION_TOOLTIPS: {
     Hash: 'Size of the hash table in MB',
@@ -29,7 +31,24 @@ window.UIConstants = {
     UseCaptureHistory: 'Use capture history heuristic',
     UCI_UseNNUE: 'Enable NNUE evaluation',
     UCI_NNUE_File: 'Path or URL to the NNUE network file',
-    BookFile: 'Path to the Polyglot opening book file'
+    BookFile: 'Path to the Polyglot opening book file',
+    SyzygyPath: 'Path to Syzygy tablebases',
+    SyzygyProbeLimit: 'Max pieces for Syzygy probing',
+    PawnValue: 'Value of a pawn in centipawns',
+    KnightValue: 'Value of a knight in centipawns',
+    BishopValue: 'Value of a bishop in centipawns',
+    RookValue: 'Value of a rook in centipawns',
+    QueenValue: 'Value of a queen in centipawns',
+    DoubledPawnPenalty: 'Penalty for doubled pawns',
+    IsolatedPawnPenalty: 'Penalty for isolated pawns',
+    BackwardPawnPenalty: 'Penalty for backward pawns',
+    KnightMobilityBonus: 'Score bonus for knight mobility',
+    BishopMobilityBonus: 'Score bonus for bishop mobility',
+    RookMobilityBonus: 'Score bonus for rook mobility',
+    QueenMobilityBonus: 'Score bonus for queen mobility',
+    ShieldBonus: 'Bonus for king pawn shield',
+    KnightOutpostBonus: 'Bonus for knight outpost',
+    BishopOutpostBonus: 'Bonus for bishop outpost'
   },
   PRESETS: {
     blitz: { Hash: 64, Threads: 1, MultiPV: 1, Contempt: 0, UCI_LimitStrength: false },
