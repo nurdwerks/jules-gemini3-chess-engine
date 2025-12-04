@@ -103,13 +103,13 @@ window.ExternalActions = class ExternalActions {
     if (this.boardRenderer.currentPieceSet) tempRenderer.setPieceSet(this.boardRenderer.currentPieceSet)
 
     const moves = this.game.history({ verbose: true })
-    const tempReplay = new window.Chess(this.game.fen())
-    while (tempReplay.undo()) {
+    const pgn = this.pgnManager.exportPgn()
+    const tempGame = new window.Chess()
+    tempGame.load_pgn(pgn)
+
+    while (tempGame.undo()) {
       // Undo all moves to get to start
     }
-    const startFen = tempReplay.fen()
-
-    const tempGame = new window.Chess(startFen)
 
     // Initial frame
     tempRenderer.render({ board: tempGame.board(), chess: tempGame })
