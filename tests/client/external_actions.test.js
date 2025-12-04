@@ -119,4 +119,58 @@ describe('External Actions', () => {
 
     document.createElement = originalCreateElement
   })
+
+  test('Export GIF', async () => {
+    // Mock GIF
+    const gifInstance = {
+      on: jest.fn(),
+      render: jest.fn(),
+      addFrame: jest.fn()
+    }
+    global.GIF = jest.fn(() => gifInstance)
+
+    // Mock window.Chess
+    const chessInstance = {
+      load_pgn: jest.fn(),
+      undo: jest.fn()
+        .mockReturnValueOnce(true) // First undo works
+        .mockReturnValueOnce(false), // Second undo fails (start of game)
+      move: jest.fn(),
+      board: jest.fn().mockReturnValue([]),
+      header: jest.fn()
+    }
+    window.Chess = jest.fn(() => chessInstance)
+
+    // Mock game.history
+    game.history = jest.fn().mockReturnValue([
+      { from: 'e2', to: 'e4' }
+    ])
+
+    // Mock BoardRenderer constructor and instance
+    const tempRenderer = {
+      render: jest.fn(),
+      setPieceSet: jest.fn(),
+      getScreenshotUrl: jest.fn().mockReturnValue('blob:svg')
+    }
+    window.BoardRenderer = jest.fn(() => tempRenderer)
+
+    // Mock _embedImagesInSvg to avoid fetch
+    externalActions._embedImagesInSvg = jest.fn().mockResolvedValue('blob:svgWithImages')
+
+    // Mock Image
+    global.Image = class {
+      constructor () {
+        setTimeout(() => this.onload && this.onload(), 0)
+      }
+    }
+
+    await externalActions.exportGif()
+
+    expect(pgnManager.exportPgn).toHaveBeenCalled()
+    expect(window.Chess).toHaveBeenCalled()
+    expect(chessInstance.load_pgn).toHaveBeenCalledWith('1. e4 e5')
+    expect(chessInstance.undo).toHaveBeenCalled()
+    expect(gifInstance.addFrame).toHaveBeenCalledTimes(2) // Start + 1 move
+    expect(gifInstance.render).toHaveBeenCalled()
+  })
 })
