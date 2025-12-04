@@ -41,6 +41,7 @@ window.GameManager = class GameManager {
     this.premove = null
     this.pendingConfirmationMove = null
     this.lastEngineEval = 0
+    this.isEngineThinking = false
   }
 
   startNewGame (fen = 'startpos', timeBase = 5, timeInc = 0) {
@@ -69,6 +70,7 @@ window.GameManager = class GameManager {
     this.currentViewIndex = -1
     this.premove = null
     this.pendingConfirmationMove = null
+    this.isEngineThinking = false
 
     this._resetStats()
 

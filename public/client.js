@@ -44,7 +44,12 @@ const initApp = () => {
 
           uiManager.elements.status.textContent = `Status: Connected (${type})`
           uiManager.logSystemMessage(`Connected to ${type} Engine`, 'success')
-          if (type === 'Remote') getEngineInstance().send('uci')
+          if (type === 'Remote') {
+            getEngineInstance().send('uci')
+            if (gameManager && gameManager.gameMode === 'vote') {
+              socketHandler.send(JSON.stringify({ action: 'join_vote' }))
+            }
+          }
         }
       },
       onClose: () => {
@@ -58,8 +63,10 @@ const initApp = () => {
           if (developerManager) developerManager.logPacket('OUT', cmd)
           if (cmd.startsWith('go ')) {
             uiManager.setThinking(true)
+            if (gameManager) gameManager.isEngineThinking = true
           } else if (cmd === 'stop') {
             uiManager.setThinking(false)
+            if (gameManager) gameManager.isEngineThinking = false
           }
         }
       },
@@ -76,6 +83,9 @@ const initApp = () => {
           if (!hasAutoStarted && !gameManager.gameStarted) {
             hasAutoStarted = true
             gameManager.startNewGame()
+          } else if (gameManager.gameStarted && gameManager.isEngineThinking) {
+            uiManager.showToast('Resuming Session...', 'info')
+            gameManager.sendPositionAndGo()
           }
         }
       },
@@ -86,6 +96,7 @@ const initApp = () => {
         if (engineProxy.getEngine() === getEngineInstance()) {
           if (developerManager) developerManager.logPacket('IN', parts.join(' '))
           uiManager.setThinking(false)
+          if (gameManager) gameManager.isEngineThinking = false
           analysisManager.handleBestMove()
           handleBestMove(parts)
         }
