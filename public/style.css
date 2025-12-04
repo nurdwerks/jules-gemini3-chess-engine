@@ -182,6 +182,7 @@ body::before {
     flex-shrink: 0;
     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     overflow: hidden;
+    max-width: 100%;
 }
 
 .panel-header {
@@ -513,6 +514,7 @@ button#resign-btn:active {
     padding: 10px 16px;
     border-bottom: 1px solid rgba(255,255,255,0.05);
     background: rgba(255,255,255,0.03);
+    max-width: 100%;
 }
 
 .option-group .option-item:last-child {
@@ -521,6 +523,15 @@ button#resign-btn:active {
 .option-group .option-item:first-of-type {
     border-top-left-radius: 0;
     border-top-right-radius: 0;
+}
+
+.option-item label {
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-right: 10px;
+    white-space: nowrap;
 }
 
 /* Form Controls */
@@ -535,6 +546,8 @@ button#resign-btn:active {
     border-radius: 6px;
     font-size: 14px;
     outline: none;
+    flex-shrink: 0;
+    max-width: 50%;
 }
 
 .option-item input:focus, .option-item select:focus {
@@ -557,6 +570,7 @@ button#resign-btn:active {
     cursor: pointer;
     outline: none;
     transition: background 0.25s;
+    flex-shrink: 0;
 }
 
 .option-item input[type="checkbox"]::after {
@@ -641,6 +655,26 @@ input[type="range"]::-webkit-slider-thumb {
     border-radius: 8px;
     padding: 10px;
     margin-top: 10px;
+}
+
+/* Graphs */
+.graph-container {
+    width: 100%;
+    height: 200px;
+    background-color: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tab-content {
+    display: none;
+}
+.tab-content.active {
+    display: block;
 }
 
 /* Move History */

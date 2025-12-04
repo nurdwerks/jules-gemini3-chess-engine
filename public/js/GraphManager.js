@@ -5,6 +5,14 @@ window.GraphManager = (() => {
   const npsGraphSvg = document.getElementById('nps-graph')
   const tensionGraphSvg = document.getElementById('tension-graph')
 
+  function setupSvg (svg, width, height) {
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`)
+    svg.setAttribute('preserveAspectRatio', 'none')
+    svg.style.width = '100%'
+    svg.style.height = '100%'
+    svg.innerHTML = ''
+  }
+
   function renderEvalGraph (evalHistory) {
     if (!evalGraphSvg) return
     if (!evalHistory || evalHistory.length === 0) {
@@ -12,11 +20,11 @@ window.GraphManager = (() => {
       return
     }
 
-    evalGraphSvg.innerHTML = ''
+    const width = 1000
+    const height = 300
+    setupSvg(evalGraphSvg, width, height)
 
-    const width = evalGraphSvg.clientWidth || 300
-    const height = evalGraphSvg.clientHeight || 100
-    const padding = 5
+    const padding = 10
 
     // Scales
     const maxPly = Math.max(20, evalHistory.length)
@@ -41,8 +49,8 @@ window.GraphManager = (() => {
     line0.setAttribute('x2', width)
     line0.setAttribute('y2', zeroY)
     line0.setAttribute('stroke', '#444')
-    line0.setAttribute('stroke-width', '1')
-    line0.setAttribute('stroke-dasharray', '4')
+    line0.setAttribute('stroke-width', '2')
+    line0.setAttribute('stroke-dasharray', '8,4')
     evalGraphSvg.appendChild(line0)
 
     // Polyline
@@ -51,7 +59,7 @@ window.GraphManager = (() => {
     polyline.setAttribute('points', points)
     polyline.setAttribute('fill', 'none')
     polyline.setAttribute('stroke', '#33B5E5')
-    polyline.setAttribute('stroke-width', '2')
+    polyline.setAttribute('stroke-width', '4')
     evalGraphSvg.appendChild(polyline)
   }
 
@@ -62,9 +70,9 @@ window.GraphManager = (() => {
       return
     }
 
-    materialGraphSvg.innerHTML = ''
-    const width = materialGraphSvg.clientWidth || 300
-    const height = materialGraphSvg.clientHeight || 200
+    const width = 1000
+    const height = 300
+    setupSvg(materialGraphSvg, width, height)
     const padding = 10
 
     const maxPly = Math.max(20, materialHistory.length)
@@ -79,7 +87,7 @@ window.GraphManager = (() => {
     wPoly.setAttribute('points', wPoints)
     wPoly.setAttribute('fill', 'none')
     wPoly.setAttribute('stroke', '#E3E3E3')
-    wPoly.setAttribute('stroke-width', '2')
+    wPoly.setAttribute('stroke-width', '4')
     materialGraphSvg.appendChild(wPoly)
 
     // Black Material Line
@@ -88,7 +96,7 @@ window.GraphManager = (() => {
     bPoly.setAttribute('points', bPoints)
     bPoly.setAttribute('fill', 'none')
     bPoly.setAttribute('stroke', '#6B6B6B')
-    bPoly.setAttribute('stroke-width', '2')
+    bPoly.setAttribute('stroke-width', '4')
     materialGraphSvg.appendChild(bPoly)
   }
 
@@ -99,9 +107,9 @@ window.GraphManager = (() => {
       return
     }
 
-    timeGraphSvg.innerHTML = ''
-    const width = timeGraphSvg.clientWidth || 300
-    const height = timeGraphSvg.clientHeight || 200
+    const width = 1000
+    const height = 300
+    setupSvg(timeGraphSvg, width, height)
     const padding = 20
 
     const maxPly = Math.max(20, timeHistory[timeHistory.length - 1].ply)
@@ -111,7 +119,7 @@ window.GraphManager = (() => {
     const getY = (time) => height - ((time / maxTime) * (height - 2 * padding) + padding)
 
     // Bars
-    const barW = Math.max(2, ((width - 2 * padding) / maxPly) * 0.8)
+    const barW = Math.max(4, ((width - 2 * padding) / maxPly) * 0.8)
 
     timeHistory.forEach(t => {
       const x = getX(t.ply) - barW / 2
@@ -135,9 +143,9 @@ window.GraphManager = (() => {
       return
     }
 
-    npsGraphSvg.innerHTML = ''
-    const width = npsGraphSvg.clientWidth || 300
-    const height = npsGraphSvg.clientHeight || 200
+    const width = 1000
+    const height = 300
+    setupSvg(npsGraphSvg, width, height)
     const padding = 10
 
     const maxSamples = npsHistory.length
@@ -151,7 +159,7 @@ window.GraphManager = (() => {
     poly.setAttribute('points', points)
     poly.setAttribute('fill', 'none')
     poly.setAttribute('stroke', '#9AC42A') // Green
-    poly.setAttribute('stroke-width', '2')
+    poly.setAttribute('stroke-width', '4')
     npsGraphSvg.appendChild(poly)
   }
 
@@ -162,9 +170,9 @@ window.GraphManager = (() => {
       return
     }
 
-    tensionGraphSvg.innerHTML = ''
-    const width = tensionGraphSvg.clientWidth || 300
-    const height = tensionGraphSvg.clientHeight || 200
+    const width = 1000
+    const height = 300
+    setupSvg(tensionGraphSvg, width, height)
     const padding = 10
 
     const maxPly = Math.max(20, tensionHistory[tensionHistory.length - 1].ply)
@@ -178,7 +186,7 @@ window.GraphManager = (() => {
     poly.setAttribute('points', points)
     poly.setAttribute('fill', 'none')
     poly.setAttribute('stroke', '#F2495C') // Red
-    poly.setAttribute('stroke-width', '2')
+    poly.setAttribute('stroke-width', '4')
     tensionGraphSvg.appendChild(poly)
   }
 
