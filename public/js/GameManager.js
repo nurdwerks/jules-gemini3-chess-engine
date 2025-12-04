@@ -281,6 +281,9 @@ window.GameManager = class GameManager {
         this.socketHandler.send('go infinite')
       }
     } else {
+      if (!this.clockInterval && this.gameStarted) {
+        this.startClock()
+      }
       this.socketHandler.send(cmd)
       this.socketHandler.send(`go wtime ${Math.floor(this.whiteTime)} btime ${Math.floor(this.blackTime)} winc ${Math.floor(this.whiteIncrement)} binc ${Math.floor(this.blackIncrement)}`)
     }
