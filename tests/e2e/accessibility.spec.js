@@ -7,6 +7,9 @@ test.describe('Accessibility Features', () => {
   })
 
   test('High Contrast Mode Toggle', async ({ page }) => {
+    await page.click('#accessibility-btn')
+    await expect(page.locator('#accessibility-modal')).toBeVisible()
+
     await page.check('#high-contrast')
     await expect(page.locator('body')).toHaveClass(/high-contrast/)
 
@@ -50,6 +53,9 @@ test.describe('Accessibility Features', () => {
   })
 
   test('Voice Announcement Toggle', async ({ page }) => {
+    await page.click('#accessibility-btn')
+    await expect(page.locator('#accessibility-modal')).toBeVisible()
+
     // Mock speechSynthesis
     await page.evaluate(() => {
       window._utterances = []
@@ -79,6 +85,10 @@ test.describe('Accessibility Features', () => {
 
     await page.check('#voice-announce')
 
+    // Close modal to allow interaction with board
+    await page.click('#close-accessibility-modal')
+    await expect(page.locator('#accessibility-modal')).not.toBeVisible()
+
     // Make a move: d2-d4
     const d2Piece = page.locator('#chessboard .square[data-alg="d2"] .piece')
     const d4Square = page.locator('#chessboard .square[data-alg="d4"]')
@@ -97,8 +107,111 @@ test.describe('Accessibility Features', () => {
   })
 
   test('Sound Volume Control', async ({ page }) => {
+    await page.click('#accessibility-btn')
+    await expect(page.locator('#accessibility-modal')).toBeVisible()
+
     const slider = page.locator('#volume-control')
     await slider.fill('0.5')
     await expect(slider).toHaveValue('0.5')
+  })
+
+  test('Voice Control Instructions Visible', async ({ page }) => {
+    await page.click('#accessibility-btn')
+    await expect(page.locator('#accessibility-modal')).toBeVisible()
+
+    // Check if the instruction text is present
+    await expect(page.locator('text=Say "New Game", "e4", or "Knight f3" to play.')).toBeVisible()
+  })
+
+  test('Voice Indicator Appears', async ({ page }) => {
+    // Inject mock before reload
+    await page.addInitScript(() => {
+      window.SpeechRecognition = class MockSpeechRecognition {
+        constructor () {
+          this.continuous = false
+          this.lang = ''
+          this.interimResults = false
+          this.onstart = null
+          this.onend = null
+          this.onresult = null
+        }
+
+        start () {
+          if (this.onstart) setTimeout(() => this.onstart(), 10)
+        }
+
+        stop () {
+          if (this.onend) setTimeout(() => this.onend(), 10)
+        }
+      }
+      window.webkitSpeechRecognition = window.SpeechRecognition
+    })
+
+    await page.reload()
+    await page.waitForSelector('#chessboard')
+
+    await page.click('#accessibility-btn')
+    await expect(page.locator('#accessibility-modal')).toBeVisible()
+
+    // Enable Voice Control
+    await page.check('#voice-control')
+
+    // Expect indicator
+    await expect(page.locator('#voice-indicator')).toBeVisible()
+    await expect(page.locator('#voice-indicator')).toContainText('Listening')
+
+    // Disable
+    await page.uncheck('#voice-control')
+    await expect(page.locator('#voice-indicator')).not.toBeVisible()
+  })
+
+  test('Voice Control Functionality', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.SpeechRecognition = class MockSpeechRecognition {
+        constructor () {
+          this.continuous = true
+          this.lang = 'en-US'
+          this.interimResults = false
+          this.onstart = null
+          this.onend = null
+          this.onresult = null
+          window._mockRecognition = this
+        }
+
+        start () {
+          if (this.onstart) setTimeout(() => this.onstart(), 10)
+        }
+
+        stop () {
+          if (this.onend) setTimeout(() => this.onend(), 10)
+        }
+      }
+      window.webkitSpeechRecognition = window.SpeechRecognition
+
+      window.triggerVoiceCommand = (text) => {
+        if (window._mockRecognition && window._mockRecognition.onresult) {
+          const event = {
+            results: [
+              [{ transcript: text }]
+            ]
+          }
+          window._mockRecognition.onresult(event)
+        }
+      }
+    })
+
+    await page.reload()
+    await page.waitForSelector('#chessboard')
+
+    await page.click('#accessibility-btn')
+    await page.check('#voice-control')
+    await page.click('#close-accessibility-modal')
+
+    // Trigger "e4"
+    await page.evaluate(() => window.triggerVoiceCommand('e4'))
+
+    // Verify move e4 is played
+    await expect(page.locator('#chessboard .square[data-alg="e4"] .piece')).toBeVisible()
+    await expect(page.locator('.toast').last()).toContainText('Voice: e4')
   })
 })

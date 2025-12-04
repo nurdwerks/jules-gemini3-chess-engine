@@ -131,10 +131,16 @@ window.AccessibilityManager = class AccessibilityManager {
         try { this.recognition.start() } catch (e) { /* already started */ }
       }
     } else {
+      this._setIndicator(false)
       if (this.recognition) {
         try { this.recognition.stop() } catch (e) { /* already stopped */ }
       }
     }
+  }
+
+  _setIndicator (visible) {
+    const el = document.getElementById('voice-indicator')
+    if (el) el.style.display = visible ? 'flex' : 'none'
   }
 
   _initSpeechRecognition () {
@@ -146,6 +152,10 @@ window.AccessibilityManager = class AccessibilityManager {
     this.recognition.lang = 'en-US'
     this.recognition.interimResults = false
 
+    this.recognition.onstart = () => {
+      if (this.voiceControlEnabled) this._setIndicator(true)
+    }
+
     this.recognition.onresult = (event) => {
       if (!this.voiceControlEnabled) return
       const last = event.results.length - 1
@@ -156,6 +166,8 @@ window.AccessibilityManager = class AccessibilityManager {
     this.recognition.onend = () => {
       if (this.voiceControlEnabled) {
         try { this.recognition.start() } catch (e) { /* ignore */ }
+      } else {
+        this._setIndicator(false)
       }
     }
 
