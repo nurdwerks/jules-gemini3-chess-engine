@@ -515,6 +515,11 @@ const initApp = () => {
       onClockUpdate: () => renderClocks()
     })
 
+    if (!window.INITIAL_USER) {
+      uiManager.applyGuestRestrictions()
+      gameManager.gameMode = 'pvp'
+    }
+
     const analysisManager = new AnalysisManager(game, gameManager, engineProxy, {
       onStart: (total) => {
         uiManager.elements.analysisReportModal.classList.add('active')
