@@ -1031,6 +1031,32 @@ body.light-mode .clock {
 @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
 
+/* Voice Indicator */
+.voice-indicator {
+    position: fixed;
+    top: 70px; /* Below sidebar toggle and header area */
+    right: 20px;
+    background: rgba(255, 69, 58, 0.9);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    z-index: 2000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
+    animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-red {
+    0% { box-shadow: 0 0 0 0 rgba(255, 69, 58, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(255, 69, 58, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 69, 58, 0); }
+}
+
 /* Zen Mode */
 body.zen-mode #dashboard { justify-content: center; align-items: center; height: 100vh; }
 body.zen-mode .sidebar, body.zen-mode .panel-header, body.zen-mode .sidebar-toggle { display: none; }
