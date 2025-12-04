@@ -41,13 +41,18 @@ window.BoardInfoRenderer = class BoardInfoRenderer {
     bottomAvatar.style.display = 'block'
   }
 
-  updateClocks (whiteTime, blackTime, isFlipped) {
+  updateClocks (whiteTime, blackTime, isFlipped, isNoTimer) {
     const format = (ms) => {
       const s = Math.ceil(ms / 1000)
       return `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`
     }
-    const wTime = format(whiteTime)
-    const bTime = format(blackTime)
+    let wTime = format(whiteTime)
+    let bTime = format(blackTime)
+
+    if (isNoTimer) {
+      wTime = '∞'
+      bTime = '∞'
+    }
 
     if (isFlipped) {
       this.elements.topPlayerClock.textContent = wTime
