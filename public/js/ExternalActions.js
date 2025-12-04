@@ -146,6 +146,7 @@ window.ExternalActions = class ExternalActions {
     return new Promise((resolve) => {
       const img = new Image()
       img.onload = () => {
+        // Ensure 1 frame per second (1000ms) as per requirements
         gif.addFrame(img, { delay: 1000 })
         URL.revokeObjectURL(svgUrl)
         resolve()
