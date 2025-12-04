@@ -784,7 +784,7 @@ const initApp = () => {
     }
 
     function renderClocks () {
-      uiManager.boardInfoRenderer.updateClocks(gameManager.whiteTime, gameManager.blackTime, state.isFlipped)
+      uiManager.boardInfoRenderer.updateClocks(gameManager.whiteTime, gameManager.blackTime, state.isFlipped, gameManager.isNoTimer)
     }
 
     let replayInterval = null

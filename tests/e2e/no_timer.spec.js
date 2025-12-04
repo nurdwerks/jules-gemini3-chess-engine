@@ -53,7 +53,11 @@ test.describe('No Timer Mode', () => {
     // Should be exactly equal because _updateClock returns early
     expect(finalWhiteTime).toBe(initialWhiteTime);
 
-    // 8. Verify Persistence
+    // 8. Verify Infinity Symbol
+    await expect(page.locator('#top-player-clock')).toContainText('∞');
+    await expect(page.locator('#bottom-player-clock')).toContainText('∞');
+
+    // 9. Verify Persistence
     await page.reload();
     await expect(page.locator('#status')).toContainText('Connected');
 
