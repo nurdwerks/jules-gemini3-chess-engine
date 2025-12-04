@@ -111,9 +111,10 @@ class DeveloperManager {
   }
 
   handleMessage (msg) {
-    this._checkLatencyResponse(msg)
+    const isLatency = this._checkLatencyResponse(msg)
     this._checkInfo(msg)
     this._checkCustomCommands(msg)
+    return isLatency
   }
 
   _checkLatencyResponse (msg) {
@@ -121,7 +122,9 @@ class DeveloperManager {
       const latency = Math.round(performance.now() - this.latencyStart)
       this.elements.latencyDisplay.textContent = `${latency} ms`
       this.latencyStart = 0
+      return true
     }
+    return false
   }
 
   _checkInfo (msg) {
