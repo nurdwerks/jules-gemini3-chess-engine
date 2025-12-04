@@ -716,7 +716,9 @@ input[type="range"]::-webkit-slider-thumb {
 
 /* Player Info */
 .player-info {
-    display: flex;
+    display: grid;
+    grid-template-areas: "avatar details bar captured clock";
+    grid-template-columns: auto 1fr auto auto auto;
     align-items: center;
     padding: 8px 0;
     background-color: transparent;
@@ -725,6 +727,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .player-avatar {
+    grid-area: avatar;
     width: 44px;
     height: 44px;
     border-radius: 50%;
@@ -733,10 +736,14 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .player-details {
-    flex-grow: 1;
+    grid-area: details;
     display: flex;
     flex-direction: column;
     justify-content: center;
+}
+
+.material-bar-container {
+    grid-area: bar;
 }
 
 .player-name {
@@ -751,6 +758,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .captured-pieces {
+    grid-area: captured;
     background-color: rgba(118, 118, 128, 0.24);
     border-radius: 6px;
     padding: 2px 4px;
@@ -761,6 +769,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .clock {
+    grid-area: clock;
     font-family: 'SF Mono', 'Menlo', monospace;
     font-size: 22px;
     font-weight: 500;
@@ -928,6 +937,18 @@ body.light-mode .clock {
 
 /* Responsive */
 @media (max-width: 768px) {
+    .player-info {
+        grid-template-areas:
+            "avatar details clock"
+            "captured captured captured";
+        grid-template-columns: auto 1fr auto;
+        row-gap: 8px;
+        column-gap: 12px;
+    }
+    .material-bar-container {
+        display: none;
+    }
+
     html, body {
         height: auto;
         overflow: visible;

@@ -21,6 +21,8 @@ const initApp = () => {
     let chatManager = null
     let authManager = null
 
+    let hasAutoStarted = false
+
     // Shared State
     const state = {
       selectedSquare: null,
@@ -71,7 +73,10 @@ const initApp = () => {
         if (engineProxy.getEngine() === getEngineInstance()) {
           if (developerManager) developerManager.handleMessage('readyok')
           if (developerManager) developerManager.logPacket('IN', 'readyok')
-          if (!gameManager.gameStarted) gameManager.startNewGame()
+          if (!hasAutoStarted && !gameManager.gameStarted) {
+            hasAutoStarted = true
+            gameManager.startNewGame()
+          }
         }
       },
       onInfo: (msg) => {
